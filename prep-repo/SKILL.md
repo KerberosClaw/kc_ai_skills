@@ -89,7 +89,18 @@ If found, use `git filter-repo --message-callback` to remove.
 grep -rn '\[.*\](.*\.md\|.*\.py\|.*\.json)' --include="*.md" . | grep -v .git
 ```
 
-### 9. Skill Directory Structure (if applicable)
+### 9. Markdown Rendering Check
+
+- [ ] No bare `===` or `---` lines outside code blocks (causes heading/hr rendering issues)
+- [ ] Nested code blocks use different fence levels (outer ```````` ```````` ````````, inner ```` ``` ````)
+- [ ] Report blocks, ASCII art, and formatted text are wrapped in code fences
+
+```bash
+# Find bare === lines that may cause rendering issues
+grep -n "^===" --include="*.md" -r . | grep -v .git
+```
+
+### 10. Skill Directory Structure (if applicable)
 
 Each skill follows:
 ```
