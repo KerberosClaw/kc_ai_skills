@@ -1,10 +1,12 @@
-# Claude Code Skills Collection
+# AI Skills That Actually Do Things
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 [正體中文](README_zh.md)
 
-A collection of reusable [Claude Code](https://claude.ai/claude-code) skills for local LLM workflows, benchmarking, and project publishing.
+A collection of reusable AI agent skills for benchmarking, local search, and project publishing. Works with any LLM client that supports skill/prompt loading — cloud or local.
+
+> Skills follow the [Claude Code skill convention](https://code.claude.com/docs/en/skills) (SKILL.md + scripts/), but the concepts are framework-agnostic.
 
 ## Skills
 
@@ -19,20 +21,22 @@ A collection of reusable [Claude Code](https://claude.ai/claude-code) skills for
 Clone this repo, then copy the skills you need:
 
 ```bash
-git clone https://github.com/KerberosClaw/kc_claude_skills.git
+git clone https://github.com/KerberosClaw/kc_ai_skills.git
 
-# Install a skill for Claude Code (user-level)
-cp -r kc_claude_skills/prep-repo ~/.claude/skills/
+# Example: install for Claude Code (user-level)
+cp -r kc_ai_skills/prep-repo ~/.claude/skills/
 
-# Install a skill for OpenClaw (workspace-level)
-cp -r kc_claude_skills/searxng ~/.openclaw/workspace/skills/
+# Example: install for OpenClaw (workspace-level)
+cp -r kc_ai_skills/searxng ~/.openclaw/workspace/skills/
 ```
 
 > **Naming tip:** Feel free to rename the skill folder with your own prefix when copying (e.g. `my_prep-repo`).
 
+> **Other clients:** Each SKILL.md is a self-contained markdown instruction file. You can paste its content into any AI chat, system prompt, or custom instruction field.
+
 ## Skill Structure
 
-Each skill follows the Claude Code convention:
+Each skill follows a simple convention:
 
 ```
 skill-name/

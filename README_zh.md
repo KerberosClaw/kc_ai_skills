@@ -1,10 +1,12 @@
-# Claude Code Skills 合集
+# AI Skills：真的會做事的那種
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 [English](README.md)
 
-一組可重複使用的 [Claude Code](https://claude.ai/claude-code) skill，用於本地 LLM 工作流、效能測試與專案發佈。
+一組可重複使用的 AI agent skill，用於效能測試、本地搜尋與專案發佈。適用於任何支援 skill / prompt 載入的 LLM 客戶端 — 雲端或本地皆可。
+
+> Skills 遵循 [Claude Code skill 規範](https://code.claude.com/docs/en/skills)（SKILL.md + scripts/），但概念本身不限定於特定框架。
 
 ## Skills
 
@@ -19,20 +21,22 @@
 Clone 此 repo，複製需要的 skill：
 
 ```bash
-git clone https://github.com/KerberosClaw/kc_claude_skills.git
+git clone https://github.com/KerberosClaw/kc_ai_skills.git
 
-# 安裝 skill 到 Claude Code（使用者層級）
-cp -r kc_claude_skills/prep-repo ~/.claude/skills/
+# 範例：安裝到 Claude Code（使用者層級）
+cp -r kc_ai_skills/prep-repo ~/.claude/skills/
 
-# 安裝 skill 到 OpenClaw（workspace 層級）
-cp -r kc_claude_skills/searxng ~/.openclaw/workspace/skills/
+# 範例：安裝到 OpenClaw（workspace 層級）
+cp -r kc_ai_skills/searxng ~/.openclaw/workspace/skills/
 ```
 
 > **命名提示：** 複製時可自行加上前綴重新命名（如 `my_prep-repo`）。
 
+> **其他客戶端：** 每個 SKILL.md 都是獨立的 markdown 指令文件。你可以直接將內容貼到任何 AI 對話、system prompt 或自訂指令欄位中使用。
+
 ## Skill 結構
 
-每個 skill 遵循 Claude Code 規範：
+每個 skill 遵循簡單的規範：
 
 ```
 skill-name/
