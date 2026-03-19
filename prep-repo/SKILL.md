@@ -1,7 +1,7 @@
 ---
 name: prep-repo
-description: "Prepare a project for GitHub: README, commit conventions, sensitive data scan, broken link check, and final cleanup."
-version: 1.0.0
+description: "Prepare a project for GitHub: README, commit conventions, sensitive data scan, broken link check, project structure, tests, CI, Docker, and final cleanup."
+version: 2.0.0
 ---
 
 # Prep Repo
@@ -114,6 +114,93 @@ skill-name/
 - [ ] Scripts are in `scripts/` subdirectory
 - [ ] No orphan metadata files (`_meta.json` etc.) unless required
 
+### 11. Project Directory Structure
+
+Root directory should only contain entry-point files and config. Documentation and assets go in `docs/`.
+
+```
+project/
+├── src/ or main code      # Source code
+├── tests/                 # Automated tests
+├── docs/                  # Design docs, guides, images
+│   ├── images/            # Screenshots, architecture diagrams
+│   └── DESIGN.md          # Design document (not in root)
+├── .github/workflows/     # CI pipeline
+├── README.md              # Entry-point docs stay in root
+├── README_zh.md
+├── LICENSE
+├── .gitignore
+├── .gitattributes
+├── pyproject.toml / package.json
+├── Dockerfile (if applicable)
+└── docker-compose.yml (if applicable)
+```
+
+- [ ] No documentation files (DESIGN.md, guides, etc.) floating in root — move to `docs/`
+- [ ] `docs/images/` exists if project has screenshots or diagrams
+- [ ] Root contains only: README*, LICENSE, config files, entry-point scripts
+
+### 12. README Tree vs Actual Directory
+
+The project structure tree in README must match reality.
+
+- [ ] Every file/directory listed in README tree actually exists
+- [ ] No existing important directories omitted from tree (e.g. `tests/`, `docs/`, `.github/`)
+
+```bash
+# Compare: extract directory names from README tree, check each exists
+```
+
+### 13. Tests & CI
+
+- [ ] `tests/` directory exists and contains test files
+- [ ] Tests can run successfully (`pytest`, `npm test`, etc.)
+- [ ] `.github/workflows/` exists with at least one CI workflow
+- [ ] CI workflow runs tests on push/PR to main
+
+### 14. .gitattributes & Language Detection
+
+- [ ] `.gitattributes` exists
+- [ ] Lock files marked as generated to prevent language misdetection
+
+Common rules:
+```gitattributes
+uv.lock linguist-generated=true
+package-lock.json linguist-generated=true
+pnpm-lock.yaml linguist-generated=true
+yarn.lock linguist-generated=true
+poetry.lock linguist-generated=true
+```
+
+### 15. Docker Build Verification (if applicable)
+
+If project has a `Dockerfile` or `docker-compose.yml`:
+
+- [ ] `docker build` completes without errors
+- [ ] `docker compose up` starts all services successfully
+- [ ] Services are reachable (health check or basic connectivity test)
+- [ ] Common pitfalls checked:
+  - Files referenced in `COPY` actually exist at that build stage
+  - Multi-stage builds don't miss required files
+  - Build args and env vars have sensible defaults
+
+### 16. GitHub Repo Metadata (post-push)
+
+After pushing to GitHub, verify:
+
+- [ ] **Description** is set (the one-line summary shown on repo cards and search results)
+- [ ] **Topics** are set (tags like `python`, `modbus`, `mcp` — helps discoverability)
+
+```bash
+# Set description
+gh repo edit OWNER/REPO --description "one-line summary"
+
+# Set topics
+gh repo edit OWNER/REPO --add-topic python --add-topic modbus --add-topic mcp-server
+```
+
+- [ ] Language badge is displaying correctly (should reflect primary language, not lock files)
+
 ## Execution
 
 Run through each section. For each issue found:
@@ -122,3 +209,5 @@ Run through each section. For each issue found:
 3. Verify the fix
 
 After all checks pass, stage and commit with: `Docs: prep repo for GitHub publish`
+
+For post-push checks (section 16), run after the repo is on GitHub.
