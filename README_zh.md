@@ -4,22 +4,22 @@
 
 [English](README.md)
 
-一組可重複使用的 AI agent skill，用於效能測試、本地搜尋與專案發佈。適用於任何支援 skill / prompt 載入的 LLM 客戶端 — 雲端或本地皆可。
+一組解決真實問題的 AI agent skill — 不是那種「幫我摘要這份 PDF」的 skill，而是「幫我掃一下 repo 有沒有把 API key 推上去」的那種。適用於任何支援 skill / prompt 載入的 LLM 客戶端，雲端本地都行。
 
-> Skills 遵循 [Claude Code skill 規範](https://code.claude.com/docs/en/skills)（SKILL.md + scripts/），但概念本身不限定於特定框架。
+> Skills 遵循 [Claude Code skill 規範](https://code.claude.com/docs/en/skills)（SKILL.md + scripts/），但概念不限定於特定框架。把它們想成你的 AI 真的會照著做的 checklist。
 
 ## Skills
 
-| Skill | 說明 |
-|-------|------|
-| [prep-repo](prep-repo/) | 專案上 GitHub 前的準備：README 規範、commit 風格、敏感資訊掃描、broken link 檢查 |
-| [llm-benchmark](llm-benchmark/) | Ollama 模型自動化 benchmark，含 CPU offload 偵測與 markdown 報告產生 |
-| [searxng](searxng/) | 透過 SearXNG 的本地搜尋整合，適用於 OpenClaw 或任何支援 exec 的 AI agent |
-| [rewrite-tone](rewrite-tone/) | 用詼諧口語化的風格改寫 Markdown — 把乾巴巴的技術文件變成有趣的踩坑故事 |
+| Skill | 它到底幹嘛 |
+|-------|----------|
+| [prep-repo](prep-repo/) | 推上 GitHub 之前的「我是不是忘了什麼」checklist。README、commit、機敏資訊、broken link — 就是那些你凌晨兩點一定會忘的東西 |
+| [llm-benchmark](llm-benchmark/) | 在你浪費 30 分鐘下載一個塞不進 GPU 的模型之前，先搞清楚哪個 Ollama 模型適合你的顯卡 |
+| [searxng](searxng/) | 讓你的本地 LLM 能搜尋網路，而且不用把搜尋紀錄送給 Google |
+| [rewrite-tone](rewrite-tone/) | 把你乾巴巴的技術文件變成別人真的想讀的東西。踩坑故事永遠比白皮書好看 |
 
 ## 安裝
 
-Clone 此 repo，複製需要的 skill：
+拿你需要的，不需要的不用管：
 
 ```bash
 git clone https://github.com/KerberosClaw/kc_ai_skills.git
@@ -31,13 +31,13 @@ cp -r kc_ai_skills/prep-repo ~/.claude/skills/
 cp -r kc_ai_skills/searxng ~/.openclaw/workspace/skills/
 ```
 
-> **命名提示：** 複製時可自行加上前綴重新命名（如 `my_prep-repo`）。
+> **命名提示：** 複製時可自行加上前綴重新命名（如 `my_prep-repo`）。不會壞掉的。大概。
 
-> **其他客戶端：** 每個 SKILL.md 都是獨立的 markdown 指令文件。你可以直接將內容貼到任何 AI 對話、system prompt 或自訂指令欄位中使用。
+> **其他客戶端：** 每個 SKILL.md 都是獨立的 markdown 指令文件。直接複製貼上到任何 AI 對話、system prompt 或自訂指令欄位就能用。不用裝 SDK，不用 API key — 就是複製貼上。
 
 ## Skill 結構
 
-每個 skill 遵循簡單的規範：
+每個 skill 遵循一個簡單到不行的規範。會寫 markdown 就會寫 skill：
 
 ```
 skill-name/
@@ -48,5 +48,5 @@ skill-name/
 
 ## 相關專案
 
-- [kc_tradfri_mcp](https://github.com/KerberosClaw/kc_tradfri_mcp) — 「把客廳的燈打開」— TRADFRI MCP
-- [kc_openclaw_local_llm](https://github.com/KerberosClaw/kc_openclaw_local_llm) — OpenClaw + 本地 LLM：哪些真的能用
+- [kc_tradfri_mcp](https://github.com/KerberosClaw/kc_tradfri_mcp) — 「把客廳的燈打開」— 對，我們真的讓 AI 去做這件事了
+- [kc_openclaw_local_llm](https://github.com/KerberosClaw/kc_openclaw_local_llm) — 我們測了 13 個本地 LLM，只有 2 個能穩定呼叫 tool。完整報告在這裡

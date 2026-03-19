@@ -4,22 +4,22 @@
 
 [正體中文](README_zh.md)
 
-A collection of reusable AI agent skills for benchmarking, local search, and project publishing. Works with any LLM client that supports skill/prompt loading — cloud or local.
+A collection of AI agent skills that solve real problems — not "summarize this PDF" kind of skills, but "scan my repo for leaked API keys before I push" kind of skills. Works with any LLM client that supports skill/prompt loading, cloud or local.
 
-> Skills follow the [Claude Code skill convention](https://code.claude.com/docs/en/skills) (SKILL.md + scripts/), but the concepts are framework-agnostic.
+> Skills follow the [Claude Code skill convention](https://code.claude.com/docs/en/skills) (SKILL.md + scripts/), but the concepts are framework-agnostic. Think of them as reusable checklists your AI actually follows.
 
 ## Skills
 
-| Skill | Description |
-|-------|-------------|
-| [prep-repo](prep-repo/) | Prepare a project for GitHub: README conventions, commit style, sensitive data scan, broken link check |
-| [llm-benchmark](llm-benchmark/) | Automated Ollama model benchmark with CPU offload detection and markdown report generation |
-| [searxng](searxng/) | Local search integration via SearXNG for OpenClaw or any exec-based AI agent |
-| [rewrite-tone](rewrite-tone/) | Rewrite Markdown with conversational, humorous tone — turns dry docs into engaging war stories |
+| Skill | What It Actually Does |
+|-------|----------------------|
+| [prep-repo](prep-repo/) | The "did I forget anything?" checklist before pushing to GitHub. README, commits, secrets, broken links — the stuff you always forget at 2 AM |
+| [llm-benchmark](llm-benchmark/) | Find out which Ollama model actually fits in your GPU — before you waste 30 minutes downloading one that doesn't |
+| [searxng](searxng/) | Give your local LLM the ability to search the web without sending your queries to Google |
+| [rewrite-tone](rewrite-tone/) | Turn your dry technical docs into something people actually want to read. War stories > whitepapers |
 
 ## Installation
 
-Clone this repo, then copy the skills you need:
+Grab what you need, leave what you don't:
 
 ```bash
 git clone https://github.com/KerberosClaw/kc_ai_skills.git
@@ -31,13 +31,13 @@ cp -r kc_ai_skills/prep-repo ~/.claude/skills/
 cp -r kc_ai_skills/searxng ~/.openclaw/workspace/skills/
 ```
 
-> **Naming tip:** Feel free to rename the skill folder with your own prefix when copying (e.g. `my_prep-repo`).
+> **Naming tip:** Feel free to rename the skill folder with your own prefix when copying (e.g. `my_prep-repo`). It won't break anything. Probably.
 
-> **Other clients:** Each SKILL.md is a self-contained markdown instruction file. You can paste its content into any AI chat, system prompt, or custom instruction field.
+> **Other clients:** Each SKILL.md is a self-contained markdown instruction file. You can paste its content into any AI chat, system prompt, or custom instruction field. No SDK required, no API key needed — just copy and paste.
 
 ## Skill Structure
 
-Each skill follows a simple convention:
+Every skill follows a dead-simple convention. If you can write markdown, you can write a skill:
 
 ```
 skill-name/
@@ -48,5 +48,5 @@ skill-name/
 
 ## Related Projects
 
-- [kc_tradfri_mcp](https://github.com/KerberosClaw/kc_tradfri_mcp) — "Turn on the living room lights" — TRADFRI MCP
-- [kc_openclaw_local_llm](https://github.com/KerberosClaw/kc_openclaw_local_llm) — OpenClaw + Local LLM: What Actually Works
+- [kc_tradfri_mcp](https://github.com/KerberosClaw/kc_tradfri_mcp) — "Turn on the living room lights" — yes, we made an AI do that
+- [kc_openclaw_local_llm](https://github.com/KerberosClaw/kc_openclaw_local_llm) — We tested 13 local LLMs. Only 2 could reliably call tools. Here's the full report.
