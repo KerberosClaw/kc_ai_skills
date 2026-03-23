@@ -16,6 +16,7 @@ A collection of AI agent skills that solve real problems — not "summarize this
 | [llm-benchmark](llm-benchmark/) | Find out which Ollama model actually fits in your GPU — before you waste 30 minutes downloading one that doesn't |
 | [searxng](searxng/) | Give your local LLM the ability to search the web without sending your queries to Google |
 | [rewrite-tone](rewrite-tone/) | Turn your dry technical docs into something people actually want to read. War stories > whitepapers |
+| [job-scout](job-scout/) | Research a company before you waste time applying. Salary, reviews, red flags, financials — the due diligence you should've done before that last interview |
 
 ## Installation
 
