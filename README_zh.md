@@ -17,6 +17,7 @@
 | [searxng](searxng/) | 讓你的本地 LLM 能搜尋網路，而且不用把搜尋紀錄送給 Google |
 | [rewrite-tone](rewrite-tone/) | 把你乾巴巴的技術文件變成別人真的想讀的東西。踩坑故事永遠比白皮書好看 |
 | [job-scout](job-scout/) | 投履歷之前先把公司查清楚。薪資、評價、紅旗、財務狀況 — 就是你上次面試前應該做但沒做的功課 |
+| [repo-scan](repo-scan/) | 安裝之前先幫 GitHub repo 做安全掃描。靜態分析、依賴審計、供應鏈風險、Issues 漏洞回報、維護者健康度 — 因為 `npm install 不知名套件` 不該是一場賭博 |
 
 ## 安裝
 

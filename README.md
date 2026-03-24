@@ -17,6 +17,7 @@ A collection of AI agent skills that solve real problems — not "summarize this
 | [searxng](searxng/) | Give your local LLM the ability to search the web without sending your queries to Google |
 | [rewrite-tone](rewrite-tone/) | Turn your dry technical docs into something people actually want to read. War stories > whitepapers |
 | [job-scout](job-scout/) | Research a company before you waste time applying. Salary, reviews, red flags, financials — the due diligence you should've done before that last interview |
+| [repo-scan](repo-scan/) | Security scan a GitHub repo before you install it. Static analysis, dependency audit, supply chain risks, issue-reported vulnerabilities, maintainer health — because `npm install random-package` shouldn't require a leap of faith |
 
 ## Installation
 
