@@ -68,13 +68,18 @@ When converting to Mermaid:
 - Replace full-width brackets `（）` with half-width or remove
 - Replace `≥ ≤` with `>=` `<=`
 
-### Step 5: Mermaid syntax cleanup
+### Step 5: Markdown sanitization for pandoc
 
-For ALL mermaid blocks (both converted and pre-existing):
+**5a. Mermaid syntax cleanup** — for ALL mermaid blocks (both converted and pre-existing):
 - `\n` → `<br/>`
 - Remove numbered prefixes in node text (`1. `, `2. ` etc.)
 - Simplify special characters that may cause parsing errors
 - If a vertical flowchart has > 5 nodes, consider switching to `LR`
+
+**5b. Dollar sign escaping** — pandoc interprets `$...$` as LaTeX inline math. In markdown table cells, an unescaped `$` (e.g. `NT$1`) will pair with a later `$` (e.g. `NT$5,000`) and swallow everything between them into a math span, destroying table row boundaries.
+- Escape ALL `$` signs outside of code blocks: `$` → `\$`
+- This applies to currency symbols (`NT$`, `US$`, `€` is fine), variable references (`$HOME`), and any other bare `$`
+- `$` inside code blocks (`` ` `` or ` ``` `) are safe — pandoc doesn't process them
 
 ### Step 6: Generate PDF
 
@@ -112,8 +117,9 @@ Read every page of the generated PDF. Check for:
 | Nearly blank page | Page has < 10% content | Diagram too tall → switch to LR layout or reduce nodes |
 | "Unsupported markdown" text | Literal string match | Node text has list syntax → remove numbered prefixes |
 | `?` boxes in text | Character replacement indicators | Font fallback issue → check CSS font-family |
+| Table rows merged into one cell | Single row contains `\|\|` or content from multiple expected rows | Unescaped `$` triggering LaTeX math mode → escape all `$` outside code blocks |
 
-If issues found: fix `_pdf.md`, regenerate. **Maximum 2 retries**, then stop and report remaining issues to user.
+If issues found: fix `_pdf.md`, regenerate. **Maximum 3 retries**, then stop and report remaining issues to user.
 
 ### Step 8: Cleanup
 
