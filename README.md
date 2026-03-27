@@ -8,6 +8,8 @@ A collection of AI agent skills that solve real problems — not "summarize this
 
 > Skills follow the [Claude Code skill convention](https://code.claude.com/docs/en/skills) (SKILL.md + scripts/), but the concepts are framework-agnostic. Think of them as reusable checklists your AI actually follows.
 
+> **Security Notice:** These skills are designed for local development and trusted LAN environments. Skills that interact with external services (e.g., `searxng`) default to secure settings (TLS verification enabled), but do not implement additional authentication layers. Review each skill's configuration before deploying in sensitive environments.
+
 ## Skills
 
 | Skill | What It Actually Does |

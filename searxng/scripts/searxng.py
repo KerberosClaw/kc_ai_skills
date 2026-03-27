@@ -16,11 +16,12 @@ from rich.table import Table
 from rich import print as rprint
 from urllib.parse import urlencode
 
-# Suppress SSL warnings for local self-signed certificates
-warnings.filterwarnings('ignore', message='Unverified HTTPS request')
-
 console = Console()
 SEARXNG_URL = os.getenv("SEARXNG_URL", "http://localhost:8080")
+VERIFY_SSL = os.getenv("VERIFY_SSL", "true").lower() not in ("false", "0", "no")
+
+if not VERIFY_SSL:
+    warnings.filterwarnings('ignore', message='Unverified HTTPS request')
 
 def search_searxng(
     query: str,
@@ -57,12 +58,11 @@ def search_searxng(
         params["time_range"] = time_range
     
     try:
-        # Disable SSL verification for local self-signed certs
         response = httpx.get(
             f"{SEARXNG_URL}/search",
             params=params,
             timeout=30,
-            verify=False  # For local self-signed certs
+            verify=VERIFY_SSL,
         )
         response.raise_for_status()
         
@@ -145,7 +145,8 @@ Examples:
   %(prog)s search "rust tutorial" --format json
 
 Environment:
-  SEARXNG_URL: SearXNG instance URL (default: {SEARXNG_URL})
+  SEARXNG_URL:  SearXNG instance URL (default: {SEARXNG_URL})
+  VERIFY_SSL:   Enable TLS certificate verification (default: true, set to false for self-signed certs)
         """
     )
     
