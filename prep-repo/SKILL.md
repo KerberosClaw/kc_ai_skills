@@ -17,7 +17,10 @@ Prepare a local project for publishing to GitHub. Run through all checks and fix
 - [ ] `README.md` has `[正體中文](README_zh.md)` link
 - [ ] `README_zh.md` has `[English](README.md)` link
 - [ ] Both READMEs have: project description, architecture/structure, quick start, and links to docs
-- [ ] Badges (License, etc.) are present if applicable
+- [ ] Badges are present:
+  - [ ] License badge (MIT, Apache, etc.)
+  - [ ] Language/version badge (Python 3.12+, Node 20+, etc.)
+  - [ ] CI status badge if `.github/workflows/` exists: `[![CI](https://github.com/OWNER/REPO/actions/workflows/WORKFLOW.yml/badge.svg)](https://github.com/OWNER/REPO/actions/workflows/WORKFLOW.yml)`
 
 ### 2. Docs (if any)
 
