@@ -65,7 +65,7 @@ cd ~/Developer/kc_job_radar && ~/.orbstack/bin/docker compose run --rm refresh
 cd ~/Developer/kc_job_radar && ~/.orbstack/bin/docker compose run --rm process
 ```
 
-執行完畢後回傳 stdout 最後 30 行。
+執行完畢後只回傳摘要行（含 📊📋✅🗑️📤🔄📝 等 emoji 開頭的行）。
 
 ---
 
@@ -79,7 +79,7 @@ cd ~/Developer/kc_job_radar && ~/.orbstack/bin/docker compose run --rm process
 cd ~/Developer/kc_job_radar && ~/.orbstack/bin/docker compose run --rm radar
 ```
 
-耗時較長，先回覆「搜尋中，請稍候...」。執行完畢後回傳 stdout 最後 50 行。
+耗時較長，先回覆「搜尋中，請稍候...」。執行完畢後只回傳摘要行（含 📊📋✅ 等 emoji 開頭的行）。
 
 ---
 
@@ -93,7 +93,7 @@ cd ~/Developer/kc_job_radar && ~/.orbstack/bin/docker compose run --rm radar
 cd ~/Developer/kc_job_radar && ~/.orbstack/bin/docker compose run --rm scout
 ```
 
-執行完畢後回傳 stdout 最後 30 行。
+執行完畢後只回傳摘要行（含 📊📋✅🗑️📤🔄📝 等 emoji 開頭的行）。
 
 ---
 
@@ -107,7 +107,7 @@ cd ~/Developer/kc_job_radar && ~/.orbstack/bin/docker compose run --rm scout
 cd ~/Developer/kc_job_radar && ~/.orbstack/bin/docker compose run --rm refresh
 ```
 
-執行完畢後回傳 stdout 最後 30 行。
+執行完畢後只回傳摘要行（含 📊📋✅🗑️📤🔄📝 等 emoji 開頭的行）。
 
 ---
 
