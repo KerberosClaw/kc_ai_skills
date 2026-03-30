@@ -14,10 +14,15 @@ Prepare a local project for publishing to GitHub. Run through all checks and fix
 
 - [ ] `README.md` exists with an **engaging, descriptive title** (not the repo/folder name — e.g. "Job Radar -- Because Life's Too Short to Browse 104 Manually" instead of "kc_job_radar")
 - [ ] `README_zh.md` exists (Traditional Chinese version)
-- [ ] `README.md` has `[正體中文](README_zh.md)` link
-- [ ] `README_zh.md` has `[English](README.md)` link
+- [ ] `README.md` has `[正體中文](README_zh.md)` link (not 繁體中文、繁體中文版 etc.)
+- [ ] `README_zh.md` has `[English](README.md)` link (not English Version etc.)
+- [ ] Both language links are **standalone lines** below the badges, not inside blockquotes
 - [ ] Both READMEs have: project description, architecture/structure, quick start, and links to docs
-- [ ] Badges (License, etc.) are present if applicable
+- [ ] Badges present below title: at minimum **License** + **primary language version**. Common badges:
+  - `[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)`
+  - `[![Python 3.12+](https://img.shields.io/badge/Python-3.12+-blue.svg)](https://www.python.org/)`
+  - `[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg)](https://www.docker.com/)`
+  - CI badge if GitHub Actions exists
 - [ ] **Security Notice** section exists (what external services are used, how credentials are handled, how to report issues)
 
 ### 2. Docs (if any)
