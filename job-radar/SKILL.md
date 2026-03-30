@@ -101,10 +101,10 @@ cd ~/Developer/kc_job_radar && ~/.orbstack/bin/docker compose run --rm scout
 
 **觸發詞：** 「刷新追蹤」「refresh」「刷新」
 
-**做什麼：** 重算追蹤中 tab 的天數 + 排序 + 超時封存
+**做什麼：** 掃 Gmail 104 通知信更新狀態 + 重算天數 + 排序 + 超時封存
 
 ```bash
-cd ~/Developer/kc_job_radar && ~/.orbstack/bin/docker compose run --rm refresh
+cd ~/Developer/kc_job_radar && ~/.orbstack/bin/docker compose run --rm gmail-watch && ~/.orbstack/bin/docker compose run --rm refresh
 ```
 
 執行完畢後只回傳摘要行（含 📊📋✅🗑️📤🔄📝 等 emoji 開頭的行）。
