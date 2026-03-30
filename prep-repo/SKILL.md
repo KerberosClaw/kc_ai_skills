@@ -12,15 +12,13 @@ Prepare a local project for publishing to GitHub. Run through all checks and fix
 
 ### 1. README
 
-- [ ] `README.md` exists with a **human-readable title** (not the repo/folder name)
+- [ ] `README.md` exists with an **engaging, descriptive title** (not the repo/folder name — e.g. "Job Radar -- Because Life's Too Short to Browse 104 Manually" instead of "kc_job_radar")
 - [ ] `README_zh.md` exists (Traditional Chinese version)
 - [ ] `README.md` has `[正體中文](README_zh.md)` link
 - [ ] `README_zh.md` has `[English](README.md)` link
 - [ ] Both READMEs have: project description, architecture/structure, quick start, and links to docs
-- [ ] Badges are present:
-  - [ ] License badge (MIT, Apache, etc.)
-  - [ ] Language/version badge (Python 3.12+, Node 20+, etc.)
-  - [ ] CI status badge if `.github/workflows/` exists: `[![CI](https://github.com/OWNER/REPO/actions/workflows/WORKFLOW.yml/badge.svg)](https://github.com/OWNER/REPO/actions/workflows/WORKFLOW.yml)`
+- [ ] Badges (License, etc.) are present if applicable
+- [ ] **Security Notice** section exists (what external services are used, how credentials are handled, how to report issues)
 
 ### 2. Docs (if any)
 
@@ -97,6 +95,7 @@ grep -rn '\[.*\](.*\.md\|.*\.py\|.*\.json)' --include="*.md" . | grep -v .git
 - [ ] No bare `===` or `---` lines outside code blocks (causes heading/hr rendering issues)
 - [ ] Nested code blocks use different fence levels (outer ```````` ```````` ````````, inner ```` ``` ````)
 - [ ] Report blocks, ASCII art, and formatted text are wrapped in code fences
+- [ ] No redundant wrapper patterns in headers — e.g. `（又名「...」）` or `(a.k.a. "...")` should be simplified to just the quoted text
 
 ```bash
 # Find bare === lines that may cause rendering issues
