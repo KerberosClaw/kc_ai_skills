@@ -22,6 +22,7 @@
 | [repo-scan](repo-scan/) | 安裝之前先幫 GitHub repo 做安全掃描。靜態分析、依賴審計、供應鏈風險、Issues 漏洞回報、維護者健康度 — 因為 `npm install 不知名套件` 不該是一場賭博 |
 | [md2pdf](md2pdf/) | 把你的 Markdown 轉成不像 2003 年電腦產出的 PDF。自動處理 Mermaid 圖表、CJK 字型、ASCII art 轉換 — 因為我們已經幫你把所有詭異的 edge case 都踩完了 |
 | [spec](spec/) | Spec-driven 開發流程 — 從模糊想法到驗收結案。一個指令，自動判斷專案狀態，引導你走完：需求釐清 → 審查 → 實作 → 驗收 → 結案報告。因為「先寫再說」就是你之後要全部重寫的原因 |
+| [job-radar](job-radar/) | [kc_job_radar](https://github.com/KerberosClaw/kc_job_radar) 的遙控指令 — 寫求職信、管理求職 pipeline、刷新追蹤表，全部透過 Telegram 操作。需要 kc_job_radar 已部署在同一台機器上並安裝 Docker |
 
 ## 安裝
 
