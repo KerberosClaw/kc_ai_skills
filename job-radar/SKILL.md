@@ -62,10 +62,10 @@ cd ~/Developer/kc_job_radar && ~/.orbstack/bin/docker compose run --rm refresh
 **做什麼：** 封存「沒興趣」的職缺 + 搬移「想投遞」到追蹤中 + 產生求職信 context
 
 ```bash
-cd ~/Developer/kc_job_radar && ~/.orbstack/bin/docker compose run --rm process
+cd ~/Developer/kc_job_radar && ~/.orbstack/bin/docker compose run --rm process 2>&1 | grep -E '^[⚡🗑️📤✉️🔄✅📝]|筆|完成|封存|搬移'
 ```
 
-執行完畢後只回傳摘要行（含 📊📋✅🗑️📤🔄📝 等 emoji 開頭的行）。
+指令已用 grep 過濾只留摘要行。
 
 ---
 
@@ -76,10 +76,10 @@ cd ~/Developer/kc_job_radar && ~/.orbstack/bin/docker compose run --rm process
 **做什麼：** 搜尋 104 新職缺 + 篩選 + 去重 + 寫入雷達 tab
 
 ```bash
-cd ~/Developer/kc_job_radar && ~/.orbstack/bin/docker compose run --rm radar
+cd ~/Developer/kc_job_radar && ~/.orbstack/bin/docker compose run --rm radar 2>&1 | grep -E '^[📊📋✅🗑️🔍📈]|筆|完成|封存'
 ```
 
-耗時較長，先回覆「搜尋中，請稍候...」。執行完畢後只回傳摘要行（含 📊📋✅ 等 emoji 開頭的行）。
+耗時較長，先回覆「搜尋中，請稍候...」。指令已用 grep 過濾只留摘要行，不要用不帶 grep 的版本（output 太長會吃爆 token）。
 
 ---
 
