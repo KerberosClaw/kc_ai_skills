@@ -9,8 +9,10 @@
 
 set -euo pipefail
 
-# Ensure PATH includes common binary locations (crontab has minimal PATH)
+# Ensure crontab environment has what claude needs
 export PATH="$HOME/.local/bin:/usr/local/bin:/opt/homebrew/bin:$PATH"
+export USER="${USER:-$(whoami)}"
+export SHELL="${SHELL:-/bin/bash}"
 
 PROMPT="$1"
 JOB_ID="${2:-unknown}"
@@ -45,17 +47,13 @@ if [ -f "$CONFIG_FILE" ]; then
         # Truncate to Telegram limit (4096 chars)
         TG_TEXT=$(echo "$OUTPUT" | head -c 4080)
 
-        curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
-            -H "Content-Type: application/json" \
-            -d "$(python3 -c "
-import json, sys
+        echo "$TG_TEXT" | python3 -c "
+import json, sys, urllib.request
 text = sys.stdin.read()
-print(json.dumps({
-    'chat_id': '${CHANNEL_ID}',
-    'text': text,
-    'disable_web_page_preview': True
-}))
-" <<< "$TG_TEXT")" >> "$LOG_FILE" 2>&1
+data = json.dumps({'chat_id': '$CHANNEL_ID', 'text': text, 'disable_web_page_preview': True}).encode()
+req = urllib.request.Request('https://api.telegram.org/bot$BOT_TOKEN/sendMessage', data=data, headers={'Content-Type': 'application/json'})
+urllib.request.urlopen(req, timeout=10)
+" >> "$LOG_FILE" 2>&1
 
         echo "[telegram] sent" | tee -a "$LOG_FILE"
     fi
