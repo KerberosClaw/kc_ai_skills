@@ -282,7 +282,8 @@ headless-prompt: "Run python3 ~/.claude/skills/banini/scripts/scrape_threads.py 
 
 ## 注意事項
 
-- crontab 中的 managed entries 在 `# SKILL-CRON-BEGIN` / `# SKILL-CRON-END` 標記之間
+- 排程使用 macOS launchd（LaunchAgent），不使用 crontab（crontab 缺乏 OAuth 所需的 user session）
+- plist 檔案由 cron_manager.py sync 自動管理，存在 `~/Library/LaunchAgents/com.skill-cron.*.plist`
 - Telegram bot token 存在本地 config 中，不會被 git 追蹤
 - `claude -p` 需要有效的 Claude 訂閱
 - 排程執行時 Claude 會使用與互動模式相同的模型

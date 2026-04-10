@@ -1,5 +1,5 @@
 #!/bin/bash
-# cron_runner.sh — invoked by crontab to run a skill in headless mode
+# cron_runner.sh — invoked by launchd to run a skill in headless mode
 #
 # Usage: cron_runner.sh <prompt> <job_id>
 #
@@ -9,7 +9,7 @@
 
 set -euo pipefail
 
-# Ensure crontab environment has what claude needs
+# Ensure PATH includes claude binary location
 export PATH="$HOME/.local/bin:/usr/local/bin:/opt/homebrew/bin:$PATH"
 export USER="${USER:-$(whoami)}"
 export SHELL="${SHELL:-/bin/bash}"
@@ -44,16 +44,35 @@ if [ -f "$CONFIG_FILE" ]; then
     CHANNEL_ID=$(python3 -c "import json; c=json.load(open('$CONFIG_FILE')); print(c.get('telegram',{}).get('channel_id',''))" 2>/dev/null)
 
     if [ -n "$BOT_TOKEN" ] && [ -n "$CHANNEL_ID" ]; then
-        # Truncate to Telegram limit (4096 chars)
-        TG_TEXT=$(echo "$OUTPUT" | head -c 4080)
+        # Split long messages into chunks at paragraph boundaries (Telegram 4096 limit)
+        echo "$OUTPUT" | python3 - "$BOT_TOKEN" "$CHANNEL_ID" <<'PYEOF'
+import json, sys, urllib.request, time
 
-        echo "$TG_TEXT" | python3 -c "
-import json, sys, urllib.request
-text = sys.stdin.read()
-data = json.dumps({'chat_id': '$CHANNEL_ID', 'text': text, 'disable_web_page_preview': True}).encode()
-req = urllib.request.Request('https://api.telegram.org/bot$BOT_TOKEN/sendMessage', data=data, headers={'Content-Type': 'application/json'})
-urllib.request.urlopen(req, timeout=10)
-" >> "$LOG_FILE" 2>&1
+text = sys.stdin.read().strip()
+bot_token, channel_id = sys.argv[1], sys.argv[2]
+limit = 4000
+
+chunks = []
+while len(text) > limit:
+    cut = text.rfind("\n\n", 0, limit)
+    if cut == -1:
+        cut = text.rfind("\n", 0, limit)
+    if cut == -1:
+        cut = limit
+    chunks.append(text[:cut])
+    text = text[cut:].lstrip("\n")
+if text:
+    chunks.append(text)
+
+for i, chunk in enumerate(chunks):
+    data = json.dumps({"chat_id": channel_id, "text": chunk, "disable_web_page_preview": True}).encode()
+    req = urllib.request.Request(
+        f"https://api.telegram.org/bot{bot_token}/sendMessage",
+        data=data, headers={"Content-Type": "application/json"})
+    urllib.request.urlopen(req, timeout=10)
+    if i < len(chunks) - 1:
+        time.sleep(0.5)
+PYEOF
 
         echo "[telegram] sent" | tee -a "$LOG_FILE"
     fi

@@ -1,10 +1,10 @@
 # skill-cron — 因為 `claude -p "/banini"` 會卡住
 
-> **English summary:** Design doc for skill-cron, a crontab-based scheduler for Claude Code skills. Born from discovering that `claude -p "/skill"` hangs silently — skills only work in interactive mode. Solution: a `headless-prompt` field in SKILL.md frontmatter + a runner script that handles crontab's minimal environment (missing PATH, USER, SHELL). Includes Telegram push via urllib and auto-rotating logs.
+> **English summary:** Design doc for skill-cron, a launchd-based scheduler for Claude Code skills. Born from discovering that `claude -p "/skill"` hangs silently — skills only work in interactive mode. Solution: a `headless-prompt` field in SKILL.md frontmatter + a runner script. Uses macOS launchd (not crontab) because `claude -p` needs the user's login session for OAuth — crontab runs in a bare daemon context without it. Includes Telegram push via urllib and auto-rotating logs.
 
 ## 這東西為什麼存在
 
-Claude Code 的 skill 在互動模式下很好用 — 打 `/banini` 就跑。但如果你想用 crontab 定時跑呢？
+Claude Code 的 skill 在互動模式下很好用 — 打 `/banini` 就跑。但如果你想用排程定時跑呢？
 
 ```bash
 # 你以為可以這樣
@@ -27,7 +27,7 @@ claude -p "/banini"
 claude -p "Run python3 ~/.claude/skills/banini/scripts/scrape_threads.py banini31 5, then analyze..."
 ```
 
-但你不可能把這種一百字的 prompt 塞進 crontab。於是 skill-cron 誕生了。
+但你不可能把這種一百字的 prompt 塞進排程設定。於是 skill-cron 誕生了。
 
 ---
 
@@ -41,7 +41,7 @@ Skill（如 /banini）
   = 只管做事，不管什麼時候做
 
 skill-cron（管理器）
-  = 什麼時候做：crontab 排程
+  = 什麼時候做：launchd 排程
   = 做完通知誰：Telegram 推播
   = 怎麼在 -p 模式跑 skill：headless-prompt 橋接
 ```
@@ -68,9 +68,9 @@ headless-prompt: "Run python3 ~/.claude/skills/banini/scripts/scrape_threads.py 
 ### 執行鏈
 
 ```
-crontab（系統排程）
+launchd（macOS 排程）
   → cron_runner.sh（我們的 wrapper）
-    → 設好環境變數（PATH, USER, SHELL — crontab 什麼都沒有）
+    → 設好環境變數（PATH, USER, SHELL）
     → claude -p "{prompt}" --allowedTools "Bash,Read,Glob,Grep"
     → 拿到分析結果
     → 如有 Telegram config → urllib 推送
@@ -81,29 +81,56 @@ crontab（系統排程）
 
 ---
 
-## crontab 環境的三個坑
+## 為什麼用 launchd 不用 crontab
 
-我們全踩了，這樣你就不用踩：
+我們花了一整個早上才搞懂這個。
 
-### 坑 1：`claude: command not found`
+**`claude -p` 需要 OAuth token，而 crontab 的 daemon 環境拿不到。**
 
-crontab 的 PATH 只有 `/usr/bin:/bin`。你的 `claude` 裝在 `~/.local/bin`。
+| 環境 | 有 login session | claude -p |
+|------|-----------------|-----------|
+| Terminal（手動） | ✅ | ✅ 正常 |
+| launchd LaunchAgent | ✅ 跑在使用者 session | ✅ 正常 |
+| crontab | ❌ 獨立 daemon context | ❌ `Not logged in` |
+
+crontab 跑的進程完全沒有 GUI session — keychain 打不開、OAuth token 拿不到。`claude -p` 啟動後連上 API 的第一步就失敗，甚至不會輸出 error message（直接卡住或靜默退出）。
+
+macOS 的 LaunchAgent（放在 `~/Library/LaunchAgents/`）跑在使用者的 login session 裡，可以存取 keychain，所以 `claude -p` 能正常認證。
+
+### cron_manager.py 的 sync 機制
+
+`cron_manager.py` 把 config 裡的 job 轉成 launchd plist：
+
+1. 把 cron 表達式解析成 `StartCalendarInterval` dict 陣列
+2. 生成 plist 到 `~/Library/LaunchAgents/com.skill-cron.{job_id}.plist`
+3. `launchctl load` 載入排程
+
+因為 launchd 的 `StartCalendarInterval` 不支援 cron 的 range 語法（如 `9-12`），manager 會展開成個別的 dict entry。
+
+---
+
+## cron_runner.sh 環境設定
+
+雖然改用 launchd，runner script 還是要設好環境：
+
+### PATH
+
+launchd 的 PATH 也很精簡。你的 `claude` 裝在 `~/.local/bin`。
 
 ```bash
-# cron_runner.sh 裡的修正
 export PATH="$HOME/.local/bin:/usr/local/bin:/opt/homebrew/bin:$PATH"
 ```
 
-### 坑 2：`Not logged in`
+### USER / SHELL
 
-crontab 環境沒有 `USER` 和 `SHELL` 環境變數。claude CLI 需要這兩個來找到它的 auth 設定。
+claude CLI 需要這兩個來找到它的設定。
 
 ```bash
 export USER="${USER:-$(whoami)}"
 export SHELL="${SHELL:-/bin/bash}"
 ```
 
-### 坑 3：Telegram 推送的引號地獄
+### Telegram 推送的引號地獄
 
 原本用 `curl` + inline Python 構造 JSON payload，在 shell 的 heredoc 裡嵌 Python，Python 裡面有 shell 變數。三層引號互相打架。
 
@@ -117,26 +144,15 @@ export SHELL="${SHELL:-/bin/bash}"
 
 考慮過 `~/.config/skill-cron/`（XDG 標準），但這個 skill 就是 Claude Code 生態系的一部分，放 `~/.claude/` 下更自然。而且這個檔案存了 Telegram bot token，不能被 git 追蹤 — `~/.claude/` 本來就不在任何 repo 裡。
 
-## Crontab 管理
+## LaunchAgent 管理
 
-skill-cron 在 crontab 裡用標記區塊圍住自己的 entries：
-
-```crontab
-# 你自己的 crontab...
-
-# SKILL-CRON-BEGIN — managed by skill-cron, do not edit
-7,37 9-12 * * 1-5 /path/to/cron_runner.sh 'prompt...' 'banini-盤中'
-3 23 * * * /path/to/cron_runner.sh 'prompt...' 'banini-盤後'
-# SKILL-CRON-END
-```
-
-不會動你自己的 crontab。`add` 的時候自動寫入，`remove` 的時候自動移除。
+skill-cron 在 `~/Library/LaunchAgents/` 下管理以 `com.skill-cron.` 為前綴的 plist 檔案。`sync` 時會先 unload + 刪除所有舊的，再重新建立 + load。
 
 ## 日誌
 
 `~/.claude/logs/skill-cron/{job_id}-{timestamp}.log`
 
-每個 job 留最近 50 筆。debug 的時候第一件事就是 `cat` 最新的 log — 如果裡面寫 `command not found`，你就知道是 PATH 的問題。
+每個 job 留最近 50 筆。debug 的時候第一件事就是 `cat` 最新的 log。
 
 ## 支援 skill-cron 的 skill
 
@@ -148,7 +164,8 @@ skill-cron 在 crontab 裡用標記區塊圍住自己的 entries：
 
 ## 限制
 
-1. **crontab 是本地的** — 你的 Mac 關機了就不會跑。沒有雲端 fallback
-2. **Claude Max 訂閱** — `claude -p` 需要有效的登入狀態。token 過期了要重新 `claude login`
-3. **Telegram 4096 字元** — 超長報告會被截斷。但說真的，你不需要在手機上看一萬字的分析報告
-4. **`--allowedTools` 白名單** — crontab 裡沒有人可以按「允許」，所以用 `--allowedTools` 預先指定允許的工具（Bash, Read, Glob, Grep）
+1. **macOS only** — 用的是 launchd LaunchAgent，Linux 需要改用 systemd timer 或其他方案
+2. **Mac 要登入** — LaunchAgent 只在使用者登入時執行。關機、登出就不會跑
+3. **Claude Max 訂閱** — `claude -p` 需要有效的 OAuth 登入狀態。token 過期了要重新 `claude login`
+4. **Telegram 4096 字元** — 超長報告會被截斷。但說真的，你不需要在手機上看一萬字的分析報告
+5. **`--allowedTools` 白名單** — 排程執行時沒有人可以按「允許」，所以用 `--allowedTools` 預先指定允許的工具

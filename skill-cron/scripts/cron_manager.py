@@ -3,7 +3,8 @@
 skill-cron manager — manage scheduled skill jobs + Telegram push
 
 Config: ~/.claude/configs/skill-cron.json
-Crontab: managed entries between # SKILL-CRON-BEGIN / # SKILL-CRON-END markers
+Scheduler: macOS launchd (LaunchAgents) — crontab lacks the user session
+           context required for claude -p to authenticate via OAuth.
 
 Usage:
     python3 cron_manager.py list
@@ -15,10 +16,11 @@ Usage:
     python3 cron_manager.py telegram-test
     python3 cron_manager.py telegram-remove
     python3 cron_manager.py run <job_id>          # manual trigger
-    python3 cron_manager.py sync                  # sync config → crontab
+    python3 cron_manager.py sync                  # sync config → launchd
 """
 import json
 import os
+import plistlib
 import subprocess
 import sys
 import re
@@ -31,8 +33,8 @@ CONFIG_DIR = Path.home() / ".claude" / "configs"
 CONFIG_FILE = CONFIG_DIR / "skill-cron.json"
 SKILL_DIR = Path.home() / ".claude" / "skills"
 RUNNER_SCRIPT = Path(__file__).parent / "cron_runner.sh"
-CRON_MARKER_BEGIN = "# SKILL-CRON-BEGIN — managed by skill-cron, do not edit"
-CRON_MARKER_END = "# SKILL-CRON-END"
+LAUNCHD_DIR = Path.home() / "Library" / "LaunchAgents"
+LAUNCHD_PREFIX = "com.skill-cron."
 
 
 # ── Config ──────────────────────────────────────────────────
@@ -145,7 +147,7 @@ def cmd_add(args: list[str]) -> None:
 
     config["jobs"].append(job)
     save_config(config)
-    sync_crontab(config)
+    sync_launchd(config)
     print(f"[added] {job_id}: {cron_expr} ({label})")
 
 
@@ -164,7 +166,7 @@ def cmd_remove(args: list[str]) -> None:
         sys.exit(1)
 
     save_config(config)
-    sync_crontab(config)
+    sync_launchd(config)
     print(f"[removed] {job_id}")
 
 
@@ -180,7 +182,7 @@ def cmd_enable_disable(args: list[str], enabled: bool) -> None:
         if job["id"] == job_id:
             job["enabled"] = enabled
             save_config(config)
-            sync_crontab(config)
+            sync_launchd(config)
             print(f"[{'enabled' if enabled else 'disabled'}] {job_id}")
             return
 
@@ -271,59 +273,124 @@ def send_telegram(bot_token: str, channel_id: str, text: str) -> bool:
         return False
 
 
-# ── Crontab sync ───────────────────────────────────────────
+# ── launchd sync ──────────────────────────────────────────
 
-def sync_crontab(config: dict) -> None:
-    """Sync enabled jobs to crontab between SKILL-CRON markers."""
-    # Read current crontab
-    try:
-        result = subprocess.run(["crontab", "-l"], capture_output=True, text=True)
-        current = result.stdout if result.returncode == 0 else ""
-    except FileNotFoundError:
-        print("[error] crontab not available")
-        return
+def parse_cron_to_calendar_intervals(cron_expr: str) -> list[dict]:
+    """Convert a cron expression to launchd StartCalendarInterval dicts.
 
-    # Remove existing skill-cron block
-    lines = current.split("\n")
-    new_lines = []
-    in_block = False
-    for line in lines:
-        if CRON_MARKER_BEGIN in line:
-            in_block = True
-            continue
-        if CRON_MARKER_END in line:
-            in_block = False
-            continue
-        if not in_block:
-            new_lines.append(line)
+    Supports standard 5-field cron: minute hour dom month dow
+    Handles comma-separated values and ranges (e.g. 1-5, 9-12).
+    """
+    parts = cron_expr.strip().split()
+    if len(parts) != 5:
+        return []
 
-    # Build new block
+    def expand_field(field: str) -> list[int] | None:
+        """Expand a cron field to a list of ints, or None for '*'."""
+        if field == "*":
+            return None
+        values = set()
+        for token in field.split(","):
+            if "-" in token:
+                lo, hi = token.split("-", 1)
+                values.update(range(int(lo), int(hi) + 1))
+            else:
+                values.add(int(token))
+        return sorted(values)
+
+    minutes = expand_field(parts[0])
+    hours = expand_field(parts[1])
+    # dom and month are rarely used in skill-cron, skip for now
+    weekdays = expand_field(parts[4])
+
+    # Build cartesian product of all specified values
+    minute_list = minutes if minutes else [None]
+    hour_list = hours if hours else [None]
+    weekday_list = weekdays if weekdays else [None]
+
+    intervals = []
+    for m in minute_list:
+        for h in hour_list:
+            for w in weekday_list:
+                entry = {}
+                if m is not None:
+                    entry["Minute"] = m
+                if h is not None:
+                    entry["Hour"] = h
+                if w is not None:
+                    entry["Weekday"] = w
+                intervals.append(entry)
+    return intervals
+
+
+def plist_path_for_job(job_id: str) -> Path:
+    return LAUNCHD_DIR / f"{LAUNCHD_PREFIX}{job_id}.plist"
+
+
+def build_plist(job: dict, prompt: str) -> dict:
+    """Build a launchd plist dict for a job."""
+    job_id = job["id"]
+    runner = str(RUNNER_SCRIPT)
+    intervals = parse_cron_to_calendar_intervals(job["cron"])
+
+    plist = {
+        "Label": f"{LAUNCHD_PREFIX}{job_id}",
+        "ProgramArguments": [runner, prompt, job_id],
+        "StandardErrorPath": str(
+            Path.home() / ".claude" / "logs" / "skill-cron"
+            / f"launchd-{job_id}-stderr.log"
+        ),
+    }
+
+    if len(intervals) == 1:
+        plist["StartCalendarInterval"] = intervals[0]
+    elif intervals:
+        plist["StartCalendarInterval"] = intervals
+
+    return plist
+
+
+def sync_launchd(config: dict) -> None:
+    """Sync enabled jobs to launchd LaunchAgents."""
+    LAUNCHD_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Unload and remove all existing skill-cron plists
+    for plist_file in LAUNCHD_DIR.glob(f"{LAUNCHD_PREFIX}*.plist"):
+        subprocess.run(
+            ["launchctl", "unload", str(plist_file)],
+            capture_output=True,
+        )
+        plist_file.unlink()
+
+    # Create and load plists for enabled jobs
     enabled_jobs = [j for j in config.get("jobs", []) if j.get("enabled", True)]
-    if enabled_jobs:
-        new_lines.append(CRON_MARKER_BEGIN)
-        for job in enabled_jobs:
-            prompt = read_headless_prompt(job["skill"])
-            if not prompt:
-                continue
-            runner = str(RUNNER_SCRIPT)
-            # Escape single quotes in prompt
-            safe_prompt = prompt.replace("'", "'\\''")
-            entry = f"{job['cron']} {runner} '{safe_prompt}' '{job['id']}'"
-            new_lines.append(entry)
-        new_lines.append(CRON_MARKER_END)
+    loaded = 0
+    for job in enabled_jobs:
+        prompt = read_headless_prompt(job["skill"])
+        if not prompt:
+            continue
 
-    # Write back
-    final = "\n".join(new_lines).strip() + "\n"
-    proc = subprocess.run(["crontab", "-"], input=final, text=True, capture_output=True)
-    if proc.returncode == 0:
-        print(f"[crontab] synced ({len(enabled_jobs)} jobs)")
-    else:
-        print(f"[crontab] error: {proc.stderr}")
+        plist = build_plist(job, prompt)
+        plist_file = plist_path_for_job(job["id"])
+
+        with open(plist_file, "wb") as f:
+            plistlib.dump(plist, f)
+
+        result = subprocess.run(
+            ["launchctl", "load", str(plist_file)],
+            capture_output=True, text=True,
+        )
+        if result.returncode == 0:
+            loaded += 1
+        else:
+            print(f"[launchd] error loading {job['id']}: {result.stderr}")
+
+    print(f"[launchd] synced ({loaded} jobs)")
 
 
 def cmd_sync(_args: list[str]) -> None:
     config = load_config()
-    sync_crontab(config)
+    sync_launchd(config)
 
 
 # ── Manual run ─────────────────────────────────────────────
@@ -404,7 +471,7 @@ if __name__ == "__main__":
         print("  telegram-test                     Send test message")
         print("  telegram-remove                   Remove Telegram credentials")
         print("  run <job_id>                      Manually trigger a job")
-        print("  sync                              Sync config → crontab")
+        print("  sync                              Sync config → launchd")
         sys.exit(0)
 
     cmd = sys.argv[1]
