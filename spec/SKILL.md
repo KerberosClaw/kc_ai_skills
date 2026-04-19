@@ -1,7 +1,7 @@
 ---
 name: spec
 description: "Spec-driven 開發流程 — 從模糊需求到驗收結案。自動判斷專案狀態，引導 user 走完：需求釐清 → 技術審查 → 實作 → 驗收 → 結案報告。"
-version: 1.1.0
+version: 1.2.0
 triggers: ["spec", "開 spec", "建 spec", "新功能"]
 ---
 
@@ -55,12 +55,14 @@ triggers: ["spec", "開 spec", "建 spec", "新功能"]
        → 進入 Discovery Stage
 
 3. user 沒提供描述？（只打 /spec）
-   → 掃描 specs/ 目錄：
-   ├── 有進行中的 spec（tasks.md 有未完成項目）
+   → 掃描 specs/active/ 跟 specs/completed/ 目錄：
+   ├── specs/active/ 有進行中的 spec（tasks.md 有未完成項目）
    │   → 列出所有進行中的 spec，問 user 要繼續哪一個
-   ├── 有已完成但未驗收的 spec（tasks 全勾但沒 report.md）
+   ├── specs/active/ 有已完成但未驗收的 spec（tasks 全勾但沒 report.md）
    │   → 提示 user 可以跑 check + report
-   └── 沒有任何 spec / 全部已結案
+   ├── 舊版扁平 specs/NN-xxx/ 還存在（向後相容）
+   │   → 當成 active 處理，下次結案時順便搬到 specs/completed/
+   └── 沒有任何 spec / 全部已歸檔
        → 提示 user 提供新需求
 ```
 
@@ -152,9 +154,10 @@ triggers: ["spec", "開 spec", "建 spec", "新功能"]
    - 如果從 DESIGN.md 能找到答案，不要再問
 
 3. **建立 spec 資料夾**
-   - 命名：`specs/NN-feature-name/`
-   - NN 為流水號，從 `specs/` 現有資料夾推算
+   - 命名：`specs/active/NN-feature-name/`
+   - NN 為流水號，從 `specs/active/` 跟 `specs/completed/` 現有資料夾一起推算（避免撞號）
    - feature-name 為 kebab-case，從需求描述摘要
+   - 如果 `specs/active/` 不存在，先建好再用
 
 4. **產出 `spec.md`**
 
@@ -394,7 +397,7 @@ triggers: ["spec", "開 spec", "建 spec", "新功能"]
 
 > **English summary:** Brief summary of what was built and the outcome.
 
-**Spec:** specs/NN-feature-name
+**Spec:** specs/completed/NN-feature-name
 **Status:** completed
 **Date:** YYYY-MM-DD
 
@@ -451,7 +454,13 @@ triggers: ["spec", "開 spec", "建 spec", "新功能"]
 
 3. **更新 tasks.md Status** 為 `VERIFIED`
 
-4. **告訴 user** 結案完成。
+4. **歸檔：把整個 spec 資料夾從 `specs/active/` 搬到 `specs/completed/`**
+   - `git mv specs/active/NN-feature-name specs/completed/NN-feature-name`（有 git 的話用 git mv 保留歷史）
+   - 沒 git 就普通 `mv`
+   - 如果 `specs/completed/` 不存在，先建好
+   - 搬完後把 report.md 裡的 `Spec:` 欄位路徑更新為新位置
+
+5. **告訴 user** 結案完成。
 
 ---
 
@@ -460,17 +469,25 @@ triggers: ["spec", "開 spec", "建 spec", "新功能"]
 ```
 {project-root}/
 ├── docs/
-│   └── DESIGN.md          # 整體架構（大專案才需要，Discovery Stage 產出）
+│   └── DESIGN.md                # 整體架構（大專案才需要，Discovery Stage 產出）
 ├── specs/
-│   ├── 01-feature-name/
-│   │   ├── spec.md        # 需求規格 + 驗收條件
-│   │   ├── plan.md        # 實作計畫 + 技術決策
-│   │   ├── tasks.md       # 任務清單 + 狀態追蹤
-│   │   └── report.md      # 結案報告（Check + Report Stage 產出）
-│   └── 02-another-feature/
-│       └── ...
-└── src/                   # 你的程式碼
+│   ├── active/                  # 進行中或待驗收的 spec
+│   │   ├── 02-another-feature/
+│   │   │   ├── spec.md          # 需求規格 + 驗收條件
+│   │   │   ├── plan.md          # 實作計畫 + 技術決策
+│   │   │   └── tasks.md         # 任務清單 + 狀態追蹤
+│   │   └── 03-yet-another/
+│   │       └── ...
+│   └── completed/               # 已歸檔的 spec（Report Stage 搬進來）
+│       └── 01-first-feature/
+│           ├── spec.md
+│           ├── plan.md
+│           ├── tasks.md
+│           └── report.md        # 結案報告（Report Stage 產出）
+└── src/                         # 你的程式碼
 ```
+
+**為什麼分 active/completed？** 一眼看到還剩幾個 active，completed 歸檔不擋視野。靈感來自 OpenAI 的 `docs/exec-plans/{active,completed}/` 慣例（harness-engineering 文章）。
 
 ---
 
