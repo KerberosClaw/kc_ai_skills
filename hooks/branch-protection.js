@@ -31,13 +31,24 @@ process.stdin.on('end', () => {
     const cmd = String(i.tool_input?.command || '');
     if (!/\bgit\b/.test(cmd)) { process.stdout.write(d); return; }
 
-    // Skip if command mentions any allowlisted repo path.
-    // Matches both /abs/path/... and ~/... forms (HOME expanded).
+    // Skip if (a) command mentions any allowlisted repo path, or
+    // (b) cwd is inside an allowlisted repo (git toplevel match).
     const skipList = loadSkipList();
     const cmdExpanded = cmd.replace(/~(?=[/\s])/g, os.homedir());
     for (const skipPath of skipList) {
       if (cmdExpanded.includes(skipPath)) { process.stdout.write(d); return; }
     }
+    try {
+      const r = spawnSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8', timeout: 5000 });
+      const toplevel = (r.stdout || '').trim();
+      if (toplevel) {
+        for (const skipPath of skipList) {
+          if (toplevel === skipPath || toplevel.startsWith(skipPath + '/')) {
+            process.stdout.write(d); return;
+          }
+        }
+      }
+    } catch (e) {}
 
     let branch = '';
     try {
