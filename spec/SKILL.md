@@ -458,6 +458,7 @@ triggers: ["spec", "開 spec", "建 spec", "新功能"]
    - `git mv specs/active/NN-feature-name specs/completed/NN-feature-name`（有 git 的話用 git mv 保留歷史）
    - 沒 git 就普通 `mv`
    - 如果 `specs/completed/` 不存在，先建好
+   - **（選用）提示 user 下一步可以 `/pm-sync push NN-feature-name` 把 tasks.md 推到遠端專案管理平台**（需裝 kc_pm_sync skill；spec skill 本身不 import pm-sync，只提示）
    - 搬完後把 report.md 裡的 `Spec:` 欄位路徑更新為新位置
 
 5. **告訴 user** 結案完成。
