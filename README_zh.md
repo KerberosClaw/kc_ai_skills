@@ -27,6 +27,7 @@
 | [banini](banini/) | 追蹤台灣最強反指標女神巴逆逆的 Threads 貼文，讓 Claude 直接做反指標分析。零 API 成本 — Playwright 本地抓資料，Claude 自己就是 LLM。從 [cablate/banini-tracker](https://github.com/cablate/banini-tracker) 改寫而來，省掉每月 $11 的 Apify + LLM API 費用。搭配 [skill-cron](skill-cron/) 可排程 + Telegram 推播 — [使用指南](banini/docs/SETUP.md) |
 | [skill-cron](skill-cron/) | 一個管理器統治所有排程。註冊任何 skill 做 crontab 定時執行 + Telegram 推播 — 因為 `claude -p` 不支援 `/skill` 語法，總得有人把橋搭起來。設定存 `~/.claude/configs/`，日誌自動輪替，crontab entries 自動管理 |
 | [memory-lint](memory-lint/) | AI memory 養久了會堆積重複規則、過時的「進行中」專案、孤兒檔案。這個 skill 把它們全部掃出來，免得 Claude 哪天很有自信地把錯的規則搬出來打臉你。純 read-only — 只挑問題，怎麼改你自己決定 |
+| [llm-wiki-lint](llm-wiki-lint/) | Karpathy 的 LLM Wiki pattern 有個盲點 — 超過 15 頁之後，陳舊聲明、孤立 cross-ref、缺失主題會默默腐爛。這個 skill 是 lint pass：矛盾、source traceability、data gap、frontmatter 完整性、index drift。針對 `raw/` + `wiki/` + `schema` 三層 repo。純 read-only。搭配 [memory-lint](memory-lint/) 做 full-stack AI 知識庫保健 |
 
 ## 安裝
 

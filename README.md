@@ -27,6 +27,7 @@ A collection of AI agent skills that solve real problems — not "summarize this
 | [banini](banini/) | Track Taiwan's most famous "reverse indicator" investor on Threads, let Claude do the contrarian analysis on the spot. Zero API cost — Playwright scrapes locally, Claude IS the LLM. Rewritten from [cablate/banini-tracker](https://github.com/cablate/banini-tracker) to eliminate $11/mo in Apify + LLM API fees. Pair with [skill-cron](skill-cron/) for scheduled runs + Telegram push — [setup guide](banini/docs/SETUP.md) |
 | [skill-cron](skill-cron/) | One manager to schedule them all. Register any skill for crontab execution + Telegram push — because `claude -p` doesn't support `/skill` syntax, so somebody had to build the bridge. Config in `~/.claude/configs/`, logs auto-rotate, crontab entries self-managed |
 | [memory-lint](memory-lint/) | Your AI's memory directory accumulates duplicate rules, stale "active" projects, and orphan files over time. This skill scans for all of that and reports before Claude confidently quotes the wrong rule back at you. Read-only — finds problems, you decide what to fix |
+| [llm-wiki-lint](llm-wiki-lint/) | Karpathy's LLM Wiki pattern has a blind spot — past ~15 pages, stale claims, orphan cross-refs, and missing topics silently rot your knowledge base. This skill is the lint pass: contradictions, source traceability, data gaps, frontmatter completeness, index drift. For three-tier `raw/` + `wiki/` + `schema` repos. Read-only. Pair with [memory-lint](memory-lint/) for full-stack AI knowledge hygiene |
 
 ## Installation
 
