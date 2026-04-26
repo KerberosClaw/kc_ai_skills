@@ -60,6 +60,46 @@
 
 ---
 
+## kc_ai_skills framework 自定 frontmatter 擴充
+
+除了 0x0funky 通用的 `name + description + argument-hint`，kc_ai_skills 自己的 skill loader 多支援兩個欄位（**寫 kc_ai_skills 內的 skill 必加**）：
+
+### EX1. `version`
+
+語意化版本號（semver）：
+
+```yaml
+version: 0.1.0
+```
+
+- 用途：skill 變更追蹤、breaking change 判斷
+- `0.x.x` = 還在 iterate 階段，介面可能變
+- `1.0.0+` = stable，breaking change 要 bump major
+- patch（0.1.0 → 0.1.1）= bug fix / 文案修
+- minor（0.1.0 → 0.2.0）= 新功能不 break 既有
+- major（0.x → 1.0）= breaking 介面變
+
+### EX2. `triggers`
+
+Explicit trigger pattern list（指令觸發 + 自然語言觸發都可）：
+
+```yaml
+triggers: ["/llm-wiki-lint", "wiki lint", "掃 wiki"]
+```
+
+- 用途：補強 description 的 trigger 判斷，命中任一觸發詞 = 啟用 skill
+- **中文指令式**（「掃 wiki」「整理 memory」「投履歷前查公司」）特別需要 explicit list — 因為自然中文沒有 standardize trigger phrase
+- 跟 description 不衝突 — description 寫**情境**（「Use when ...」），triggers 列**字面觸發詞**
+- slash command 形式（`/skill-name`）也要列進來
+
+### 為什麼 0x0funky 沒這兩個
+
+- 0x0funky 的 skill 跑在 Codex / Claude Code 原生 skill loader，那邊用 `description` + `argument-hint` 就夠（英文 trigger 自然包在 description 裡）
+- kc_ai_skills 是**自有 skill loader**，要支援中文 trigger + 版本管理，故擴充
+- **互不衝突，並存使用** — 套 0x0funky patterns 不會把這兩欄位拿掉
+
+---
+
 ## 高頻推薦（4-5 份有）
 
 ### P6. Critical / Mandatory 強調語
@@ -156,6 +196,10 @@ argument-hint: '"<project description>" [--port <number>] [--max-iterations <num
 - [ ] 用 Step 1 / Step 1a / Step 1b 階層
 - [ ] 至少一個 decision table（sizing / defaults / mode）
 - [ ] 至少一段 anti-patterns 用 ❌ 列出
+
+[kc_ai_skills 自定擴充（寫 kc_ai_skills 內 skill 必加）]
+- [ ] frontmatter `version` 欄位（semver，初版 0.1.0）
+- [ ] frontmatter `triggers` 欄位（含 slash command + 中文自然語言觸發詞）
 
 [高頻推薦]
 - [ ] 重要事項用 **CRITICAL** / **MANDATORY** 標記
