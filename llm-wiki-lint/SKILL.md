@@ -1,126 +1,170 @@
 ---
 name: llm-wiki-lint
-description: "掃描 Karpathy LLM Wiki pattern 的三層 repo（raw/ + wiki/ + schema），檢查 frontmatter 完整性、source traceability、stale claims、orphan pages、missing topics、data gaps、cross-page contradictions。純 read-only，只報告不自動改。"
-version: 0.1.0
-triggers: ["/llm-wiki-lint", "llm wiki lint", "wiki lint", "掃 wiki"]
+description: "Use when the user wants to lint a repo following the Karpathy LLM Wiki pattern (raw/ + wiki/ + SCHEMA.md / index.md / log.md). The skill detects path, scans wiki pages + schema layer, reports frontmatter gaps, source traceability breaks, stale claims, orphan pages, missing topics, data gaps, cross-page contradictions, and SCHEMA-vs-reality drift. Read-only — never auto-fixes, never writes to log.md, never touches the network."
+version: 0.2.0
+triggers: ["/llm-wiki-lint", "llm wiki lint", "wiki lint", "掃 wiki", "wiki 健檢"]
+argument-hint: "[path]"
 ---
 
 # llm-wiki-lint — Karpathy LLM Wiki 三層健檢
 
-針對採用 [Karpathy LLM Wiki pattern](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) 的 repo（`raw/` + `wiki/` + `SCHEMA.md` / `log.md` / `index.md`）做 lint。**只報告不自動改**。
+You are a documentation auditor for repos following the [Karpathy LLM Wiki pattern](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f). Your job is **read-only**: scan the three layers (`raw/` + `wiki/` + `SCHEMA.md` / `index.md` / `log.md`), surface drift and gaps, and let the user decide what to fix.
+
+**CRITICAL**: 純 read-only。任何「順手補一下 frontmatter」「順手更新 index」都是違規 — 結束時 user 應該確定你沒動過任何 wiki 檔案。
 
 **跟 memory-lint 差異**：
-- `memory-lint` 針對 `~/.claude/memory/`（feedback / user profile / project，prefix-based）
-- `llm-wiki-lint` 針對 LLM Wiki repo（wiki/ 主題頁 + frontmatter + raw source traceability + index 一致性）
+- `memory-lint` → `~/.claude/memory/`（feedback / user profile / project，prefix-based）
+- `llm-wiki-lint` → LLM Wiki repo（wiki/ 主題頁 + frontmatter + raw source traceability + index 一致性）
 
 ---
 
-## 使用方式
-
-```
-/llm-wiki-lint [path]
-```
-
-可選參數 `path`：wiki repo root 路徑（含 `wiki/` + `SCHEMA.md` + `index.md`）。
-
-## Path 偵測順序
+## Step 1: Detect wiki repo path
 
 依序嘗試，命中第一個就用：
 
-1. **使用者在指令傳入的 `path` 參數** — 最優先
-2. **環境變數 `$WIKI_REPO_DIR`**
-3. **當前工作目錄 `$PWD`** — 若含 `SCHEMA.md` + `wiki/` 子目錄則採用
-4. 都找不到 → 告訴使用者「偵測不到 wiki repo」並停止，不要瞎猜
+| 順序 | 來源 | 條件 |
+|------|------|------|
+| 1 | `$ARGUMENTS` 第一個位置參數 | 使用者明確傳入，最優先 |
+| 2 | 環境變數 `$WIKI_REPO_DIR` | export 過 |
+| 3 | 當前工作目錄 `$PWD` | 含 `SCHEMA.md` + `wiki/` 子目錄 |
+| 4 | — | 都找不到 → 停止，告訴 user「偵測不到 wiki repo」，**不要瞎猜** |
 
-決定路徑後，先 `ls` 確認：
-- `<path>/SCHEMA.md` 存在
-- `<path>/wiki/` 目錄存在
-- `<path>/index.md` 存在（warning 不存在 → 建議新建）
-- `<path>/log.md` 存在（warning 不存在 → 建議新建）
+決定路徑後，先驗證結構：
+
+```bash
+ls "$WIKI_PATH/SCHEMA.md" "$WIKI_PATH/wiki/" 2>/dev/null
+ls "$WIKI_PATH/index.md" 2>/dev/null || echo "WARN: index.md 不存在"
+ls "$WIKI_PATH/log.md" 2>/dev/null   || echo "WARN: log.md 不存在"
+```
+
+- `SCHEMA.md` 或 `wiki/` 任一缺 → **fatal**，停止 lint
+- `index.md` / `log.md` 缺 → warning，繼續 lint 並在報告建議新建
 
 ---
 
-## 執行流程
+## Step 2: Scan & lint
 
-### 1. 掃描範圍
+### Step 2a: 掃描範圍
 
+```bash
+find "$WIKI_PATH/wiki" -maxdepth 1 -name '*.md' -type f
+```
+
+**包含**：
 - `<path>/wiki/*.md` — 所有主題頁
 - `<path>/SCHEMA.md` / `index.md` / `log.md` — schema 層
-- `<path>/raw/**` — 存在性檢查（gitignored 所以本地才看得到）
-- **跳過**：`<path>/journal/`（非 wiki 一部分）、`<path>/drafts/`、`<path>/scripts/`
+- `<path>/raw/**` — 存在性檢查（gitignored，本地才看得到）
 
-### 2. 檢查項目
+**跳過**：`<path>/journal/`、`<path>/drafts/`、`<path>/scripts/`（非 wiki 一部分）
 
-#### A. Frontmatter 完整性
+### Step 2b: Severity decision
+
+每個 finding 落到三級之一。判斷時對齊這張表：
+
+| 嚴重度 | 含義 | 範例 |
+|--------|------|------|
+| 🔴 Error | 結構壞了或宣告與實況矛盾，必須處理才能恢復 wiki 完整性 | 缺必備 frontmatter 欄位、index 列出檔案不存在、SCHEMA.md 數字錯 |
+| 🟡 Warning | 沒壞但有腐臭味，user 應該 review | last_updated 漂移、orphan page、stale claim、cross-page contradiction |
+| 🔵 Info | 啟發式提示，可選處理 | 缺 cross-ref、可能的 missing topic |
+
+不確定時就降一級（warning → info）。**禁止把推測寫成 error**。
+
+### Step 2c: Frontmatter 完整性
 
 每個 `wiki/*.md` 開頭應有 YAML frontmatter 含 4 必備欄位：
 
-- `title` — 主題名
-- `type` — `overview` / `entity` / `concept` / `comparison` / `synthesis` 之一（Karpathy 5 類）
-- `last_updated` — 日期（YYYY-MM-DD）
-- `sources` — list，指向 raw/ 或外部來源
+| 欄位 | 規則 | 缺失等級 |
+|------|------|----------|
+| `title` | 主題名（string） | 🔴 Error |
+| `type` | `overview` / `entity` / `concept` / `comparison` / `synthesis` 之一（Karpathy 5 類） | 🔴 Error（缺欄位 / 不在 5 類） |
+| `last_updated` | YYYY-MM-DD | 🔴 Error（缺）/ 🟡 Warning（格式錯） |
+| `sources` | list，指向 `raw/` 或外部來源 | 🔴 Error（缺欄位）/ 🟡 Warning（空 list — 見 Step 2i） |
 
-檢查：
-- 缺 frontmatter → **error**
-- 缺任一必備欄位 → **error**
-- `type` 不在 5 類內 → **error**
-- `last_updated` 格式錯誤 → **warning**
-- `sources` 空 list → **warning**（資料缺口，見 §G）
+抽 frontmatter 範例：
 
-#### B. Index 一致性
+```bash
+# 用 awk 抓 YAML block，再 yq 解析
+for f in "$WIKI_PATH"/wiki/*.md; do
+  awk '/^---$/{c++; next} c==1' "$f" | yq -r '.title // "MISSING", .type // "MISSING", .last_updated // "MISSING"'
+done
+```
 
-- `index.md` 列出但 `wiki/` 下檔案不存在 → **error**（missing file）
-- `wiki/` 下檔案存在但 `index.md` 沒列 → **error**（orphan file）
-- `index.md` 的 `last_updated` / `type` 跟檔案 frontmatter 不一致 → **warning**（drift）
+### Step 2d: Index 一致性
 
-#### C. Stale claims（陳舊聲明）
+| 情況 | 等級 |
+|------|------|
+| `index.md` 列出但 `wiki/` 下檔案不存在 | 🔴 Error（missing file） |
+| `wiki/` 下檔案存在但 `index.md` 沒列 | 🔴 Error（orphan file） |
+| `index.md` 的 `last_updated` / `type` 跟檔案 frontmatter 不一致 | 🟡 Warning（drift） |
 
-- **檔案 mtime vs frontmatter `last_updated` 差 > 14 天** → **warning**（frontmatter 沒跟上）
-- **frontmatter `last_updated` > 60 天** 且 `type` = overview / synthesis → **warning**（建議 review）
-- **內文提到「待 XXX 驗證」「規劃中」「尚未」等不確定詞 + `last_updated` > 30 天** → **warning**（可能已有進展沒回寫）
+### Step 2e: Stale claims（陳舊聲明）
 
-#### D. Orphan pages（孤立頁面）
+| 條件 | 等級 |
+|------|------|
+| 檔案 mtime vs frontmatter `last_updated` 差 > 14 天 | 🟡 Warning（frontmatter 沒跟上 mtime） |
+| frontmatter `last_updated` > 60 天 且 `type` ∈ {overview, synthesis} | 🟡 Warning（建議 review） |
+| 內文含「待 XXX 驗證」「規劃中」「尚未」+ `last_updated` > 30 天 | 🟡 Warning（可能已有進展沒回寫） |
 
-檢查 wiki/ 頁面間 cross-ref：
+```bash
+# 抓 mtime 比對
+stat -f "%m %N" "$WIKI_PATH"/wiki/*.md   # macOS
+stat -c "%Y %n" "$WIKI_PATH"/wiki/*.md   # Linux
+```
 
-- 一頁**無任何入站 cross-ref**（其他 wiki 頁都沒連到它） → **warning**
+### Step 2f: Orphan pages（孤立頁面）
+
+- 一頁**無任何入站 cross-ref**（其他 wiki 頁都沒連到它）→ 🟡 Warning
 - 例外：`index.md` 提到即不算 orphan
 
-#### E. Missing topic pages（缺失主題頁）
+```bash
+# 統計入站 ref（粗略：grep filename without extension）
+basename_no_ext="${page%.md}"
+grep -l "$(basename "$basename_no_ext")" "$WIKI_PATH"/wiki/*.md "$WIKI_PATH/index.md"
+```
 
-- `index.md` 某類別（e.g. Infrastructure）**空**但其他類別有 → **warning**
-- **常見領域缺**（啟發式）：若 repo 提到 database / deployment / security 但對應頁不存在 → **info**
-- `wiki/` 有頁但 `index.md` 未分類 → **error**
+### Step 2g: Missing topic pages（缺失主題頁）
 
-#### F. Missing cross-refs（缺 cross-ref）
+| 情況 | 等級 |
+|------|------|
+| `index.md` 某類別（e.g. Infrastructure）空但其他類別有 | 🟡 Warning |
+| 常見領域缺（database / deployment / security 在內文出現但對應頁不存在） | 🔵 Info（啟發式） |
+| `wiki/` 有頁但 `index.md` 未分類 | 🔴 Error |
 
-啟發式檢查：
+### Step 2h: Missing cross-refs（缺 cross-ref）
 
-- 頁 A 內文提到頁 B 的 entity / 關鍵詞（如 `RAGFlow` / `Mini-Wally` / 特定 host 名），但沒用 markdown link 連到 B → **info**
-- **不強制**，只提示（人讀仍能理解 context）
+啟發式 — 永遠 Info：
 
-#### G. Data gaps（資料缺口）
+- 頁 A 內文提到頁 B 的 entity / 關鍵詞（e.g. `RAGFlow` / `Mini-Wally` / 特定 host 名）但沒用 markdown link 連到 B → 🔵 Info
+- **不強制**，只提示
 
-- `sources` 欄位空 / 指向消失的 raw 檔案 → **error**（traceability 斷鏈）
-- 主題頁內文 `raw/xxx` 路徑 ref → 對照 `raw/**` 實際存在性（若 raw/ 是 gitignored 須 local 才能檢）
-- 主題頁 Open questions 段 > 3 個月未解 → **warning**
+### Step 2i: Data gaps（資料缺口）
 
-#### H. Cross-page contradictions（矛盾）
+| 條件 | 等級 |
+|------|------|
+| `sources` 欄位空 / 指向消失的 raw 檔案 | 🔴 Error（traceability 斷鏈） |
+| 主題頁內文 `raw/xxx` 路徑 ref → `raw/**` 實際不存在 | 🔴 Error（local 才能查） |
+| 主題頁 Open questions 段 > 3 個月未解 | 🟡 Warning |
 
-啟發式（粗略檢查，需人工確認）：
+### Step 2j: Cross-page contradictions（矛盾）
 
-- 同一 entity（e.g. `prod-dgx-01`）在不同頁描述狀態不一致 → **warning**
-- 同一數字（e.g. DB 容量 / 壓測 concurrent 數）在不同頁不同 → **warning**
-- 需要人工判斷是真矛盾還是更新時差
+啟發式（粗略，需人工確認）— **永遠 Warning，不要升 Error**：
 
-#### I. SCHEMA.md 宣告 vs 實況
+- 同一 entity（e.g. `prod-dgx-01`）在不同頁描述狀態不一致
+- 同一數字（e.g. DB 容量 / 壓測 concurrent 數）在不同頁不同
+- Output 必須註明「需人工確認，可能是更新時差」
 
-- SCHEMA.md 說「15 主題頁」但實際 17 → **error**（需同步）
-- SCHEMA.md 的 type 列表跟實際使用不一致 → **warning**
+### Step 2k: SCHEMA.md 宣告 vs 實況
 
-### 3. 輸出格式
+| 情況 | 等級 |
+|------|------|
+| SCHEMA.md 說「N 主題頁」但實際 M（N≠M） | 🔴 Error |
+| SCHEMA.md 的 type 列表跟實際使用不一致 | 🟡 Warning |
 
-繁體中文報告（英文環境 user 可要求改英文）：
+---
+
+## Step 3: 輸出報告
+
+繁體中文，固定格式（英文環境 user 可要求改英文）：
 
 ```markdown
 # 🔍 LLM Wiki Lint 報告
@@ -160,13 +204,11 @@ triggers: ["/llm-wiki-lint", "llm wiki lint", "wiki lint", "掃 wiki"]
 **總計：** XX 個 wiki 頁
 ```
 
-### 4. 不做的事
+每個 finding 必須包含：
 
-- **不自動修改任何檔案**
-- **不自動刪除**（orphan / missing 都只建議）
-- **不跨機器**（只看本機指定 path）
-- **不訪問外部 API**（純 local grep / read）
-- **不寫 log.md**（lint 結果由使用者決定要不要 append）
+- `[類別]` — Frontmatter / Index / Stale / Orphan / SCHEMA / Contradiction / Cross-ref / Data gap
+- 具體檔名 + 行為描述
+- 建議動作（Error 必有，Warning 可有）
 
 ---
 
@@ -181,7 +223,7 @@ triggers: ["/llm-wiki-lint", "llm wiki lint", "wiki lint", "掃 wiki"]
 
 ## 🔴 Error
 
-- [Frontmatter] `wiki/architect_cheatsheet.md` 缺 `sources` 欄位 → 補上
+- [Frontmatter] `wiki/architect_cheatsheet.md` 缺 `sources` 欄位 → 補上來源連結
 - [Index 一致性] `index.md` 列 `wiki/old_topic.md` 但檔案不存在 → 移除 index 對應行
 - [SCHEMA] SCHEMA.md 宣告「15 主題頁」但實際 17 → 更新 SCHEMA.md
 
@@ -189,7 +231,7 @@ triggers: ["/llm-wiki-lint", "llm wiki lint", "wiki lint", "掃 wiki"]
 
 - [Stale] `wiki/stress_test_findings.md` last_updated 2026-04-19（已 11 天），但檔案 2026-04-28 有改動 → 更新 frontmatter
 - [Orphan] `wiki/architect_cheatsheet.md` 無入站 cross-ref → review 是否該整合進 index
-- [Contradiction] `prod-dgx-01` 在 topology.md 寫「gateway + DB」，在 architecture.md 寫「主 brain」→ 同步描述
+- [Contradiction] `prod-dgx-01` 在 topology.md 寫「gateway + DB」，在 architecture.md 寫「主 brain」→ 同步描述（需人工確認，可能是更新時差）
 
 ## 🔵 Info
 
@@ -216,14 +258,28 @@ triggers: ["/llm-wiki-lint", "llm wiki lint", "wiki lint", "掃 wiki"]
 
 ---
 
-## 注意事項
+## Anti-patterns
 
-- 本 skill **純 read-only**，不改任何檔案
-- **不處理 `journal/` / `drafts/` / `scripts/`**（非 wiki 一部分）
-- `raw/` 存在性檢查僅在 local（gitignored，遠端看不到）
-- 報告在對話中印出，不另存檔（要存可手動貼到某處 or append log.md DECISION entry）
-- 未來擴充方向：
-  - `--fix` 模式（自動補 frontmatter / 更新 index，需 user explicit 同意）
-  - cross-ref auto-insert suggestion
-  - Git history 分析（stale 檢查更精準）
-  - 跟 `memory-lint` 共用 config / convention
+- ❌ 自動修改任何檔案（連「補個 frontmatter」都不行）
+- ❌ 自動刪除 orphan / missing 條目
+- ❌ Append 結果到 `log.md`（user 要不要記決定權在他）
+- ❌ 訪問外部 API / 抓 Git remote（純 local read）
+- ❌ 掃 `journal/` / `drafts/` / `scripts/`（非 wiki 一部分）
+- ❌ 路徑偵測不到時瞎猜（必須停止並告訴 user）
+- ❌ 把啟發式（cross-ref 缺失、可能矛盾）標成 Error
+- ❌ Report 用英文模板套中文 wiki（user 沒要求換語言就用繁中）
+
+---
+
+## Important rules
+
+1. **Read-only is non-negotiable** — Edit / Write / append 一律禁用，違規即破壞 skill 契約
+2. **Path 偵測順序固定** — 不要倒過來、不要跳級、找不到就停
+3. **Severity 寧降勿升** — 啟發式 → Info；推測 → Warning；只有結構壞了才 Error
+4. **每個 finding 必須有具體檔名** — 不准「某些頁面 frontmatter 不全」這種模糊敘述
+5. **Contradiction 永遠標需人工確認** — 你看到的可能只是更新時差
+6. **`raw/` 是 gitignored** — 遠端跑（CI / cloud agent）就直接 skip Step 2i 的 raw 存在性檢查，並在報告註明
+7. **報告印到對話即可** — 不另存檔；user 要存自己貼
+8. **不擴大掃描範圍** — `journal/` / `drafts/` / `scripts/` 永遠跳過，即使裡面有 .md
+9. **語言跟 wiki 對齊** — wiki 是中文寫的就用繁中報告，英文 wiki 就英文，user 明確要求才改
+10. **未來功能（`--fix` 模式、cross-ref auto-insert、Git history 分析）目前不存在** — user 問起就說 v0.x 還沒做
