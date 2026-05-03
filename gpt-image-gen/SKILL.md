@@ -159,17 +159,23 @@ LOG_FILE="/tmp/codex_imagegen_${TS}.log"
 
 ```bash
 codex exec "<英文 prompt 內容> \$imagegen" \
-  --full-auto \
+  --sandbox workspace-write \
   --output-last-message "$LAST_MSG" \
   > "$LOG_FILE" 2>&1
 ```
 
-**注意**：
-- `--full-auto` = `--sandbox workspace-write` + 自動執行（不卡 approval）。**不要**用舊版的 `--sandbox <mode> --ask-for-approval never`，新版 codex 不認那組 flag。
-- prompt 內的 `$imagegen` 在 bash 字串裡要 escape 成 `\$imagegen`，不然 shell 會把它當變數展開成空字串。
+**Flag 註解**（codex-cli 0.128.0 對齊；新版本前先 `codex exec --help` 確認）：
+
+- **`--sandbox workspace-write`**：允許 codex 寫進 workspace（含 codex 把生成圖落地到 `~/.codex/generated_images/`）。
+- **`codex exec` 沒有 `--ask-for-approval`** — 那 flag 只在 top-level `codex`，exec 預設就是 non-interactive never-ask，不需另指定。
+- **`--full-auto` 已 deprecated**（0.128.0 起），等同 `--sandbox workspace-write`。**不要用**。
+- **`-o, --output-last-message`**：把 codex 最後 assistant message 寫進指定檔，後續用來 parse 圖片實際路徑。
+- **`-i, --image <FILE>`**：exec 技術上支援附 input image，但本 skill **不用** — 有底圖直接走 manual mode（Step 3a），別把責任丟回 codex。
+
+**Prompt 字串注意**：
+- prompt 內的 `$imagegen` 在 bash 字串裡要 escape 成 `\$imagegen`，不然 shell 會把它當變數展開成空字串，codex 不會啟用 imagegen skill。
 - prompt 用 double-quote 包，內含的 `"` / `` ` `` / `$` 全部 escape。
-- 不要加 `--json`（log 會難 parse）。
-- 跑前若不確定 flag 是否還對齊，先 `codex exec --help` 確認一次再執行。
+- 不要加 `--json`（log 變 JSONL，反而難用 grep / Monitor 監看）。
 
 ### Step 4c: Monitor 看 log
 
