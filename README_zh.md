@@ -21,6 +21,7 @@
 | [job-scout](job-scout/) | 投履歷之前先把公司查清楚。薪資、評價、紅旗、財務狀況 — 就是你上次面試前應該做但沒做的功課 |
 | [repo-scan](repo-scan/) | 安裝之前先幫 GitHub repo 做安全掃描。靜態分析、依賴審計、供應鏈風險、Issues 漏洞回報、維護者健康度 — 因為 `npm install 不知名套件` 不該是一場賭博 |
 | [md2pdf](md2pdf/) | 把你的 Markdown 轉成不像 2003 年電腦產出的 PDF。自動處理 Mermaid 圖表、CJK 字型、ASCII art 轉換 — 因為我們已經幫你把所有詭異的 edge case 都踩完了 |
+| [md2ppt](md2ppt/) | md2pdf 的吵鬧弟弟。把你的 Markdown 報告變成簡報品質 .pptx，透過互動式設計對話 + 可重用的 Python build script。Generic markdown→pptx 工具（Marp、pandoc）產出來的 slide 技術上對但視覺上爛 — md2ppt 跟你一張一張對話討論 layout，然後吐一份 hand-coded script，內容改動 re-run 5 秒重產。可選 LibreOffice self-check。Brand template 整合走 ad-hoc helpers — 試過 prescribed workflow，5 輪「等等這不是 cover layout」後退掉 |
 | [spec](spec/) | Spec-driven 開發流程 — 從模糊想法到驗收結案。一個指令，自動判斷專案狀態，引導你走完：需求釐清 → 審查 → 實作 → 驗收 → 結案報告。因為「先寫再說」就是你之後要全部重寫的原因 |
 | [job-radar](job-radar/) | 求職自動化的遙控器。在 Telegram 說聲「寫信」，AI 就會讀完 JD、寫好 25 封客製化求職信、打包成 zip 傳回來 -- 你咖啡都還沒喝完。搭配 [kc_job_radar](https://github.com/KerberosClaw/kc_job_radar) 使用，Docker 必備，理智選配 |
 | [ctf-kit](ctf-kit/) | Windows 應用程式驗證繞過的實戰 playbook — VMProtect、Themida、網路驗證，都能打。從 67+ 次失敗中淬煉出來的，省你重踩一遍。附帶即用型 Frida 偵察腳本和零依賴 PE 分析器。搭配 [ljagiello/ctf-skills](https://github.com/ljagiello/ctf-skills) 覆蓋更廣的 CTF 場景 |
