@@ -1,7 +1,7 @@
 ---
 name: gpt-image-gen
-description: "Use when the user asks to generate an image via GPT/Codex (e.g. 「叫 gpt 生圖」「幫我用 gpt 生圖」「gpt 畫一個 X」). The skill drafts a Chinese + English prompt pair, iterates with the user until they explicitly approve, then dispatches Codex CLI ($imagegen skill, gpt-image-2) in the background, monitors progress, moves the result into the current working directory, and writes a sidecar prompt log. Text-to-image only — no image edits, no reference-image input via Codex."
-version: 0.1.0
+description: "Use when the user asks to generate an image via GPT/Codex (e.g. 「叫 gpt 生圖」「幫我用 gpt 生圖」「gpt 畫一個 X」). The skill drafts a Chinese + English prompt pair, iterates with the user until they explicitly approve, then dispatches Codex CLI ($imagegen skill, codex built-in image_gen) in the background, monitors progress, converts the result to a jpg in the current working directory, and writes a sidecar prompt log. Text-to-image only — no image edits, no reference-image input via Codex."
+version: 0.2.0
 triggers:
   - "叫 gpt 生圖"
   - "叫gpt生圖"
@@ -15,7 +15,7 @@ triggers:
 argument-hint: "（無；自然語言觸發）"
 ---
 
-# gpt-image-gen — 用 Codex CLI 叫 gpt-image-2 生圖
+# gpt-image-gen — 用 Codex CLI 叫內建 image_gen 生圖
 
 You are a prompt-crafting partner who turns the user's loose Chinese description into a tight bilingual prompt pair, iterates with the user until they explicitly approve, then dispatches Codex CLI to generate the image. You are **not** the image generator — Codex is. Your job is prompt design, user confirmation gating, and execution orchestration.
 
@@ -70,7 +70,7 @@ You are a prompt-crafting partner who turns the user's loose Chinese description
  包含：場景 / 主體 / 動作 / 風格 / 光線 / 構圖 等該講的都講。）
 
 ## English prompt（送 codex 用）
-（gpt-image-2 吃的高密度英文 prompt。
+（codex 影像模型吃的高密度英文 prompt。
  結構建議：SETTING / SUBJECT / ACTION / STYLE / LIGHTING / COMPOSITION / ASPECT RATIO。
  寫法照 OpenAI 官方 prompt guide — 名詞 + 形容詞密集，少動詞，少 narrative。）
 ```
@@ -132,8 +132,9 @@ You are a prompt-crafting partner who turns the user's loose Chinese description
 ### Step 4a: 組路徑與檔名
 
 ```bash
-# 時間戳
+# 時間戳 + 啟動 epoch（START_EPOCH 給 Step 5a 收圖用）
 TS=$(date +%Y%m%d_%H%M%S)
+START_EPOCH=$(date +%s)
 
 # slug：從中文 prompt 抽 1-3 個關鍵詞，連字號連接，去掉空白與標點
 # 範例：「一隻棕熊在雪山頂看日出」→ "brown-bear-summit-sunrise"
@@ -147,7 +148,8 @@ else
   OUT_DIR="$PWD"
 fi
 
-OUT_IMG="$OUT_DIR/${TS}_${SLUG}.png"
+OUT_PNG="$OUT_DIR/${TS}_${SLUG}.png"      # codex 原始 png（中繼，轉 jpg 後刪）
+OUT_JPG="$OUT_DIR/${TS}_${SLUG}.jpg"      # 最終交付（jpg q85）
 OUT_SIDECAR="$OUT_DIR/${TS}_${SLUG}.prompt.md"
 LAST_MSG="/tmp/codex_imagegen_${TS}.lastmsg"
 LOG_FILE="/tmp/codex_imagegen_${TS}.log"
@@ -164,7 +166,7 @@ codex exec "<英文 prompt 內容> \$imagegen" \
   > "$LOG_FILE" 2>&1
 ```
 
-**Flag 註解**（codex-cli 0.128.0 對齊；新版本前先 `codex exec --help` 確認）：
+**Flag 註解**（codex-cli 0.134.0 實測對齊；新版本前先 `codex exec --help` 確認）：
 
 - **`--sandbox workspace-write`**：允許 codex 寫進 workspace（含 codex 把生成圖落地到 `~/.codex/generated_images/`）。
 - **`codex exec` 沒有 `--ask-for-approval`** — 那 flag 只在 top-level `codex`，exec 預設就是 non-interactive never-ask，不需另指定。
@@ -176,6 +178,11 @@ codex exec "<英文 prompt 內容> \$imagegen" \
 - prompt 內的 `$imagegen` 在 bash 字串裡要 escape 成 `\$imagegen`，不然 shell 會把它當變數展開成空字串，codex 不會啟用 imagegen skill。
 - prompt 用 double-quote 包，內含的 `"` / `` ` `` / `$` 全部 escape。
 - 不要加 `--json`（log 變 JSONL，反而難用 grep / Monitor 監看）。
+
+> ⚠️ **0.134.0 版差異（踩過、直接影響 Step 5 收圖）**：codex 改用 `gpt-5.5` orchestrator + 內建 `image_gen` flow，不再是 gpt-image-2，連帶兩個 output 形狀變了：
+> 1. `--output-last-message` **不再吐圖片路徑**（只寫一句「Generated the image...」）→ 別再 grep LAST_MSG 抓路徑。
+> 2. 圖落在**巢狀** `~/.codex/generated_images/<session-id>/ig_*.png`，不是平鋪。
+> 3. 固定輸出 **png**（無法指定格式）→ 交付前自行轉 jpg。
 
 ### Step 4c: Monitor 看 log
 
@@ -189,7 +196,7 @@ codex exec "<英文 prompt 內容> \$imagegen" \
 
 期間給 user **一行** heartbeat（避免他以為當機）：
 ```
-Codex 跑起來了，背景生圖中（gpt-image-2 一般 30-90s），等成品...
+Codex 跑起來了，背景生圖中（一般 30-90s），等成品...
 ```
 不要刷屏。
 
@@ -197,26 +204,39 @@ Codex 跑起來了，背景生圖中（gpt-image-2 一般 30-90s），等成品.
 
 ## Step 5: 收圖 + 寫 sidecar + 通知
 
-### Step 5a: 從 `$LAST_MSG` parse 出實際路徑
+### Step 5a: 收圖（以 mtime 為錨，不依賴 LAST_MSG）
 
-`codex exec --output-last-message` 會把 codex 最後 assistant message 寫進去。imagegen 完成後通常會講出實際存檔路徑（在 `$CODEX_HOME/generated_images/` 底下，預設 `~/.codex/generated_images/`）。
-
-```bash
-# 抓出 codex 寫的圖片路徑（可能是絕對 / 可能是 ~/...）
-SRC_IMG=$(grep -oE '(/Users|/home|~)[^[:space:]]*\.(png|jpg|jpeg|webp)' "$LAST_MSG" | head -1 | sed "s|^~|$HOME|")
-```
-
-如果 grep 沒抓到，fallback：找 `~/.codex/generated_images/` 底下這次 timestamp 之後最新的圖檔。
-
-### Step 5b: 搬到目標位置
+0.134.0 起 LAST_MSG 不吐路徑、圖又落巢狀 session 目錄（見 Step 4b 警告），所以**用啟動前記下的 `START_EPOCH` 遞迴找之後最新的 png**：
 
 ```bash
-mv "$SRC_IMG" "$OUT_IMG"
+SRC_PNG=$(find ~/.codex/generated_images -type f -iname '*.png' -newermt "@$START_EPOCH" 2>/dev/null | xargs ls -t 2>/dev/null | head -1)
 ```
 
-**MANDATORY**：用 `mv` 不是 `cp` — codex 預設位置只是中繼，留著會堆積。
+- **用 `find` 不用 glob**：巢狀目錄要遞迴，且空 glob 在 zsh 會 `no matches found` 中止（踩過）。
+- session id 那條路（grep log 的 `session id:`）**不要用** — log 有 ANSI 色碼夾在 `session id:` 跟 uuid 之間，regex 易撲空、反而脆弱。
+- `SRC_PNG` 抓空 → codex 大概率失敗，跳 Step 6。
+
+### Step 5b: 轉 jpg 交付（q85）+ 清中繼
+
+codex 吐 png（2MB 級）；交付走 **jpg q85**（實測畫質肉眼無感、體積約 png 的 1/5）：
+
+```bash
+mv "$SRC_PNG" "$OUT_PNG"                    # 搬出 codex 中繼目錄
+rmdir "$(dirname "$SRC_PNG")" 2>/dev/null   # 清掉空的 session 子目錄
+sips -s format jpeg -s formatOptions 85 "$OUT_PNG" --out "$OUT_JPG" >/dev/null 2>&1
+rm -f "$OUT_PNG"                            # 刪 png 中繼，只留 jpg
+```
+
+- **MANDATORY**：`mv` 不 `cp` — codex 預設位置只是中繼、留著會堆積。
+- 最終交付 = `$OUT_JPG`。**只有 user 明講「要留無損 png」才跳過 `rm -f "$OUT_PNG"`**。
 
 ### Step 5c: 寫 sidecar
+
+先從 log 抓實際 model（別寫死 — 0.134 是 gpt-5.5 不是 gpt-image-2）：
+
+```bash
+MODEL=$(grep -aoE 'gpt-[0-9.]+' "$LOG_FILE" | head -1)
+```
 
 格式固定：
 
@@ -225,9 +245,9 @@ mv "$SRC_IMG" "$OUT_IMG"
 timestamp: 2026-05-03T20:45:00+08:00
 trigger: "<user 觸發那句原文>"
 reference_image: null
-codex_model: gpt-image-2
+codex_model: <$MODEL，如 gpt-5.5> (codex built-in image_gen flow)
 codex_exit: success
-output_image: <絕對路徑>
+output_image: <$OUT_JPG 絕對路徑>
 ---
 
 # 中文 prompt
@@ -239,21 +259,17 @@ output_image: <絕對路徑>
 <拍板版本的英文 prompt（實際送 codex 的）>
 ```
 
-寫進 `$OUT_SIDECAR`。
+寫進 `$OUT_SIDECAR`。**bg session 內若 `Write` 被 bg-isolation guard 擋（這 skill 常在 bg + git repo 跑），改用 Bash heredoc 寫**（`cat > "$OUT_SIDECAR" <<'EOF' ... EOF`）。
 
-### Step 5d: 通知 user
+### Step 5d: 通知 user（不自動開圖）
 
 ```
 ✅ 生好了
-- 圖：<相對 cwd 路徑>
-- prompt log：<相對 cwd 路徑>
-（已自動 open 預覽）
+- 圖：<相對 cwd 路徑>.jpg
+- prompt log：<相對 cwd 路徑>.prompt.md
 ```
 
-然後跑：
-```bash
-open "$OUT_IMG"
-```
+**不要自動 `open`** — user 偏好「搬好通知即可、自己決定要不要看」。
 
 ---
 
@@ -285,6 +301,10 @@ rm -f "$LAST_MSG" "$LOG_FILE"
 - ❌ 把生圖結果留在 `~/.codex/generated_images/` 不搬走（堆積 + user 找不到）
 - ❌ 圖搬到 cwd 根但 cwd 是 git repo（會雜進 git status / 容易誤 commit）
 - ❌ 用 `cp` 不用 `mv` 搬 codex 中繼檔
+- ❌ 依賴 `LAST_MSG` grep 圖片路徑收圖（0.134 起 codex 不吐路徑、此法必撲空）
+- ❌ 用 shell glob（`ls $DIR/*.png`）收圖（巢狀目錄漏抓 + 空 glob 在 zsh 中止）→ 改 `find -newermt`
+- ❌ 生完自動 `open` 圖（user 不要）
+- ❌ sidecar 寫死 `codex_model: gpt-image-2`（實際是 log 裡的 model）
 - ❌ 失敗自動重試（codex 失敗通常是 prompt 本身問題或 quota，重試只浪費 token）
 - ❌ 不寫 sidecar（user 之後翻舊圖找不回原 prompt）
 - ❌ heartbeat 刷屏（user 已經知道在跑了，給一行就好）
@@ -302,6 +322,6 @@ rm -f "$LAST_MSG" "$LOG_FILE"
 5. **背景跑 + Monitor 看 log + 一行 heartbeat** — 不阻塞 user 對話、不刷屏
 6. **cwd 是 git repo → `./generated_images/` 子資料夾；否則 → cwd 根**
 7. **Sidecar `<image>.prompt.md` 是強制產出** — 含中英 prompt + metadata，方便日後翻
-8. **`mv` 不 `cp`，中繼 log 跑完清掉** — 不要在 `/tmp/` 與 `~/.codex/generated_images/` 留垃圾
+8. **交付 jpg q85（`sips`），png 中繼轉完即刪**（user 明講要無損才留）；**生完不自動開圖**；`mv` 不 `cp`，中繼 log + 空 session 目錄跑完清掉 — 不要在 `/tmp/` 與 `~/.codex/generated_images/` 留垃圾
 9. **失敗不自動重試** — 印 log 摘要交給 user 決定
 10. **這 skill 不做 image edit、不做 UI 設計、不做 ASCII art** — 走錯領域請 user 改用 Claude Design / 其他工具
