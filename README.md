@@ -29,6 +29,7 @@ A collection of AI agent skills that solve real problems — not "summarize this
 | [skill-cron](skill-cron/) | One manager to schedule them all. Register any skill for crontab execution + Telegram push — because `claude -p` doesn't support `/skill` syntax, so somebody had to build the bridge. Config in `~/.claude/configs/`, logs auto-rotate, crontab entries self-managed |
 | [memory-lint](memory-lint/) | Your AI's memory directory accumulates duplicate rules, stale "active" projects, and orphan files over time. This skill scans for all of that and reports before Claude confidently quotes the wrong rule back at you. Read-only — finds problems, you decide what to fix |
 | [llm-wiki-lint](llm-wiki-lint/) | Karpathy's LLM Wiki pattern has a blind spot — past ~15 pages, stale claims, orphan cross-refs, and missing topics silently rot your knowledge base. This skill is the lint pass: contradictions, source traceability, data gaps, frontmatter completeness, index drift. For three-tier `raw/` + `wiki/` + `schema` repos. Read-only. Pair with [memory-lint](memory-lint/) for full-stack AI knowledge hygiene |
+| [gpt-image-gen](gpt-image-gen/) | Talk Codex into drawing it for you. Drafts a tight bilingual prompt, iterates until you give an explicit go, *then* fires Codex CLI for text-to-image — the hard confirmation gate exists because "looks good" is not "yes" and every generation costs real quota. Text-to-image only (reference images? that road doesn't exist), hands you a jpg, and pointedly refuses to shove a preview window in your face |
 
 ## Installation
 
