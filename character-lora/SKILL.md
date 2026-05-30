@@ -1,7 +1,7 @@
 ---
 name: character-lora
 description: "Use when the user wants to build a consistent-identity LoRA for an original character — defining the character, generating a face/body-consistent multi-angle dataset (via the gpt-image-gen skill for codex image generation), captioning it, doing base-specific homework, training on a chosen base (Pony / Z-Image / others) on a local GPU, and producing a usable LoRA. This skill ORCHESTRATES the end-to-end pipeline and gates every expensive/irreversible step; it delegates actual image generation to gpt-image-gen and never improvises training settings from memory."
-version: 0.1.0
+version: 0.1.1
 triggers: ["/character-lora", "做角色 lora", "訓練角色 lora", "角色 lora 流程", "做一個角色的 lora", "train a character lora", "character lora pipeline"]
 ---
 
@@ -38,7 +38,7 @@ You are a **character-LoRA pipeline orchestrator**. You take an original charact
 - ⚠️ **sheet ≠ 訓練圖**（拼貼會被學成「拼貼」）。只給人看 + 當 canonical 參考。
 
 ### Stage 3 — 資料集
-- **3a pilot**：先生一小批（~6 張）不同角度/取景 → 存專案給 user 看，確認 identity 對。
+- **3a pilot**：先生一小批（~6 張）不同角度/取景 →（**你先自檢 flag、批量出 contact sheet**）→ 存專案給 user 看，確認 identity 對。
 - **3b full**：user OK → 生其餘角度（**重用 pilot、不重生**）→ 合 pilot+full = `dataset/raw/`。
 - 分佈：角度（正 / 3-4 側 / 全側 / 俯仰 / 背）× 取景（臉特寫 / 半身 / 全身）混合。**~40-50 精圖**（>100-150 = overfit）。全 **PNG 無損**。
 
@@ -65,7 +65,7 @@ You are a **character-LoRA pipeline orchestrator**. You take an original charact
 
 ### Stage 6 — 訓練
 - **6a OOM 試跑**：小步數先驗設定不爆 VRAM / 不報錯。
-- **6b 正式跑 + checker**：每隔一段把當前 sample 交付 user（見「交付但書」）。每 epoch / N 步存 checkpoint（**常非最後一個最好**）。
+- **6b 正式跑 + checker**：每隔一段把當前 sample **自檢 + flag 後**交付 user（見「交付但書」）。每 epoch / N 步存 checkpoint（**常非最後一個最好**）。
 
 ### Stage 7 — 訓後
 - 0→100% montage 合成一張對比大圖交付 user。
@@ -79,6 +79,10 @@ You are a **character-LoRA pipeline orchestrator**. You take an original charact
 
 ## 交付但書（圖怎麼給 user）
 預設**報本機路徑**；user 說「直接給我看」→ scp 到互動時指定的資料夾；user 要用 IM 看 → **先確認 IM 能傳圖 + 打得到 user** 再傳。
+
+## 自檢 + contact sheet（你是第二雙眼睛）
+生成圖（dataset / 訓練 sample / 推理）交 user 前，**自己先 view 一遍、主動 flag 問題** — no-face / 崩臉 / 變性別 / 非預期動物或卡通特徵 / 框景裁頭 / 體型不符。**你或 subagent 的「看起來很好」是 input、不是事實** — 最終 user 判，但你不能當水管盲轉。
+- **批量（數十張 dataset / 多 checkpoint 對比）→ 出 contact sheet**：`ffmpeg` 的 `tile` filter 或 `imagemagick montage` 拼成一張 grid，一次看、一眼抓異常格，不逐張。（注意有些 ffmpeg build 缺 `drawtext` → 標籤靠檔名 / caption 或改 imagemagick。）
 
 ## 失敗 → 根因 → 對策（速查；完整見 playbook.md）
 | 症狀 | 根因 | 對策 |
@@ -98,6 +102,8 @@ You are a **character-LoRA pipeline orchestrator**. You take an original charact
 - ❌ 跨架構套 LoRA
 - ❌ 用 prompt 硬改已烤進的特徵
 - ❌ 用 close-up 框景判斷體型（看不到身體）
+- ❌ 盲轉生成圖不自檢（「看起來很好」≠ 事實，要主動抓 no-face / 崩 / 變性別 / 動物特徵）
+- ❌ 數十張圖逐張看 / 逐張傳（出 contact sheet 一次看）
 
 ## Important rules（核心 invariants）
 1. **先做 base 功課再訓**（red line 1，最重要）。
@@ -108,6 +114,7 @@ You are a **character-LoRA pipeline orchestrator**. You take an original charact
 6. 圖生成 delegate `gpt-image-gen`。
 7. 交付依但書。
 8. 訓練全程寫 run log。
+9. 生成圖傳前**自檢 + flag**（你是第二雙眼睛）；批量出 **contact sheet** 一次看。
 
 ## References
 - **`playbook.md`**（同目錄）— 完整方法論：每 stage 的 why / 決策樹、per-base 配方知識、完整失敗對策表、「base 功課怎麼做」清單。SKILL.md 是操作骨架，深度看 playbook。
