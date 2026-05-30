@@ -1,7 +1,7 @@
 ---
 name: character-lora
 description: "Use when the user wants to build a consistent-identity LoRA for an original character — defining the character, generating a face/body-consistent multi-angle dataset (via the gpt-image-gen skill for codex image generation), captioning it, doing base-specific homework, training on a chosen base (Pony / Z-Image / others) on a local GPU, and producing a usable LoRA. This skill ORCHESTRATES the end-to-end pipeline and gates every expensive/irreversible step; it delegates actual image generation to gpt-image-gen and never improvises training settings from memory."
-version: 0.2.0
+version: 0.2.1
 triggers: ["/character-lora", "做角色 lora", "訓練角色 lora", "角色 lora 流程", "做一個角色的 lora", "train a character lora", "character lora pipeline"]
 ---
 
@@ -61,7 +61,7 @@ You are a **character-LoRA pipeline orchestrator**. You take an original charact
 
   | base | 寫實/特色 | explicit 內容 | 訓練器 | 備註 |
   |---|---|---|---|---|
-  | **Anime-SDXL**(Illustrious / NoobAI / Animagine 等) | 動漫 / 2D / cel-shaded 最強 | 看 merge | kohya | **動漫角色首選**；booru caption |
+  | **Anime-SDXL**（動漫專用 SDXL 底模） | 動漫 / 2D / cel-shaded | 看 merge | kohya | **動漫角色走這支**；booru caption；**底模選哪顆 → 5b 功課查當下主流** |
   | Pony V6 XL | 動漫底子強、寫實靠 merge | 原生 | kohya | 生態大、ControlNet 成熟 |
   | Z-Image(-Turbo) | 真人寫實最強之一 | 私密處會崩、需疊專用 LoRA | ai-toolkit only | 新；Turbo 要 training adapter |
   | 其他 | — | — | — | **一律先做 5b 功課** |
