@@ -70,6 +70,11 @@
 | 表情 / 細節被 face-detail 中和 | detailer denoise 太低 | 拉高 detailer denoise + prompt 補表情 token |
 | 多角色互動空間崩（飄浮 / 接錯） | 文字無法指定空間、雙人資料稀疏 | ControlNet（pose/depth）/ 從參考 img2img / 分區 inpaint |
 
+## 自檢 / contact sheet（品質把關）
+
+- **你是第二雙眼睛。** 生成圖傳 user 前自己先 view、主動 flag：沒臉 / 崩臉 / 變性別 / 非預期動物或卡通 / 框景裁頭 / 體型不符。「看起來很好」（你的或 subagent 的）是 input、不是事實 — 最終 user 判，但別盲轉。
+- **批量出 contact sheet。** 數十張 dataset 或多 checkpoint → `ffmpeg`（`tile` filter）或 `imagemagick montage` 拼 grid 一張看，效率 + 一眼抓異常。某些 ffmpeg build 缺 `drawtext`（加不了文字標籤）→ 標籤靠檔名 / caption 或用 imagemagick。
+
 ## skill 映射（哪裡自動、哪裡人工 gate）
 - 自動：codex 出圖（delegate gpt-image-gen）、訓練啟動、進度 checker、montage 合成。
 - **人工 gate（不自動跳）**：base 選型、pilot 驗收、訓練設定確認、production 拍板。
