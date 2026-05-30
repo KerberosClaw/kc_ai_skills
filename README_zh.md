@@ -30,6 +30,7 @@
 | [memory-lint](memory-lint/) | AI memory 養久了會堆積重複規則、過時的「進行中」專案、孤兒檔案。這個 skill 把它們全部掃出來，免得 Claude 哪天很有自信地把錯的規則搬出來打臉你。純 read-only — 只挑問題，怎麼改你自己決定 |
 | [llm-wiki-lint](llm-wiki-lint/) | Karpathy 的 LLM Wiki pattern 有個盲點 — 超過 15 頁之後，陳舊聲明、孤立 cross-ref、缺失主題會默默腐爛。這個 skill 是 lint pass：矛盾、source traceability、data gap、frontmatter 完整性、index drift。針對 `raw/` + `wiki/` + `schema` 三層 repo。純 read-only。搭配 [memory-lint](memory-lint/) 做 full-stack AI 知識庫保健 |
 | [gpt-image-gen](gpt-image-gen/) | 把 Codex 哄去幫你生圖。先擬一份精準的雙語 prompt，跟你來回改到你明確說「生」，才真的呼叫 Codex CLI 文生圖 — 那道硬拍板閘門是因為「看起來不錯」不等於「生」，而每張圖都燒真金白銀的額度。純文字生圖（想丟參考圖？那條路不存在），給你一張 jpg，而且絕不主動把預覽視窗糊你臉上 |
+| [character-lora](character-lora/) | 把原創角色從「一個點子 + 一張定版 look」帶到一顆能跨角度跨場景守住身份的 LoRA。orchestrate 整條 pipeline — 定義 → 多角度資料集（出圖 delegate 給 gpt-image-gen）→ caption → 該 base 的訓前功課 → 本機 GPU 訓練 → 驗收 — 每個燒錢步驟都 gate。鐵律：訓練前先讀那個 base 自己的訓練文件，憑印象配參數就是角色每次「抽籤」的元兇 |
 
 ## 安裝
 
