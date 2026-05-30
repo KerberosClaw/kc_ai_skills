@@ -1,7 +1,7 @@
 ---
 name: character-lora
 description: "Use when the user wants to build a consistent-identity LoRA for an original character — defining the character, generating a face/body-consistent multi-angle dataset (via the gpt-image-gen skill for codex image generation), captioning it, doing base-specific homework, training on a chosen base (Pony / Z-Image / others) on a local GPU, and producing a usable LoRA. This skill ORCHESTRATES the end-to-end pipeline and gates every expensive/irreversible step; it delegates actual image generation to gpt-image-gen and never improvises training settings from memory."
-version: 0.1.1
+version: 0.2.0
 triggers: ["/character-lora", "做角色 lora", "訓練角色 lora", "角色 lora 流程", "做一個角色的 lora", "train a character lora", "character lora pipeline"]
 ---
 
@@ -19,14 +19,17 @@ You are a **character-LoRA pipeline orchestrator**. You take an original charact
 4. **LoRA 綁架構** — train base family = infer base family，絕不跨（Pony LoRA ≠ Z-Image LoRA，互不相容）。
 5. **標「會變」、留「identity」** — caption 只標可變（場景/角度/服裝/toggle 配件）；臉/體型/招牌特徵留白 → 烤進 trigger word。
 
-## 圖生成 = delegate 給 `gpt-image-gen`
+## 圖生成（單張 delegate / 批量自跑 / 本機自生）
 
-本 skill **不自己組 codex 指令**。Stage 1-3 出圖（定版 / sheet / dataset）一律走 **`gpt-image-gen` skill**（codex text2img + img2img）。本 skill 負責：規劃生什麼、定 prompt 大方向、gate 拍板、把產物歸位、caption、訓練、驗收。
+- **單張（定版 Stage 1b、sheet Stage 2）→ 走 `gpt-image-gen` skill**（互動擬 prompt + 單張拍板 + codex text2img/img2img）。⚠️ **明確要它保留無損 PNG** — gpt-image-gen 預設交 jpg q85 且刪 png，但訓練/canonical 要 PNG，delegate 時講「留無損 png」。
+- **批量（dataset Stage 3）→ 本 skill 自己跑 codex 批次**：gpt-image-gen 是單張互動式、不適合批 40-50 張。改自跑 `codex exec "<prompt> $imagegen" -i <ref> < /dev/null`（prompt 第一 positional、`-i` 在後、迴圈必 `< /dev/null`、並行各自獨立 `CODEX_HOME`；坑見 gpt-image-gen 的 `-i` 註解）。**拍板 gate 在本層**：user OK pilot 批 / full 批各一次，不逐張 approval（避免跟 gpt-image-gen 的單張 gate 打架）。
+- **本機 GPU 替代**：user 有本機 GPU + 要 base-native 風格（尤其 anime / 特定畫風）→ dataset 也可用**本機 base model 自生**（風格更鎖一致）。codex 不可用時這是 fallback，**不必硬停**。
+- 本 skill 負責：規劃生什麼、定 prompt、gate 拍板、產物歸位（PNG）、caption、訓練、驗收。
 
 ## Workflow
 
 ### Stage 0 — 前提
-- codex 可用？（有訂閱 / usage 沒滿）→ 沒有就告訴 user「這條路要 codex，目前不可用」並停。
+- dataset 怎麼生？預設 codex（gpt-image-gen）；codex 不可用 / user 有本機 GPU 想要 base-native 風格 → 改本機 base model 自生（見「圖生成」）。**兩條都不通才停**。
 - 角色有「定版 look」種子圖嗎？沒有 → 先做 Stage 1。
 
 ### Stage 1 — 角色定義 + 定版圖
@@ -38,15 +41,17 @@ You are a **character-LoRA pipeline orchestrator**. You take an original charact
 - ⚠️ **sheet ≠ 訓練圖**（拼貼會被學成「拼貼」）。只給人看 + 當 canonical 參考。
 
 ### Stage 3 — 資料集
-- **3a pilot**：先生一小批（~6 張）不同角度/取景 →（**你先自檢 flag、批量出 contact sheet**）→ 存專案給 user 看，確認 identity 對。
+- **3a pilot**：先生一小批（~6 張，建議：正面特寫×1 / 正面全身×1 / 左右側×各1 / 背面×1 / 表情×1）→（**你先自檢 flag、批量出 contact sheet**）→ 存專案給 user 看，確認 identity 對。
 - **3b full**：user OK → 生其餘角度（**重用 pilot、不重生**）→ 合 pilot+full = `dataset/raw/`。
-- 分佈：角度（正 / 3-4 側 / 全側 / 俯仰 / 背）× 取景（臉特寫 / 半身 / 全身）混合。**~40-50 精圖**（>100-150 = overfit）。全 **PNG 無損**。
+- 分佈：角度（正 / 3-4 側 / 全側 / 俯仰 / 背）× 取景（臉特寫 / 半身 / 全身）混合。**~40-50 精圖**（>100-150 = overfit；數字依 base、見 playbook）。全 **PNG 無損**。
+- **3c 整備**：crop / resize 到訓練解析度、`enable_bucket` 吃多比例、必要時去背 / 統一光背景。codex 出圖比例不定 → 別直接餵，先整備。
 
 ### Stage 4 — captioning（照選定 base 格式）
 | base 家族 | caption 格式 |
 |---|---|
-| Pony / SDXL | booru tags、trigger 第一 token：`<trig>, 1boy, from side, upper body, <scene>` |
-| Z-Image / NL 模型 | 自然語言：`<trig> <class>, <scene>`（class word 如 man/woman **必加**，防偏性別） |
+| Pony / SDXL / **anime-SDXL** | booru tags、trigger 第一 token：`<trig>, 1boy`（男）/`1girl`（女）`, from side, upper body, <scene>` |
+| Z-Image / NL 模型 | 自然語言：`<trig> <class>, <scene>`（class word `man`/`woman`/`elf`… **必加**，防偏性別/類別） |
+- 性別/類別字**按角色寫**（`1boy`/`1girl`、`man`/`woman`）— 範例用男只是範例。
 - trigger = **非字典 token**（發明的，避免污染既有語義）。
 - **只標可變**；identity 留白；toggle 配件（眼鏡）只在「有」的圖標。
 - 訓練 caption **不放 quality/score tag**（推理才加，避免 style bleed）。
@@ -56,14 +61,16 @@ You are a **character-LoRA pipeline orchestrator**. You take an original charact
 
   | base | 寫實/特色 | explicit 內容 | 訓練器 | 備註 |
   |---|---|---|---|---|
-  | Pony V6 XL | 動漫強、寫實靠 merge | 原生 | kohya | 生態大、ControlNet 成熟 |
+  | **Anime-SDXL**(Illustrious / NoobAI / Animagine 等) | 動漫 / 2D / cel-shaded 最強 | 看 merge | kohya | **動漫角色首選**；booru caption |
+  | Pony V6 XL | 動漫底子強、寫實靠 merge | 原生 | kohya | 生態大、ControlNet 成熟 |
   | Z-Image(-Turbo) | 真人寫實最強之一 | 私密處會崩、需疊專用 LoRA | ai-toolkit only | 新；Turbo 要 training adapter |
   | 其他 | — | — | — | **一律先做 5b 功課** |
 
-- **5b** 🔴 **訓前功課（red line 1）**：查選定 base 的官方訓練文件 + 社群配方（dim/alpha、optimizer、步數、變體差異）。
+- **5b** 🔴 **訓前功課（red line 1）**：查選定 base 的官方訓練文件 + 社群配方。**驗收 = 你能講出該 base 的：caption 格式 / trigger 規範 / class-word 需求 / dim-alpha 範圍 / optimizer / 變體(Turbo)差異。講不出 = 沒做完、別訓。**
 - **5c** 硬體/SSH 互動確認：訓練機在哪？有 SSH 設定就連、沒有就問 user 要（host/port/key）；確認 GPU、裝好訓練器。
 
 ### Stage 6 — 訓練
+- **開訓 gate**：OOM 試跑不用 gate；**正式跑前報設定給 user、user 說 go 才開**（紅線 3）。
 - **6a OOM 試跑**：小步數先驗設定不爆 VRAM / 不報錯。
 - **6b 正式跑 + checker**：每隔一段把當前 sample **自檢 + flag 後**交付 user（見「交付但書」）。每 epoch / N 步存 checkpoint（**常非最後一個最好**）。
 
@@ -90,7 +97,7 @@ You are a **character-LoRA pipeline orchestrator**. You take an original charact
 | 角色每次抽籤 / 超飄 | dim/alpha 弱化 + optimizer 沒調 | 照 base 官方配方（dim 足、Prodigy/adafactor） |
 | 寬景掉臉變別人 | 臉太小、base prior 接管 | face-detail pass |
 | 出來變性別 | NL caption 沒 class word | caption 加 man/woman |
-| 出現動物/卡通特徵 | caption 有觸發該語義的字 | 拿掉那字、trigger 用非字典 token |
+| 出現**非預期**動物/卡通特徵（要寫實卻跑卡通）| caption 有觸發該語義的字 | 拿掉那字、trigger 用非字典 token。⚠️ 你本來就要 anime/stylized → 那是 intended、**別拿掉** |
 | 烤進的特徵 prompt 改不掉 | 特徵來自圖、非 caption | 改 dataset，不是改 prompt |
 
 ## Anti-patterns
