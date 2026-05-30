@@ -1,7 +1,7 @@
 ---
 name: gpt-image-gen
-description: "Use when the user asks to generate an image via GPT/Codex (e.g. 「叫 gpt 生圖」「幫我用 gpt 生圖」「gpt 畫一個 X」). The skill drafts a Chinese + English prompt pair, iterates with the user until they explicitly approve, then dispatches Codex CLI ($imagegen skill, codex built-in image_gen) in the background, monitors progress, converts the result to a jpg in the current working directory, and writes a sidecar prompt log. Text-to-image only — no image edits, no reference-image input via Codex."
-version: 0.2.0
+description: "Use when the user asks to generate an image via GPT/Codex (e.g. 「叫 gpt 生圖」「幫我用 gpt 生圖」「gpt 畫一個 X」). The skill drafts a Chinese + English prompt pair, iterates with the user until they explicitly approve, then dispatches Codex CLI ($imagegen skill, codex built-in image_gen) in the background, monitors progress, converts the result to a jpg in the current working directory, and writes a sidecar prompt log. Does text-to-image AND img2img — drop a reference image (on-disk file) and it runs Codex `-i` to lock a face/character across scenes."
+version: 0.3.0
 triggers:
   - "叫 gpt 生圖"
   - "叫gpt生圖"
@@ -22,7 +22,7 @@ You are a prompt-crafting partner who turns the user's loose Chinese description
 **CRITICAL — 三條紅線**：
 
 1. **未拍板絕不呼叫 codex** — 拍板 = user 明確說 `OK` / `生` / `go` / `下去`。其他正向回應（「不錯」「可以喔」「應該行」）一律當「還沒拍板」處理，繼續等明確指令。生圖會花 user 的錢，誤觸發 = 違規。
-2. **有 reference image 不呼叫 codex** — Codex `$imagegen` 是 text-to-image only。user 這輪有附底圖（任何形式：拖曳、貼上、`[Image #N]`）→ 切 manual mode：印 prompt 給 user 自己貼到 ChatGPT GUI，**不**呼叫 codex。
+2. **有 reference image → 走 img2img**（codex `-i`） — user 這輪有附底圖（拖曳/貼上/`[Image #N]`）→ Step 3a 偵測 → Step 4 用 `codex exec ... -i <ref>` 跑 img2img（鎖臉/角色一致）。⚠️ codex `-i` 吃**本機檔案路徑**：底圖有實體檔就 img2img；只貼在對話、本機無檔 → 問 user 要路徑，給不出才退回印 prompt 貼 GUI。**拍板 gate（紅線 1）對 img2img 一樣適用。**
 3. **不寫死任何預設風格** — Skill 不存 style preset。每張圖風格純靠當下 conversation context + user 描述推。沒 context 就問。
 
 ---
@@ -97,12 +97,10 @@ You are a prompt-crafting partner who turns the user's loose Chinese description
 掃這輪 trigger + 等待拍板期間 user 是否有附過任何 image：
 
 ```
-有附 → 走 manual mode：
-  印「拍板的英文 prompt」一段（純 prompt，不要任何前後文 wrap）
-  附一句說明：「Codex $imagegen 不收底圖，這條改你貼到 ChatGPT GUI 自己生。
-              產出後丟回給我可以一起看 / 後續微調 prompt。」
-  結束流程，不呼叫 codex
-無附 → 進 Step 3b
+有附底圖：
+  • 本機有實體檔（user 給 path / 拖曳實體檔）→ 記 REF=該絕對路徑，走 img2img（Step 4 帶 -i "$REF"）。進 Step 3b。
+  • 只貼在對話裡、本機無實體檔 → 問 user 要本機路徑（codex -i 吃 file path、不吃對話內嵌圖）。給了 → img2img；給不出 → 退而印「拍板的英文 prompt」一段給 user 自己貼 ChatGPT GUI，結束。
+無附 → REF 留空，text2img。進 Step 3b。
 ```
 
 **Step 3b: NSFW context 判斷**
@@ -160,11 +158,14 @@ LOG_FILE="/tmp/codex_imagegen_${TS}.log"
 用 `Bash` 工具，`run_in_background: true`：
 
 ```bash
+# text2img：REF 留空。img2img：REF=底圖絕對路徑時自動帶 -i（prompt 仍當第一 positional）
 codex exec "<英文 prompt 內容> \$imagegen" \
+  ${REF:+-i "$REF"} \
   --sandbox workspace-write \
   --output-last-message "$LAST_MSG" \
-  > "$LOG_FILE" 2>&1
+  < /dev/null > "$LOG_FILE" 2>&1
 ```
+> img2img 時 `${REF:+-i "$REF"}` 只在 REF 有值時展開成 `-i "$REF"`；`< /dev/null` 防 codex 誤讀 stdin。
 
 **Flag 註解**（codex-cli 0.134.0 實測對齊；新版本前先 `codex exec --help` 確認）：
 
@@ -172,7 +173,8 @@ codex exec "<英文 prompt 內容> \$imagegen" \
 - **`codex exec` 沒有 `--ask-for-approval`** — 那 flag 只在 top-level `codex`，exec 預設就是 non-interactive never-ask，不需另指定。
 - **`--full-auto` 已 deprecated**（0.128.0 起），等同 `--sandbox workspace-write`。**不要用**。
 - **`-o, --output-last-message`**：把 codex 最後 assistant message 寫進指定檔，後續用來 parse 圖片實際路徑。
-- **`-i, --image <FILE>`**：exec 技術上支援附 input image，但本 skill **不用** — 有底圖直接走 manual mode（Step 3a），別把責任丟回 codex。
+- **`-i, --image <FILE>`**：img2img 用 — 有底圖時帶 `-i "$REF"`（鎖臉/角色一致，已實測可行）。⚠️ **`-i` 是 variadic `<FILE>...`**：prompt 必須當**第一個 positional 放最前**、`-i` 擺後面，否則 prompt 會被吃成第二張圖 → codex 沒 positional prompt → 轉讀 stdin → 失敗。
+- **批次/迴圈跑 codex 必加 `< /dev/null`**：在 `while read … done < file` 內跑 codex 會繼承迴圈 stdin（= prompt 檔）→ 一個 session 狂生多圖 + 吃掉 read fd。`< /dev/null` 切斷即解。多條並行各自獨立 `CODEX_HOME`（cp auth.json + config.toml）避免搶圖。
 
 **Prompt 字串注意**：
 - prompt 內的 `$imagegen` 在 bash 字串裡要 escape 成 `\$imagegen`，不然 shell 會把它當變數展開成空字串，codex 不會啟用 imagegen skill。
@@ -244,7 +246,7 @@ MODEL=$(grep -aoE 'gpt-[0-9.]+' "$LOG_FILE" | head -1)
 ---
 timestamp: 2026-05-03T20:45:00+08:00
 trigger: "<user 觸發那句原文>"
-reference_image: null
+reference_image: <$REF 絕對路徑；text2img 則 null>
 codex_model: <$MODEL，如 gpt-5.5> (codex built-in image_gen flow)
 codex_exit: success
 output_image: <$OUT_JPG 絕對路徑>
@@ -295,7 +297,8 @@ rm -f "$LAST_MSG" "$LOG_FILE"
 ## Anti-patterns
 
 - ❌ 用模糊正向回應（「不錯」「可以」）當拍板信號，誤呼叫 codex
-- ❌ user 有附底圖卻硬呼叫 codex（codex 不收 reference image，浪費 quota）
+- ❌ img2img 時把 `-i` 放 prompt 前面（prompt 被當第二張圖 → codex 失敗）；prompt 一定當第一 positional、`-i` 擺後
+- ❌ 對話內嵌圖（本機無檔）硬塞 codex `-i`（吃 file path、抓不到）→ 先問本機路徑
 - ❌ 預設「畫四隻熊 / kemono / 某固定角色群像」這種寫死 style — 沒 context 就問
 - ❌ Skill 內部偷偷加 NSFW filter 替 user 做決策（只警告 + 給選項）
 - ❌ 把生圖結果留在 `~/.codex/generated_images/` 不搬走（堆積 + user 找不到）
@@ -316,7 +319,7 @@ rm -f "$LAST_MSG" "$LOG_FILE"
 ## Important rules
 
 1. **拍板 = 明確 keyword（OK / 生 / go / 下去），不准語意推測** — 違規即破壞 user 信任
-2. **Reference image 自動切 manual mode** — 不要試圖把底圖塞 codex，那條路不通
+2. **Reference image → img2img（codex `-i`）** — 底圖有本機檔就 `-i "$REF"` 跑 img2img；只有「對話內嵌圖、無本機檔」才問路徑 / 退 manual
 3. **不寫死預設風格** — 風格 100% 來自當下 context 與 user 描述
 4. **NSFW 判斷依 context，警告而非阻擋** — 不替 user 做安全決策
 5. **背景跑 + Monitor 看 log + 一行 heartbeat** — 不阻塞 user 對話、不刷屏
