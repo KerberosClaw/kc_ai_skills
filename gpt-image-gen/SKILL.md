@@ -1,7 +1,7 @@
 ---
 name: gpt-image-gen
 description: "Use when the user asks to generate an image via GPT/Codex (e.g. 「叫 gpt 生圖」「幫我用 gpt 生圖」「gpt 畫一個 X」). The skill drafts a Chinese + English prompt pair, iterates with the user until they explicitly approve, then dispatches Codex CLI ($imagegen skill, codex built-in image_gen) in the background, monitors progress, converts the result to a jpg in the current working directory, and writes a sidecar prompt log. Does text-to-image AND img2img — drop a reference image (on-disk file) and it runs Codex `-i` to lock a face/character across scenes."
-version: 0.3.0
+version: 0.3.1
 triggers:
   - "叫 gpt 生圖"
   - "叫gpt生圖"
@@ -125,7 +125,7 @@ You are a prompt-crafting partner who turns the user's loose Chinese description
 
 ---
 
-## Step 4: 呼叫 Codex（背景跑 + Monitor 監看）
+## Step 4: 呼叫 Codex（背景跑 + 非阻塞等通知）
 
 ### Step 4a: 組路徑與檔名
 
@@ -186,21 +186,22 @@ codex exec "<英文 prompt 內容> \$imagegen" \
 > 2. 圖落在**巢狀** `~/.codex/generated_images/<session-id>/ig_*.png`，不是平鋪。
 > 3. 固定輸出 **png**（無法指定格式）→ 交付前自行轉 jpg。
 
-### Step 4c: Monitor 看 log
+### Step 4c: 非阻塞等待（讓出主線程，靠 task 完成通知喚回）
 
-啟動 `Monitor` 看 `$LOG_FILE`，等到下列任一條件成立：
+codex 這條 image_gen flow **每張要跑 2-3 分鐘**（先跑 reasoning 再生圖）。Step 4b 既然 `run_in_background: true`，就**讓出控制權給 user、這一輪收尾**，別在前景 `sleep N; tail` 輪詢 —— 那會卡死主線程、user 不能講話（實戰踩過、user 抱怨「太久了 / 是不是當機」）。
 
-| 條件 | 含義 | 動作 |
-|------|------|------|
-| log 出現 `image saved to` 或 `Generated image:` 之類字眼 | 成功，圖在 `~/.codex/generated_images/` 下 | 進 Step 5 |
-| 背景 process 結束（Bash 通知） | 不論成敗都收尾 | 進 Step 5 / Step 6 |
-| Monitor 看到 `error` / `rate limit` / `safety` / `rejected` | 失敗 | 進 Step 6 |
+正確姿態：
 
-期間給 user **一行** heartbeat（避免他以為當機）：
+1. 啟動背景 codex 後，給 user **一行** heartbeat（見下），然後**這輪就結束**、把控制權還 user。
+2. 背景指令跑完，harness 會丟 `<task-notification>`（含 task-id + output 檔路徑）自動把你喚回 —— **這就是「monitor」，由 task 系統盯，不是你前景 block**。
+3. 被喚回 → 讀 `$LOG_FILE`（或 task output 檔）判斷成敗 → 進 Step 5（成功）或 Step 6（失敗）。
+
+heartbeat（一行、不刷屏）：
 ```
-Codex 跑起來了，背景生圖中（一般 30-90s），等成品...
+Codex 跑起來了，背景生圖中（這條 flow 一般 2-3 分鐘），跑完通知你，先忙別的沒問題。
 ```
-不要刷屏。
+
+> ⚠️ **沒有獨立的 `Monitor` 工具** —— 「監督」= 背景 task + 完成通知。**禁用 `sleep N; tail` 前景輪詢**（阻塞主線程、卡死 user 對話）。真要中途偷看進度，用 `Read` 點一下 task output 檔就好，**別 sleep-loop**。
 
 ---
 
@@ -311,6 +312,8 @@ rm -f "$LAST_MSG" "$LOG_FILE"
 - ❌ 失敗自動重試（codex 失敗通常是 prompt 本身問題或 quota，重試只浪費 token）
 - ❌ 不寫 sidecar（user 之後翻舊圖找不回原 prompt）
 - ❌ heartbeat 刷屏（user 已經知道在跑了，給一行就好）
+- ❌ 背景啟動後用 `sleep N; tail` 前景輪詢等 codex（阻塞主線程、卡死 user 對話）→ 讓出控制權、等 task 完成通知自動喚回
+- ❌ 圖被 keep / 搬走卻把 sidecar 留在原（暫存）目錄 → prompt 隨目錄清掉就永久消失（sidecar 要跟圖走）
 - ❌ prompt 字串內 `$imagegen` 沒 escape（shell 會展開成空，codex 不會啟用 imagegen skill）
 - ❌ 在 user 還在改 prompt 的迭代過程中提前算 slug / 建目錄 / 啟動 codex（pre-flight 在拍板**之後**才做）
 
@@ -322,9 +325,9 @@ rm -f "$LAST_MSG" "$LOG_FILE"
 2. **Reference image → img2img（codex `-i`）** — 底圖有本機檔就 `-i "$REF"` 跑 img2img；只有「對話內嵌圖、無本機檔」才問路徑 / 退 manual
 3. **不寫死預設風格** — 風格 100% 來自當下 context 與 user 描述
 4. **NSFW 判斷依 context，警告而非阻擋** — 不替 user 做安全決策
-5. **背景跑 + Monitor 看 log + 一行 heartbeat** — 不阻塞 user 對話、不刷屏
+5. **背景跑 + 讓出主線程 + 一行 heartbeat，靠 task 完成通知喚回收圖** — 禁前景 `sleep N; tail` 輪詢（會阻塞 user 對話）；harness 沒有獨立 `Monitor` 工具，task 系統就是 monitor
 6. **cwd 是 git repo → `./generated_images/` 子資料夾；否則 → cwd 根**
-7. **Sidecar `<image>.prompt.md` 是強制產出** — 含中英 prompt + metadata，方便日後翻
+7. **Sidecar `<image>.prompt.md` 是強制產出** — 含中英 prompt + metadata，是 prompt 的**唯一持久記錄**；**圖被搬走 / 保留 (keep) 時 sidecar 必須跟著走**（暫存 output 目錄常被清，prompt 只活在 sidecar，丟了就重建不回原 prompt）
 8. **交付 jpg q85（`sips`），png 中繼轉完即刪**（user 明講要無損才留）；**生完不自動開圖**；`mv` 不 `cp`，中繼 log + 空 session 目錄跑完清掉 — 不要在 `/tmp/` 與 `~/.codex/generated_images/` 留垃圾
 9. **失敗不自動重試** — 印 log 摘要交給 user 決定
 10. **這 skill 不做 image edit、不做 UI 設計、不做 ASCII art** — 走錯領域請 user 改用 Claude Design / 其他工具
