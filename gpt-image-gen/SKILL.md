@@ -1,7 +1,7 @@
 ---
 name: gpt-image-gen
 description: "Use when the user asks to generate an image via GPT/Codex (e.g. 「叫 gpt 生圖」「幫我用 gpt 生圖」「gpt 畫一個 X」). The skill drafts a Chinese + English prompt pair, iterates with the user until they explicitly approve, then dispatches Codex CLI ($imagegen skill, codex built-in image_gen) in the background, monitors progress, converts the result to a jpg in the current working directory, and writes a sidecar prompt log. Does text-to-image AND img2img — drop a reference image (on-disk file) and it runs Codex `-i` to lock a face/character across scenes."
-version: 0.3.2
+version: 0.3.3
 triggers:
   - "叫 gpt 生圖"
   - "叫gpt生圖"
@@ -131,7 +131,7 @@ You are a prompt-crafting partner who turns the user's loose Chinese description
 
 ```bash
 # 時間戳 + 收圖錨點 marker（給 Step 5a 用 `find -newer` 比對）
-# 🔴 用實體 marker 檔、不用 epoch — macOS BSD find 的 `-newermt "@epoch"` 會 silently 假陰性
+# 🔴 一律實體 marker 檔 + `-newer`，絕不用 `-newermt`：macOS BSD find 對 `-newermt` 的 @epoch 與相對時間（如 '-30 minutes'）都會 silently 假陰性
 TS=$(date +%Y%m%d_%H%M%S)
 START_MARKER="/tmp/codex_imagegen_${TS}.marker"
 
@@ -189,6 +189,11 @@ codex exec "<英文 prompt 內容> \$imagegen" \
 > 2. 圖落在**巢狀** `~/.codex/generated_images/<session-id>/ig_*.png`，不是平鋪。
 > 3. 固定輸出 **png**（無法指定格式）→ 交付前自行轉 jpg。
 
+> ⚠️ **0.136.0 版差異（PR #24972「native image artifact completion pipeline」重寫出圖管線、實測對齊）**：
+> 1. 圖**仍然**落 `~/.codex/generated_images/<session-id>/ig_*.png`（0.136.0 實測確認、Step 5a 的 `find -newer marker` 照舊有效）—— 別誤信「0.136 不再寫 generated_images」這類推論，**自己 `find` 一下就知道**。
+> 2. **同時**圖會以 base64 嵌進 session rollout JSONL（`~/.codex/sessions/<date>/rollout-*.jsonl` 的 `image_generation_call` / `image_generation_end` 的 `result` 欄）。萬一哪天 `generated_images` 撈空，這是**最後手段** fallback（解 base64 還原 png），但屬未文件化、隨版本可能再變、別當主路。
+> 3. **更穩的官方文件作法（建議長期改用、跨版本不靠猜目錄）**：prompt 末尾明寫 `Save the final image as <name>.png in the current directory.` ＋ 跑 `codex exec -C <輸出夾> --enable image_generation --sandbox workspace-write …`，讓圖直接落你指定的 cwd。**沒有 output-dir flag**，`-C` / `--add-dir` + prompt 指示是唯一控制輸出位置的槓桿（0.136 的「local image attachments expose file paths to model」#25944 就是為了讓這條 save-path 流更可靠）。
+
 ### Step 4c: 非阻塞等待（讓出主線程，靠 task 完成通知喚回）
 
 codex 這條 image_gen flow **每張要跑 2-3 分鐘**（先跑 reasoning 再生圖）。Step 4b 既然 `run_in_background: true`，就**讓出控制權給 user、這一輪收尾**，別在前景 `sleep N; tail` 輪詢 —— 那會卡死主線程、user 不能講話（實戰踩過、user 抱怨「太久了 / 是不是當機」）。
@@ -218,8 +223,10 @@ Codex 跑起來了，背景生圖中（這條 flow 一般 2-3 分鐘），跑完
 SRC_PNG=$(find ~/.codex/generated_images -type f -iname '*.png' -newer "$START_MARKER" 2>/dev/null | xargs ls -t 2>/dev/null | head -1)
 ```
 
-- 🔴 **絕不用 `-newermt "@$EPOCH"`**：macOS BSD find 對 `@epoch` 格式會 **silently 假陰性**（找不到其實已生好的圖、誤判「沒 PNG」跳 Step 6，但圖其實都在）。GNU find 才吃 `@epoch`、BSD 不穩。改用 **`-newer <實體 marker 檔>`**（BSD/GNU 皆穩）。
+- 🔴 **絕不用 `-newermt`（任何形式）**：macOS BSD find 對 `-newermt` 的 `@epoch` **與**相對時間（如 `'-30 minutes'`）都會 **silently 假陰性**（找不到其實已生好的圖、誤判「沒 PNG」跳 Step 6，但圖其實都在）。GNU find 才穩、BSD 不穩。一律改用 **`-newer <實體 marker 檔>`**（BSD/GNU 皆穩）。
+- 🔴 **在 `~/.codex/generated_images` 找，別在 cwd / repo 內 `find .`** —— 圖落 codex home 不在你的工作目錄（除非走上面 prompt-save `-C` 法）。搜錯目錄會誤判「沒圖」。
 - **用 `find` 不用 glob**：巢狀目錄要遞迴，且空 glob 在 zsh 會 `no matches found` 中止（踩過）。
+- **`generated_images` 真的撈空才動 fallback**：解 `~/.codex/sessions/<date>/rollout-*.jsonl` 裡 `image_generation_call` 的 base64 `result`（見 Step 4b 0.136 註）。未文件化、最後手段。
 - session id 那條路（grep log 的 `session id:`）**不要用** — log 有 ANSI 色碼夾在 `session id:` 跟 uuid 之間，regex 易撲空、反而脆弱。
 - `SRC_PNG` 抓空 → codex 大概率失敗，跳 Step 6。
 
@@ -311,7 +318,9 @@ rm -f "$LAST_MSG" "$LOG_FILE" "$START_MARKER"
 - ❌ 用 `cp` 不用 `mv` 搬 codex 中繼檔
 - ❌ 依賴 `LAST_MSG` grep 圖片路徑收圖（0.134 起 codex 不吐路徑、此法必撲空）
 - ❌ 用 shell glob（`ls $DIR/*.png`）收圖（巢狀目錄漏抓 + 空 glob 在 zsh 中止）→ 改 `find … -newer <marker檔>`
-- ❌ 收圖用 `find -newermt "@$EPOCH"`（macOS BSD find 對 `@epoch` silently 假陰性、誤判「沒圖」其實都生好了）→ 改 launch 前 `touch` marker + `find -newer "$MARKER"`
+- ❌ 收圖用 `find -newermt`（任何形式：`@epoch` 或相對 `'-30 minutes'`，macOS BSD find 都 silently 假陰性、誤判「沒圖」其實都生好了）→ 改 launch 前 `touch` marker + `find -newer "$MARKER"`
+- ❌ 在 cwd / repo 內 `find .` 找 codex 生成圖（圖落 `~/.codex/generated_images/<session>/`、不在 cwd）→ 搜 codex home，或改走 prompt-save `-C` 法讓圖落 cwd
+- ❌ 把 subagent / 道聽塗說的「codex 新版不寫 generated_images 了」當事實就改流程 → 先本機 `find` 實證再說（0.136 實測仍寫）
 - ❌ 生完自動 `open` 圖（user 不要）
 - ❌ sidecar 寫死 `codex_model: gpt-image-2`（實際是 log 裡的 model）
 - ❌ 失敗自動重試（codex 失敗通常是 prompt 本身問題或 quota，重試只浪費 token）
