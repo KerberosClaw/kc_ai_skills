@@ -1,7 +1,7 @@
 ---
 name: gpt-image-gen
 description: "Use when the user asks to generate an image via GPT/Codex (e.g. 「叫 gpt 生圖」「幫我用 gpt 生圖」「gpt 畫一個 X」). The skill drafts a Chinese + English prompt pair, iterates with the user until they explicitly approve, then dispatches Codex CLI ($imagegen skill, codex built-in image_gen) in the background, monitors progress, converts the result to a jpg in the current working directory, and writes a sidecar prompt log. Does text-to-image AND img2img — drop a reference image (on-disk file) and it runs Codex `-i` to lock a face/character across scenes."
-version: 0.3.1
+version: 0.3.2
 triggers:
   - "叫 gpt 生圖"
   - "叫gpt生圖"
@@ -130,9 +130,10 @@ You are a prompt-crafting partner who turns the user's loose Chinese description
 ### Step 4a: 組路徑與檔名
 
 ```bash
-# 時間戳 + 啟動 epoch（START_EPOCH 給 Step 5a 收圖用）
+# 時間戳 + 收圖錨點 marker（給 Step 5a 用 `find -newer` 比對）
+# 🔴 用實體 marker 檔、不用 epoch — macOS BSD find 的 `-newermt "@epoch"` 會 silently 假陰性
 TS=$(date +%Y%m%d_%H%M%S)
-START_EPOCH=$(date +%s)
+START_MARKER="/tmp/codex_imagegen_${TS}.marker"
 
 # slug：從中文 prompt 抽 1-3 個關鍵詞，連字號連接，去掉空白與標點
 # 範例：「一隻棕熊在雪山頂看日出」→ "brown-bear-summit-sunrise"
@@ -151,6 +152,8 @@ OUT_JPG="$OUT_DIR/${TS}_${SLUG}.jpg"      # 最終交付（jpg q85）
 OUT_SIDECAR="$OUT_DIR/${TS}_${SLUG}.prompt.md"
 LAST_MSG="/tmp/codex_imagegen_${TS}.lastmsg"
 LOG_FILE="/tmp/codex_imagegen_${TS}.log"
+
+touch "$START_MARKER"   # 收圖錨點：codex launch 前一刻 touch，Step 5a 用 find -newer 比這個
 ```
 
 ### Step 4b: 背景啟動 codex exec
@@ -209,12 +212,13 @@ Codex 跑起來了，背景生圖中（這條 flow 一般 2-3 分鐘），跑完
 
 ### Step 5a: 收圖（以 mtime 為錨，不依賴 LAST_MSG）
 
-0.134.0 起 LAST_MSG 不吐路徑、圖又落巢狀 session 目錄（見 Step 4b 警告），所以**用啟動前記下的 `START_EPOCH` 遞迴找之後最新的 png**：
+0.134.0 起 LAST_MSG 不吐路徑、圖又落巢狀 session 目錄（見 Step 4b 警告），所以**用 launch 前 touch 的 `$START_MARKER` 檔 `-newer` 比對、遞迴找之後最新的 png**：
 
 ```bash
-SRC_PNG=$(find ~/.codex/generated_images -type f -iname '*.png' -newermt "@$START_EPOCH" 2>/dev/null | xargs ls -t 2>/dev/null | head -1)
+SRC_PNG=$(find ~/.codex/generated_images -type f -iname '*.png' -newer "$START_MARKER" 2>/dev/null | xargs ls -t 2>/dev/null | head -1)
 ```
 
+- 🔴 **絕不用 `-newermt "@$EPOCH"`**：macOS BSD find 對 `@epoch` 格式會 **silently 假陰性**（找不到其實已生好的圖、誤判「沒 PNG」跳 Step 6，但圖其實都在）。GNU find 才吃 `@epoch`、BSD 不穩。改用 **`-newer <實體 marker 檔>`**（BSD/GNU 皆穩）。
 - **用 `find` 不用 glob**：巢狀目錄要遞迴，且空 glob 在 zsh 會 `no matches found` 中止（踩過）。
 - session id 那條路（grep log 的 `session id:`）**不要用** — log 有 ANSI 色碼夾在 `session id:` 跟 uuid 之間，regex 易撲空、反而脆弱。
 - `SRC_PNG` 抓空 → codex 大概率失敗，跳 Step 6。
@@ -290,7 +294,7 @@ output_image: <$OUT_JPG 絕對路徑>
 
 清掉中繼檔：
 ```bash
-rm -f "$LAST_MSG" "$LOG_FILE"
+rm -f "$LAST_MSG" "$LOG_FILE" "$START_MARKER"
 ```
 
 ---
@@ -306,7 +310,8 @@ rm -f "$LAST_MSG" "$LOG_FILE"
 - ❌ 圖搬到 cwd 根但 cwd 是 git repo（會雜進 git status / 容易誤 commit）
 - ❌ 用 `cp` 不用 `mv` 搬 codex 中繼檔
 - ❌ 依賴 `LAST_MSG` grep 圖片路徑收圖（0.134 起 codex 不吐路徑、此法必撲空）
-- ❌ 用 shell glob（`ls $DIR/*.png`）收圖（巢狀目錄漏抓 + 空 glob 在 zsh 中止）→ 改 `find -newermt`
+- ❌ 用 shell glob（`ls $DIR/*.png`）收圖（巢狀目錄漏抓 + 空 glob 在 zsh 中止）→ 改 `find … -newer <marker檔>`
+- ❌ 收圖用 `find -newermt "@$EPOCH"`（macOS BSD find 對 `@epoch` silently 假陰性、誤判「沒圖」其實都生好了）→ 改 launch 前 `touch` marker + `find -newer "$MARKER"`
 - ❌ 生完自動 `open` 圖（user 不要）
 - ❌ sidecar 寫死 `codex_model: gpt-image-2`（實際是 log 裡的 model）
 - ❌ 失敗自動重試（codex 失敗通常是 prompt 本身問題或 quota，重試只浪費 token）
