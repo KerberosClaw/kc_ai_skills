@@ -1,7 +1,7 @@
 ---
 name: llm-wiki-lint
 description: "Use when the user wants to lint a repo following the Karpathy LLM Wiki pattern (raw/ + wiki/ + SCHEMA.md / index.md / log.md). The skill detects path, scans wiki pages + schema layer, reports frontmatter gaps, broken in-body links, source traceability breaks, stale claims, orphan pages, index synopsis contradictions, and SCHEMA-vs-reality drift. Phase 1 is read-only report; Phase 2 (fix + log.md LINT entry) only runs after the user explicitly approves."
-version: 0.3.0
+version: 0.3.1
 triggers: ["/llm-wiki-lint", "llm wiki lint", "wiki lint", "掃 wiki", "wiki 健檢"]
 argument-hint: "[path]"
 ---
@@ -61,10 +61,11 @@ ls "$WIKI_PATH/log.md" 2>/dev/null   || echo "WARN: log.md 不存在"
 
 ```bash
 find "$WIKI_PATH/wiki" -maxdepth 1 -name '*.md' -type f
+find "$WIKI_PATH/wiki" -mindepth 1 -maxdepth 1 -type d   # 子目錄偵測 — 上面那條只看 .md，抓不到目錄
 ```
 
 **包含**：
-- `<path>/wiki/*.md` — 所有主題頁（有子目錄時列出並在報告標註，等 user 決定是否納入）
+- `<path>/wiki/*.md` — 所有主題頁（第二條指令找到子目錄時列出並在報告標註，等 user 決定是否納入）
 - `<path>/SCHEMA.md` / `index.md` / `log.md` — schema 層
 - `<path>/raw/**` — 存在性檢查（gitignored，本地才看得到）
 
@@ -97,8 +98,8 @@ find "$WIKI_PATH/wiki" -maxdepth 1 -name '*.md' -type f
 python3 - <<'EOF'
 import re, glob
 for f in sorted(glob.glob("wiki/*.md")):
-    s = open(f, encoding="utf-8").read()
-    m = re.match(r"^---\n(.*?)\n---\n", s, re.S)
+    s = open(f, encoding="utf-8-sig").read()   # utf-8-sig 吃掉 BOM；\r?\n 容忍 CRLF（Windows 編輯過的檔）
+    m = re.match(r"^---\r?\n(.*?)\r?\n---\r?\n", s, re.S)
     if not m: print(f"NO-FRONTMATTER {f}"); continue
     fm = m.group(1)
     for field in ("title", "type", "last_updated", "sources"):
@@ -123,18 +124,22 @@ index 每列通常帶「一句話」摘要。**逐列對照該頁當前核心結
 
 掃每頁 body 的兩種站內連結，目標不存在 → 🔴 Error：
 
-- markdown link：`[...](some_page.md)` → `wiki/some_page.md` 必須存在
-- wikilink：`[[some_page]]` → `wiki/some_page.md` 必須存在
+- markdown link：`[...](some_page.md)` → `wiki/some_page.md` 必須存在（含連字號 / 大寫 / `./` 前綴 / `#anchor` 變體）
+- wikilink：`[[some_page]]` 與別名形式 `[[some_page|顯示文字]]` → `wiki/some_page.md` 必須存在
+
+**捕捉要寬不要窄** — 斷鏈檢查的失敗模式是「沉默通過」：regex 漏掉的連結形式不會報錯，user 會誤以為全綠。寬鬆捕捉任何 `.md` 目標，再正規化比對：
 
 ```bash
 python3 - <<'EOF'
 import re, glob, os
 for f in sorted(glob.glob("wiki/*.md")):
-    s = open(f, encoding="utf-8").read()
-    for t in re.findall(r"\]\(([a-z_0-9]+\.md)\)", s):
-        if not os.path.exists(f"wiki/{t}"): print(f"BROKEN-LINK {f} -> {t}")
-    for t in re.findall(r"\[\[([a-z_0-9]+)\]\]", s):
-        if not os.path.exists(f"wiki/{t}.md"): print(f"BROKEN-WIKILINK {f} -> {t}")
+    s = open(f, encoding="utf-8-sig").read()
+    for t in re.findall(r"\]\(([^)#\s]+\.md)(?:#[^)]*)?\)", s):
+        if t.startswith(("http://", "https://")): continue   # 外部連結不在此檢查
+        rel = t[2:] if t.startswith("./") else t
+        if not os.path.exists(os.path.join("wiki", rel)): print(f"BROKEN-LINK {f} -> {t}")
+    for t in re.findall(r"\[\[([^\]|#]+)(?:#[^\]|]*)?(?:\|[^\]]*)?\]\]", s):
+        if not os.path.exists(f"wiki/{t.strip()}.md"): print(f"BROKEN-WIKILINK {f} -> {t}")
 EOF
 ```
 
@@ -144,7 +149,9 @@ EOF
 |------|------|
 | git 最後 commit 日 vs frontmatter `last_updated` 差 > 14 天 | 🟡 Warning（frontmatter 沒跟上實際改動） |
 | frontmatter `last_updated` > 60 天 且 `type` ∈ {overview, synthesis} | 🟡 Warning（建議 review） |
-| 內文含「待 XXX 驗證」「規劃中」「尚未」+ `last_updated` > 30 天 | 🟡 Warning（可能已有進展沒回寫） |
+| 內文含未完成標記 + `last_updated` > 30 天 | 🟡 Warning（可能已有進展沒回寫） |
+
+未完成標記的關鍵詞清單**跟 wiki 語言對齊**（Rule 9）：中文 wiki 掃「待 XXX 驗證」「規劃中」「尚未」；英文 wiki 掃 "TBD" / "pending" / "not yet" / "WIP" / "to be verified"。
 
 ```bash
 # git repo 用 commit 日（mtime 在 clone / checkout 後不可靠）；非 git repo 才 fallback stat
@@ -153,8 +160,8 @@ git -C "$WIKI_PATH" log -1 --format=%cs -- "wiki/<page>.md"
 
 ### Step 2h: Orphan pages（孤立頁面）
 
-- 一頁**無任何入站 cross-ref**（其他 wiki 頁都沒連到它）→ 🟡 Warning
-- 例外：`index.md` 提到即不算 orphan
+- 一頁**沒有任何其他主題頁連到它**（只有 `index.md` 列出）→ 🟡 Warning
+- `index.md` **不算**入站 ref — index 列出是 Step 2d 的強制要求，每頁都有；若把它當例外，凡通過 2d 的頁面永遠不會是 orphan，本檢查形同虛設
 
 ### Step 2i: Data gaps（資料缺口）
 
