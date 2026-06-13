@@ -1,7 +1,7 @@
 ---
 name: loop-engineer
 description: "Use when the user wants to set up an UNATTENDED, goal-driven evaluator-optimizer loop (generate → grade → iterate by reason-code) that a fresh-session agent runs hands-off while the human only watches push notifications. Interactively locks the spec via forcing questions, then emits a self-contained dispatch markdown + a channel-agnostic traffic-light notification protocol. NOT a time scheduler (that is /loop or cron) and NOT a recurring-push registrar (that is skill-cron) — this authors the one-shot unattended-loop spec a fresh session can run blind."
-version: 0.1.0
+version: 0.2.0
 triggers: ["/loop-engineer", "loop engineering", "loop engineer", "設計無人值守loop", "固化loop", "unattended loop", "evaluator-optimizer loop", "dispatch 換手文件"]
 ---
 
@@ -83,6 +83,17 @@ agent **絕對不能做**什麼?scope 邊界、禁止動作、只有人能決定
   - ✅ pre-flight 指令：`<跑通知測通的指令>`
   - ▶️ 開跑指令：`<丟給無人值守 session 的指令>`
   - 👀 之後 user 只顧 🟢🟡🔴、在 gate 挑最終選定。
+
+## 產出後：對抗審查（互動詢問，預設提供）
+
+dispatch 寫好後（尤其它會進 repo 或交給無人值守跑），**主動問 user 要不要先對抗審查再交付**（別等 user 自己喊）：
+
+> 「dispatch 已產生在 `<path>`，要先派對抗審查再交付嗎?
+> 1. 派 sub-agent 審　2. 不用　3. 其他（自訂輪數/順序/reviewer，例「兩輪，先 sub-agent 後 codex」）」
+
+- user 選 **3** → 照指定跑（例：先獨立 LLM sub-agent 一輪 → 再 codex 一輪）。
+- 每位 reviewer：**獨立、預設找碴**，先 🔴 **LEAK 獵殺**（dispatch 若進 repo：私密/credential/真實路徑機器名/內部專案，連間接指紋都抓）再 **品質**（spec 有沒有洞、約束/停止條件/可重現齊不齊、能不能 blind 跑）。
+- 多輪＝修完一輪再審下一輪；全過才交付。選 2 直接交付。
 
 ## Anti-patterns
 
