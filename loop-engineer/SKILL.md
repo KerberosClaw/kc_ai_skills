@@ -1,7 +1,7 @@
 ---
 name: loop-engineer
 description: "Use when the user wants to set up an UNATTENDED, goal-driven evaluator-optimizer loop (generate → grade → iterate by reason-code) that a fresh-session agent runs hands-off while the human only watches push notifications. Interactively locks the spec via forcing questions, then emits a self-contained dispatch markdown + a channel-agnostic traffic-light notification protocol. NOT a time scheduler (that is /loop or cron) and NOT a recurring-push registrar (that is skill-cron) — this authors the one-shot unattended-loop spec a fresh session can run blind."
-version: 0.2.0
+version: 0.2.1
 triggers: ["/loop-engineer", "loop engineering", "loop engineer", "設計無人值守loop", "固化loop", "unattended loop", "evaluator-optimizer loop", "dispatch 換手文件"]
 ---
 
@@ -92,7 +92,11 @@ dispatch 寫好後（尤其它會進 repo 或交給無人值守跑），**主動
 > 1. 派 sub-agent 審　2. 不用　3. 其他（自訂輪數/順序/reviewer，例「兩輪，先 sub-agent 後 codex」）」
 
 - user 選 **3** → 照指定跑（例：先獨立 LLM sub-agent 一輪 → 再 codex 一輪）。
-- 每位 reviewer：**獨立、預設找碴**，先 🔴 **LEAK 獵殺**（dispatch 若進 repo：私密/credential/真實路徑機器名/內部專案，連間接指紋都抓）再 **品質**（spec 有沒有洞、約束/停止條件/可重現齊不齊、能不能 blind 跑）。
+- 每位 reviewer：**獨立、預設找碴**，先 LEAK 再品質。🔴 **LEAK 獵殺要看 dispatch 的 Visibility（§0）分流**，別把私有規格誤判成洩漏：
+  - **一律抓**：寫死的 secret（token / key / 密碼 / webhook URL / chat_id / handle）→ 任何 dispatch 都該走 env/config、不該出現在文件裡。
+  - **只有 Visibility = 公開/分享 才抓**：真實機器名 / 路徑 / 服務 / 內部專案名。這些在「私有/內部」dispatch 裡是**必要的操作規格、不是 leak**（PRD 型本來就要 agent 去某機器某服務做事）；只有要公開/分享時才抽象或 redact。
+  - ⚠️ **別把私有 dispatch 的必要操作細節當成 leak 要求拿掉**（會把能跑的 spec 改爛、agent 也困惑）。
+- **品質**（不分 Visibility）：spec 有沒有洞、約束/停止條件/可重現齊不齊、能不能 blind 跑。
 - 多輪＝修完一輪再審下一輪；全過才交付。選 2 直接交付。
 
 ## Anti-patterns

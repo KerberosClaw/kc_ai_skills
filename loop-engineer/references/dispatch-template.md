@@ -1,9 +1,10 @@
 # `<task>` Dispatch — `<one-line goal>`
 
 > Self-contained hand-off spec for an **unattended evaluator-optimizer loop**. A fresh-session agent runs this **blind**; the human only watches 🟢🟡🔴 notifications and picks at gates. Fill every `<...>`; leave **no `TBD`** (a vague field = an un-runnable spec).
-> 🔴 This file may be committed — **never write secrets into it** (tokens/ids/URLs/handles), and prefer relative paths; if an absolute path is unavoidable, keep this dispatch private / redact before sharing.
+> 🔴 **Secrets never go in this file** (tokens / keys / passwords / webhook URLs / chat_ids / handles → env or config, always). **Operational references** (hostnames / paths / service & internal-project names) are *fine in a private/internal dispatch* — that's the spec, a PRD-type loop legitimately tells the agent which machine/service to hit — but become a **leak if the dispatch is shared/public**, so abstract or redact them then. Declare which in §0 **Visibility**.
 
 ## 0. Goal & scope
+- **Visibility:** `<private/internal — real infra refs OK as spec | shared/public — must abstract/redact infra refs>`
 - **Goal:** `<measurable target — what "done/good" means>`
 - **Scope this run:** `<exactly which items; what is explicitly out>`
 
