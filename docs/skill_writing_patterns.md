@@ -187,6 +187,19 @@ argument-hint: '"<project description>" [--port <number>] [--max-iterations <num
 
 ---
 
+## 發布前：對抗審查（互動詢問；public skill 必做）
+
+skill 寫完、**release 前主動問 user 要不要對抗審查**（不要等 user 自己喊——這是 leak 防線）：
+
+> 「skill 寫好了，要先派對抗審查再 release 嗎?
+> 1. 派 sub-agent 審　2. 不用　3. 其他（自訂輪數/順序/reviewer，例「兩輪，先 sub-agent 後 codex」）」
+
+- 每位 reviewer：**獨立、預設找碴**，分兩塊——
+  - 🔴 **LEAK 獵殺（public skill 紅線）**：NSFW／公司·客戶·同事／個人身份／真實 credential（token·chat_id·webhook）／真實機器名·絕對路徑·repo·IP，連「間接暗示私密來源」的指紋都抓。**範例一律抽象。**
+  - **品質**：pattern 合規（上述那些）＋ bug ＋ blind-runnable。
+- 多輪：修完一輪再審下一輪，全過才 release。
+- 🔴 **為什麼必做**：public skill 一旦 leak 就追不回（曾發生過）。codex + 獨立 LLM sub-agent 交叉審最穩。
+
 ## 套用 checklist（寫新 skill 時）
 
 ```
@@ -213,6 +226,9 @@ argument-hint: '"<project description>" [--port <number>] [--max-iterations <num
 - [ ] 長 workflow / 會跨 session？→ State persistence + resume 設計
 - [ ] 接 $ARGUMENTS？→ argument-hint + flag 說明
 - [ ] 自我改進 / iteration loop？→ cross-iteration history awareness
+
+[發布前]
+- [ ] release 前問 user 要不要對抗審查（public skill 必做：leak 掃 + 品質；codex + 獨立 sub-agent 交叉、可多輪）
 ```
 
 ---
