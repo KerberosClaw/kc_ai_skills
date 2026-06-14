@@ -1,6 +1,6 @@
 #!/bin/bash
 # notify.sh — channel-agnostic traffic-light notifier for unattended loops.
-# Reference helper for the loop-engineer skill. Copy into your project, wire the
+# Reference helper for the goal-engineer skill. Copy into your project, wire the
 # channel + credentials per your dispatch doc. NOT meant to run from the skill repo.
 #
 # Usage:

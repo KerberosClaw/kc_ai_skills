@@ -31,7 +31,7 @@
 | [llm-wiki-lint](llm-wiki-lint/) | Karpathy 的 LLM Wiki pattern 有個盲點 — 超過 15 頁之後，陳舊聲明、孤立 cross-ref、缺失主題會默默腐爛。這個 skill 是 lint pass：矛盾、source traceability、data gap、frontmatter 完整性、index drift。針對 `raw/` + `wiki/` + `schema` 三層 repo。純 read-only。搭配 [memory-lint](memory-lint/) 做 full-stack AI 知識庫保健 |
 | [gpt-image-gen](gpt-image-gen/) | 把 Codex 哄去幫你生圖。先擬一份精準的雙語 prompt，跟你來回改到你明確說「生」，才真的呼叫 Codex CLI 文生圖 — 那道硬拍板閘門是因為「看起來不錯」不等於「生」，而每張圖都燒真金白銀的額度。文生圖 + 圖生圖（丟張本機參考圖就能 codex `-i` 鎖臉/鎖角色），給你一張 jpg，而且絕不主動把預覽視窗糊你臉上 |
 | [character-lora](character-lora/) | 把原創角色從「一個點子 + 一張定版 look」帶到一顆能跨角度跨場景守住身份的 LoRA。orchestrate 整條 pipeline — 定義 → 多角度資料集（出圖 delegate 給 gpt-image-gen）→ caption → 該 base 的訓前功課 → 本機 GPU 訓練 → 驗收 — 每個燒錢步驟都 gate。鐵律：訓練前先讀那個 base 自己的訓練文件，憑印象配參數就是角色每次「抽籤」的元兇 |
-| [loop-engineer](loop-engineer/) | 給那種「想丟給 agent 自己磨一整晚、又不想全程盯著」的場景。它用訪談式問答幫你把一條目標驅動的 evaluator-optimizer loop 釘死（生成 → 自己評 → 依原因碼迭代），吐一份新 session 能 blind 執行的 dispatch 文件，你只要看著紅黃綠燈通知滾進來就好。不是 cron 定時器、也不是定時推播註冊器 — 它是那顆「去把它搞定、真的卡住才 ping 我」的按鈕。通知通道隨你換（Telegram/Discord/Slack/iMessage），而且內建一道「ship 前要不要先對抗審查?」的閘 — 因為我們自己每次都忘記問 |
+| [goal-engineer](goal-engineer/) | 給那種「想丟給 agent 自己磨一整晚、又不想全程盯著」的場景。它用訪談式問答幫你把一條目標驅動的 evaluator-optimizer loop（generate-and-select 型:產候選 → 依 rubric 評 → 依原因碼迭代 → 你挑最終那個）釘死，吐一份新 session 能 blind 執行的 dispatch 文件，你只要看著紅黃綠燈通知滾進來就好。它是**寫規格的上游、不是引擎** — dispatch 丟給 Claude Code 內建的 `/goal`、headless `claude -p`、或任何無人值守 agent 去跑。不是 `/goal` 本身、不是 build-to-spec 的 PRD 作者（那是 prd-create）、也不是 cron 定時器。通知通道隨你換（Telegram/Discord/Slack/iMessage），而且內建一道「ship 前要不要先對抗審查?」的閘 — 因為我們自己每次都忘記問 |
 | [conference-report](conference-report/) | 你去了場研討會，錄了演講、拍了投影片，回家抱著一堆音檔加糊掉的照片，外帶一句「改天再來整理」的空頭支票。這個 skill 幫你重建忠實的逐場筆記（投影片畫面 + 講者逐字稿，還會標出 Whisper 的幻覺，免得你引用到機器的白日夢），然後在動筆前先問清楚你到底要哪種報告 — 單場、整天、還是跨天綜合 |
 
 ## 安裝
