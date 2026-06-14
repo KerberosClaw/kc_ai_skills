@@ -1,7 +1,7 @@
 ---
 name: prd-create
-description: "Use when user wants to draft a PRD (Product Requirements Document) from raw input (meeting transcripts, hand-waved descriptions, scattered decisions). Workflow: load org's PRD Guideline + writing discipline → ingest raw input → quiz user numbered-list iterate to fill §1-§15 → draft v0.1 → handle stakeholder merge (review feedback, surface conflicts) → lock v1.0 + sanitize per ADO publication contract → publish to ADO Wiki. Pure prompt-driven — Claude is the runtime, no Python helper. Trigger phrases: 寫 PRD / PRD 撰寫 / prd-create / 初版 PRD / 起 PRD."
-version: 0.1.0
+description: "Use when user wants to draft a PRD (Product Requirements Document) from raw input (meeting transcripts, hand-waved descriptions, scattered decisions). Workflow: load org's PRD Guideline + writing discipline → lock execution mode (human-run vs unattended-agent-run) → ingest raw input → quiz user numbered-list iterate to fill §1-§15 → draft v0.1 → handle stakeholder merge (review feedback, surface conflicts) → lock v1.0 + sanitize per ADO publication contract → publish to ADO Wiki. For an agent-run PRD, §13 carries the unattended-execution discipline (machine-checkable AC + traffic-light + 3-exits + stop-and-ask), aligned with goal-engineer's loop-run-protocol. Pure prompt-driven — Claude is the runtime, no Python helper. Trigger phrases: 寫 PRD / PRD 撰寫 / prd-create / 初版 PRD / 起 PRD."
+version: 0.2.0
 status: mvp
 triggers:
   - "prd-create"
@@ -32,7 +32,7 @@ User 必須先提供：
   - `AZDO_PROJECT`：例 `your-project`
   - `AZURE_DEVOPS_EXT_PAT`：ADO PAT（Wiki Read/Write scope）
 
-任一 publish 必要 prereq 缺，提示 user 看 README.md Prerequisites 並停在 Phase 5（不嘗試 publish）。
+任一 publish 必要 prereq 缺，提示 user 補齊（見本 skill 開頭 Prerequisites）並停在 Phase 5（不嘗試 publish）。
 
 **CRITICAL**: PAT 永遠透過 `AZURE_DEVOPS_EXT_PAT` env var 注入，**絕不**放 argv。
 
@@ -49,7 +49,9 @@ User 觸發詞如「寫 PRD」「prd-create」「起 PRD」時走這條。
 - Industry-standard term 保留英文（JWT / OAuth / API / token）
 - POC 走簡化版 + §15 Deviation 段標明偏離 Guideline 的點
 
-告知 user：「已 load Guideline + 撰寫紀律，準備接 raw input」。
+**同時鎖定執行模式**：這份 PRD 是 **人跑** 還是 **agent 無人值守跑**?（POC / Production scope 也一併確認）。agent-run 會讓 §13 Test Strategy 額外承載無人值守執行紀律（見 Phase 4）— 缺這資訊就先問，不要預設。
+
+告知 user：「已 load Guideline + 撰寫紀律 + 鎖定執行模式，準備接 raw input」。
 
 ### Phase 2: Ingest raw input
 
@@ -111,6 +113,10 @@ Claude 讀進來，識別：
 14. Open Questions
 15. Appendix（含 POC Deviation 段）
 ```
+
+**§13 Test Strategy 依執行模式分形**（Phase 1 鎖定的）：
+- **人跑** → 一般測試策略（測試層級 / 覆蓋率 / 驗收方式）。
+- **agent 無人值守跑** → §13 額外承載**無人值守執行紀律**：每條 AC 機器可檢核、紅綠燈通知（🟢🟡🔴 + pre-flight 測通才開跑）、3 出口（`NEEDS_INPUT`/`ESCALATE`/`REFUSE`）+ delta 防空轉、授權邊界 + stop-and-ask、可重現（recipe + run log）。這層紀律的**正典在 `goal-engineer/references/loop-run-protocol.md`**（內容無關、跨 skill 共用）;prd-create 內化同一份 checklist 進 §13、與其同步（per「algorithm 內化未 vendor」原則）。human-run 不帶這層。
 
 POC scope simplification：
 - 章末附 §15 Deviation 段，明列偏離 Guideline 的點 + 理由（如「§3.4 量化 NFR：POC 不適用 SLO 99.9%，改方向性敘述」）
@@ -233,8 +239,9 @@ Caller 不確定怎麼寫某章節時，可貼 fixture 對應段給 Claude 對�
 ## 跟其他 skill 的關係
 
 - **`prd-breakdown`（同 repo）**：拿 prd-create 產出的 PRD.md → 拆 vertical slice → push ADO tasks。Chain：`prd-create` → `prd-breakdown` → ADO
-- **`spec` skill（external）**：caller 自家開發 spec workflow（spec.md / plan.md / tasks.md / report.md）。`prd-create` 產出 PRD 作 input；`spec` 是「caller 自身 codebase 開發 spec」不是「產品需求 PRD」
-- 兩個 skill 透過 markdown 文件對接，不互相 import
+- **`spec` skill（同 repo）**：caller 自家開發 spec workflow（spec.md / plan.md / tasks.md / report.md）。`prd-create` 產出 PRD 作 input；`spec` 是「caller 自身 codebase 開發 spec」不是「產品需求 PRD」
+- **`goal-engineer`（同 repo）**：當 PRD 要交 agent 無人值守跑，§13 的執行紀律對齊它的 `references/loop-run-protocol.md`（同一份正典）。分工：prd-create 寫「build 什麼」、loop-run-protocol 寫「agent 怎麼無人值守跑 + 回報」。goal-engineer 本身做的是 generate-and-select dispatch（≠ build-to-spec PRD），兩者 archetype 不同
+- 這些 skill 透過 markdown 文件對接，不互相 import
 
 ## Important rules
 
@@ -250,6 +257,7 @@ Caller 不確定怎麼寫某章節時，可貼 fixture 對應段給 Claude 對�
 8. **No Python wrapper** — Claude 透過 Bash 直接 `az`；不寫 / 不召喚 Python helper script
 9. **Industry term retain English** — JWT / OAuth / API / token / WinForm / ONNX / mp4 等不譯
 10. **Public repo discipline** — 此 skill repo 為 public；fixtures 用 placeholders（無真名 / 真客戶 / 真政治 context）
+11. **執行模式分形** — Phase 1 先鎖定「人跑 / agent 跑」，缺則 quiz 不預設；agent-run PRD 的 §13 要帶無人值守執行紀律（對齊 `goal-engineer/references/loop-run-protocol.md`），human-run 不帶
 
 ## Acknowledgments
 
