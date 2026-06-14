@@ -1,11 +1,10 @@
 ---
 name: prd-breakdown
-description: "Use when user wants to break a PRD into Azure DevOps work items via vertical-slice plan. Workflow: read PRD → quiz user to lock durable decisions → draft slices with HITL/AFK + blocked_by → call az CLI directly via Bash to create items + Predecessor relations. Idempotent re-runs via fingerprint markers embedded in description. Pure prompt-driven — Claude is the runtime, no Python helper, no install ceremony. Trigger phrases: prd-breakdown / 拆 PRD / 切 vertical slice / 推 slice 到 ADO / kc_pm_kit 拆工作項目."
-version: 1.1.0
+description: "Use when user wants to break a PRD into Azure DevOps work items via vertical-slice plan. Workflow: read PRD → quiz user to lock durable decisions → draft slices with HITL/AFK + blocked_by → call az CLI directly via Bash to create items + Predecessor relations. Idempotent re-runs via fingerprint markers embedded in description. Pure prompt-driven — Claude is the runtime, no Python helper, no install ceremony. Trigger phrases: prd-breakdown / 拆 PRD / 切 vertical slice / 推 slice 到 ADO."
+version: 1.1.1
 status: stable
 triggers:
   - "prd-breakdown"
-  - "kc_pm_kit 拆工作項目"
   - "拆 PRD"
   - "切 vertical slice"
   - "推 slice 到 ADO"
@@ -36,7 +35,7 @@ User 必須先設好：
 
 ## Workflow A: PRD → vertical slices
 
-User 觸發詞如「拆 PRD」「kc_pm_kit 拆工作項目」「切 vertical slice」時走這條。
+User 觸發詞如「拆 PRD」「切 vertical slice」時走這條。
 
 ### Step A1. 偵測 ADO process template
 
@@ -114,7 +113,7 @@ Path 由 caller 指定，建議 `<feature>/plan.md` 或類似結構。Template �
 
 ## Workflow B: Push slices to ADO
 
-User 觸發詞如「推 slice 到 ADO」「kc_pm_kit 推上 ADO」時走這條。前置：plan.md 已存在 + user 給 parent PRD work item ID。
+User 觸發詞如「推 slice 到 ADO」時走這條。前置：plan.md 已存在 + user 給 parent PRD work item ID。
 
 ### Step B0. Confirm target environment
 
@@ -295,12 +294,6 @@ Push complete:
 ## Reference fixtures
 
 `tests/fixtures/example_prd.md` + `example_plan.md` 配對 example（**TODO list app MVP** 題材，公開無敏感）。Caller 看不確定怎麼寫 plan.md 時可貼這對給 Claude 對照。
-
-## 詳細文件
-
-- **README.md**：repo overview + install + acknowledgments
-- **docs/USAGE.md**：roadmap + 進階場景（如 daily standup、cross-sprint diff）
-- **CLAUDE.md**：repo 開發紀律（給寫 / 改 prd-breakdown 自身的人看）
 
 ## Important rules
 
