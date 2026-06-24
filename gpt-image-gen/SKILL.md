@@ -1,7 +1,7 @@
 ---
 name: gpt-image-gen
 description: "Use when the user asks to generate an image via GPT/Codex (e.g. 「叫 gpt 生圖」「幫我用 gpt 生圖」「gpt 畫一個 X」). The skill drafts a Chinese + English prompt pair, iterates with the user until they explicitly approve, then dispatches Codex CLI ($imagegen skill, codex built-in image_gen) in the background, monitors progress, converts the result to a jpg in the current working directory, and writes a sidecar prompt log. Does text-to-image AND img2img — drop a reference image (on-disk file) and it runs Codex `-i` to lock a face/character across scenes."
-version: 0.3.3
+version: 0.4.0
 triggers:
   - "叫 gpt 生圖"
   - "叫gpt生圖"
@@ -130,59 +130,63 @@ You are a prompt-crafting partner who turns the user's loose Chinese description
 ### Step 4a: 組路徑與檔名
 
 ```bash
-# 時間戳 + 收圖錨點 marker（給 Step 5a 用 `find -newer` 比對）
-# 🔴 一律實體 marker 檔 + `-newer`，絕不用 `-newermt`：macOS BSD find 對 `-newermt` 的 @epoch 與相對時間（如 '-30 minutes'）都會 silently 假陰性
 TS=$(date +%Y%m%d_%H%M%S)
-START_MARKER="/tmp/codex_imagegen_${TS}.marker"
+START_MARKER="/tmp/codex_imagegen_${TS}.marker"   # 只當 fallback 錨點（主路是 prompt-save，見 Step 4b/5a）
 
 # slug：從中文 prompt 抽 1-3 個關鍵詞，連字號連接，去掉空白與標點
 # 範例：「一隻棕熊在雪山頂看日出」→ "brown-bear-summit-sunrise"
 SLUG="<由你從中文 prompt 抽出>"
 
-# 判斷 cwd 是否 git repo
+# 輸出夾：cwd 是 git repo → ./generated_images/ 子夾（避免雜進 git 根）；否則 cwd 根
+# 🔴 這個路徑等下要叫 codex 自己寫進去 → 必須落在 sandbox 可寫範圍（cwd 內 or /tmp/$TMPDIR）
 if git -C "$PWD" rev-parse --git-dir >/dev/null 2>&1; then
   OUT_DIR="$PWD/generated_images"
-  mkdir -p "$OUT_DIR"
 else
   OUT_DIR="$PWD"
 fi
+mkdir -p "$OUT_DIR"
 
-OUT_PNG="$OUT_DIR/${TS}_${SLUG}.png"      # codex 原始 png（中繼，轉 jpg 後刪）
+OUT_PNG="$OUT_DIR/${TS}_${SLUG}.png"      # 🟢 主路：叫 codex 直接存這（prompt-save，見 Step 4b）
 OUT_JPG="$OUT_DIR/${TS}_${SLUG}.jpg"      # 最終交付（jpg q85）
 OUT_SIDECAR="$OUT_DIR/${TS}_${SLUG}.prompt.md"
 LAST_MSG="/tmp/codex_imagegen_${TS}.lastmsg"
 LOG_FILE="/tmp/codex_imagegen_${TS}.log"
 
-touch "$START_MARKER"   # 收圖錨點：codex launch 前一刻 touch，Step 5a 用 find -newer 比這個
+touch "$START_MARKER"   # fallback 用：萬一 codex 沒照存，Step 5a 退而用 find -newer 撈
 ```
 
 ### Step 4b: 背景啟動 codex exec
 
-用 `Bash` 工具，`run_in_background: true`：
+用 `Bash` 工具，`run_in_background: true`。**主路 = prompt-save**：在 prompt 裡直接叫 codex 用內建 image_gen、存到 `$OUT_PNG`、回報實際路徑（跨版本最穩，見下方 0.141.0 註）：
 
 ```bash
-# text2img：REF 留空。img2img：REF=底圖絕對路徑時自動帶 -i（prompt 仍當第一 positional）
-codex exec "<英文 prompt 內容> \$imagegen" \
+# text2img：REF 留空。img2img：REF=底圖絕對路徑時自動帶 -i（prompt 仍當第一 positional、-i 擺後）
+codex exec --skip-git-repo-check \
+  "用內建 image_gen 工具生圖，不要使用 scripts/image_gen.py，也不要使用 OPENAI_API_KEY。<英文 prompt 內容>。請把最終圖片存到 ${OUT_PNG}，完成後回報實際存檔的絕對路徑。" \
   ${REF:+-i "$REF"} \
   --sandbox workspace-write \
   --output-last-message "$LAST_MSG" \
   < /dev/null > "$LOG_FILE" 2>&1
 ```
-> img2img 時 `${REF:+-i "$REF"}` 只在 REF 有值時展開成 `-i "$REF"`；`< /dev/null` 防 codex 誤讀 stdin。
+> - **img2img** 時，prompt **開頭**再加一句身份鎖：「請參考附上的 Image #1 作為人物身份參考（同一個人，保持臉、鬍、體型一致）。」
+> - `${REF:+-i "$REF"}` 只在 REF 有值時展開成 `-i "$REF"`；`< /dev/null` 防 codex 誤讀 stdin。
 
-**Flag 註解**（codex-cli 0.134.0 實測對齊；新版本前先 `codex exec --help` 確認）：
+**Flag 註解**（codex-cli 0.141.0 實測對齊；新版本前先 `codex exec --help` 確認）：
 
-- **`--sandbox workspace-write`**：允許 codex 寫進 workspace（含 codex 把生成圖落地到 `~/.codex/generated_images/`）。
+- **`--skip-git-repo-check`**：讓 `codex exec` 在**非 git repo 的 cwd** 也能跑（不加會在非 repo 目錄報錯拒跑）。在 repo 內可省、但加著無害，當常駐。
+- **`--sandbox workspace-write`**：允許 codex 寫進 workspace（cwd ＋ `/tmp` ＋ `$TMPDIR`）—— prompt-save 的 `$OUT_PNG` 必須落在這範圍，否則寫檔被靜默擋。
 - **`codex exec` 沒有 `--ask-for-approval`** — 那 flag 只在 top-level `codex`，exec 預設就是 non-interactive never-ask，不需另指定。
 - **`--full-auto` 已 deprecated**（0.128.0 起），等同 `--sandbox workspace-write`。**不要用**。
-- **`-o, --output-last-message`**：把 codex 最後 assistant message 寫進指定檔，後續用來 parse 圖片實際路徑。
-- **`-i, --image <FILE>`**：img2img 用 — 有底圖時帶 `-i "$REF"`（鎖臉/角色一致，已實測可行）。⚠️ **`-i` 是 variadic `<FILE>...`**：prompt 必須當**第一個 positional 放最前**、`-i` 擺後面，否則 prompt 會被吃成第二張圖 → codex 沒 positional prompt → 轉讀 stdin → 失敗。
-- **批次/迴圈跑 codex 必加 `< /dev/null`**：在 `while read … done < file` 內跑 codex 會繼承迴圈 stdin（= prompt 檔）→ 一個 session 狂生多圖 + 吃掉 read fd。`< /dev/null` 切斷即解。多條並行各自獨立 `CODEX_HOME`（cp auth.json + config.toml）避免搶圖。
+- **`-o, --output-last-message`**：把 codex 最後 assistant message 寫進指定檔。**prompt-save 法下這檔會帶實際絕對路徑**（因為你在 prompt 叫它回報）→ Step 5a 可拿來交叉驗證。
+- **`-i, --image <FILE>`**：img2img 用 — 有底圖時帶 `-i "$REF"`（鎖臉/角色一致，已實測可行）。⚠️ **`-i` 是 variadic `<FILE>...`**：prompt 必須當**第一個 positional 放最前**、`-i` 擺後面，否則 prompt 會被吃成第二張圖 → codex 沒 positional prompt → 轉讀 stdin → 失敗。（Codex 官方範例把 `-i` 放 prompt 前，**別照抄**、會踩這雷。）
+- **沒有 output-dir flag**：控制輸出位置只有兩根槓桿 ——「prompt 內明寫存檔路徑」（主路）＋ `-C <workdir>` / `--add-dir`。
+- **批次/迴圈跑 codex 必加 `< /dev/null`**：在 `while read … done < file` 內跑 codex 會繼承迴圈 stdin（= prompt 檔）→ 一個 session 狂生多圖 + 吃掉 read fd。`< /dev/null` 切斷即解。多條並行各自獨立 `CODEX_HOME`（cp auth.json + config.toml）避免搶圖；🔴 `CODEX_HOME` 必須落 sandbox 可寫路徑（`/tmp/codex_stream_X`），別指到 cwd 外。
 
 **Prompt 字串注意**：
-- prompt 內的 `$imagegen` 在 bash 字串裡要 escape 成 `\$imagegen`，不然 shell 會把它當變數展開成空字串，codex 不會啟用 imagegen skill。
+- 用**自然語指示**叫 codex 走內建 image_gen（如上「用內建 image_gen 工具…」），不靠 `$imagegen` token —— 自然語更穩，也免去 `$` 被 shell 展開的坑。若硬要用 `$imagegen` token，bash 字串內要 escape 成 `\$imagegen`。
 - prompt 用 double-quote 包，內含的 `"` / `` ` `` / `$` 全部 escape。
-- 不要加 `--json`（log 變 JSONL，反而難用 grep / Monitor 監看）。
+- 「不要使用 scripts/image_gen.py / OPENAI_API_KEY」是**防呆**：若 cwd repo 內有同名生圖 script，codex 可能誤抓 → 明擋。
+- 不要加 `--json`（log 變 JSONL，反而難用 grep 監看）。
 
 > ⚠️ **0.134.0 版差異（踩過、直接影響 Step 5 收圖）**：codex 改用 `gpt-5.5` orchestrator + 內建 `image_gen` flow，不再是 gpt-image-2，連帶兩個 output 形狀變了：
 > 1. `--output-last-message` **不再吐圖片路徑**（只寫一句「Generated the image...」）→ 別再 grep LAST_MSG 抓路徑。
@@ -193,6 +197,11 @@ codex exec "<英文 prompt 內容> \$imagegen" \
 > 1. 圖**仍然**落 `~/.codex/generated_images/<session-id>/ig_*.png`（0.136.0 實測確認、Step 5a 的 `find -newer marker` 照舊有效）—— 別誤信「0.136 不再寫 generated_images」這類推論，**自己 `find` 一下就知道**。
 > 2. **同時**圖會以 base64 嵌進 session rollout JSONL（`~/.codex/sessions/<date>/rollout-*.jsonl` 的 `image_generation_call` / `image_generation_end` 的 `result` 欄）。萬一哪天 `generated_images` 撈空，這是**最後手段** fallback（解 base64 還原 png），但屬未文件化、隨版本可能再變、別當主路。
 > 3. **更穩的官方文件作法（建議長期改用、跨版本不靠猜目錄）**：prompt 末尾明寫 `Save the final image as <name>.png in the current directory.` ＋ 跑 `codex exec -C <輸出夾> --enable image_generation --sandbox workspace-write …`，讓圖直接落你指定的 cwd。**沒有 output-dir flag**，`-C` / `--add-dir` + prompt 指示是唯一控制輸出位置的槓桿（0.136 的「local image attachments expose file paths to model」#25944 就是為了讓這條 save-path 流更可靠）。
+
+> ⚠️ **0.141.0 版差異（實測 2026-06-24，本 skill v0.4.0 改版主因）**：
+> 1. `generated_images` **時有時無** —— 同一版本、同樣指令，有時圖落 `~/.codex/generated_images/<session>/ig_*.png`、有時**完全不落**（圖只剩 rollout JSONL 的 base64）。所以 `find -newer marker` 撈 generated_images 這條**主路不再可靠**（實測整批撈空、得退 base64 還原才救回）。
+> 2. **→ 收圖主路正式改為「prompt-save」**（上面 0.136 早記過的官方作法，現升為預設）：launch 時在 prompt 內叫 codex 存到 `$OUT_PNG`、回報路徑（見 Step 4b / 5a）。實測 0.141.0 圖**確實直接落指定路徑**、`--output-last-message` 也回報了絕對路徑。
+> 3. generated_images `find` 與 rollout base64 解碼**降為 fallback 1 / 2**。注意 0.141.0 有時 prompt-save 與 generated_images **兩邊都寫** → Step 5b 收完主路要順手清掉 generated_images 的多餘 copy。
 
 ### Step 4c: 非阻塞等待（讓出主線程，靠 task 完成通知喚回）
 
@@ -215,34 +224,64 @@ Codex 跑起來了，背景生圖中（這條 flow 一般 2-3 分鐘），跑完
 
 ## Step 5: 收圖 + 寫 sidecar + 通知
 
-### Step 5a: 收圖（以 mtime 為錨，不依賴 LAST_MSG）
-
-0.134.0 起 LAST_MSG 不吐路徑、圖又落巢狀 session 目錄（見 Step 4b 警告），所以**用 launch 前 touch 的 `$START_MARKER` 檔 `-newer` 比對、遞迴找之後最新的 png**：
+### Step 5a: 收圖（prompt-save 主路 + 兩層 fallback）
 
 ```bash
-SRC_PNG=$(find ~/.codex/generated_images -type f -iname '*.png' -newer "$START_MARKER" 2>/dev/null | xargs ls -t 2>/dev/null | head -1)
+# 🟢 主路（prompt-save）：codex 應已把圖存到你指定的 $OUT_PNG
+if [ -f "$OUT_PNG" ]; then
+  SRC_PNG="$OUT_PNG"          # 已在定位，直接用（最常走這條）
+else
+  # fallback 1：codex 沒照存 → 去 generated_images 用 -newer marker 撈，撈到搬來 $OUT_PNG
+  SRC_PNG=$(find ~/.codex/generated_images -type f -iname '*.png' -newer "$START_MARKER" 2>/dev/null | xargs ls -t 2>/dev/null | head -1)
+  [ -n "$SRC_PNG" ] && mv "$SRC_PNG" "$OUT_PNG" && SRC_PNG="$OUT_PNG"
+fi
+# fallback 2（最後手段）：兩邊都空 → 解 session rollout JSONL 的 base64 還原 png（見下方 python）
 ```
 
-- 🔴 **絕不用 `-newermt`（任何形式）**：macOS BSD find 對 `-newermt` 的 `@epoch` **與**相對時間（如 `'-30 minutes'`）都會 **silently 假陰性**（找不到其實已生好的圖、誤判「沒 PNG」跳 Step 6，但圖其實都在）。GNU find 才穩、BSD 不穩。一律改用 **`-newer <實體 marker 檔>`**（BSD/GNU 皆穩）。
-- 🔴 **在 `~/.codex/generated_images` 找，別在 cwd / repo 內 `find .`** —— 圖落 codex home 不在你的工作目錄（除非走上面 prompt-save `-C` 法）。搜錯目錄會誤判「沒圖」。
-- **用 `find` 不用 glob**：巢狀目錄要遞迴，且空 glob 在 zsh 會 `no matches found` 中止（踩過）。
-- **`generated_images` 真的撈空才動 fallback**：解 `~/.codex/sessions/<date>/rollout-*.jsonl` 裡 `image_generation_call` 的 base64 `result`（見 Step 4b 0.136 註）。未文件化、最後手段。
-- session id 那條路（grep log 的 `session id:`）**不要用** — log 有 ANSI 色碼夾在 `session id:` 跟 uuid 之間，regex 易撲空、反而脆弱。
-- `SRC_PNG` 抓空 → codex 大概率失敗，跳 Step 6。
+fallback 2（rollout base64 還原，只在 fallback 1 也空才動）：
+
+```bash
+# 從 log 抓 session id（無 ANSI 干擾的話），或直接抓 sessions 當天最新、含 PNG magic 的 rollout
+ROLLOUT=$(grep -rl 'iVBORw0KGgo' ~/.codex/sessions/$(date +%Y/%m/%d)/rollout-*.jsonl 2>/dev/null | xargs ls -t 2>/dev/null | head -1)
+python3 - "$ROLLOUT" "$OUT_PNG" <<'PY'
+import sys, json, base64
+rollout, out = sys.argv[1], sys.argv[2]; b64=None
+for line in open(rollout):
+    if 'iVBORw0KGgo' not in line: continue
+    try: obj=json.loads(line)
+    except: continue
+    st=[obj]
+    while st:
+        c=st.pop()
+        if isinstance(c,dict): st.extend(c.values())
+        elif isinstance(c,list): st.extend(c)
+        elif isinstance(c,str) and c.startswith('iVBORw0KGgo'): b64=c  # 留最後一張
+if b64: open(out,'wb').write(base64.b64decode(b64)); print("RESTORED", out)
+else: print("NO_BASE64")
+PY
+[ -f "$OUT_PNG" ] && SRC_PNG="$OUT_PNG"
+```
+
+- 🔴 **絕不用 `-newermt`（任何形式）**：macOS BSD find 對 `-newermt` 的 `@epoch` **與**相對時間都 **silently 假陰性**（誤判「沒 PNG」其實圖都在）。一律 **`-newer <實體 marker 檔>`**（BSD/GNU 皆穩）。
+- 🔴 fallback 1 **在 `~/.codex/generated_images` 找，別在 cwd / repo 內 `find .`**（主路已直接落 cwd 的 `$OUT_PNG`，不用 find；find 是給「codex 沒照存」的退路）。
+- **用 `find` 不用 glob**：巢狀目錄要遞迴，空 glob 在 zsh 會 `no matches found` 中止。
+- session id 走 grep log 的 `session id:` **不可靠**（ANSI 色碼夾在中間、regex 易撲空）→ fallback 2 改用「當天 rollout 抓含 PNG magic 的最新檔」。
+- 三層都拿不到 `SRC_PNG` → codex 大概率失敗，跳 Step 6。
 
 ### Step 5b: 轉 jpg 交付（q85）+ 清中繼
 
-codex 吐 png（2MB 級）；交付走 **jpg q85**（實測畫質肉眼無感、體積約 png 的 1/5）：
+codex 吐 png（2MB 級）；交付走 **jpg q85**（實測畫質肉眼無感、體積約 png 的 1/5）。`$SRC_PNG` 此時已 == `$OUT_PNG`（主路直接落定位、fallback 也已 mv 過來）：
 
 ```bash
-mv "$SRC_PNG" "$OUT_PNG"                    # 搬出 codex 中繼目錄
-rmdir "$(dirname "$SRC_PNG")" 2>/dev/null   # 清掉空的 session 子目錄
 sips -s format jpeg -s formatOptions 85 "$OUT_PNG" --out "$OUT_JPG" >/dev/null 2>&1
 rm -f "$OUT_PNG"                            # 刪 png 中繼，只留 jpg
+# 0.141.0 有時 prompt-save 與 generated_images 兩邊都寫 → 清掉 codex 那份多餘 copy（避免堆積）
+STRAY=$(find ~/.codex/generated_images -type f -iname '*.png' -newer "$START_MARKER" 2>/dev/null | head -1)
+[ -n "$STRAY" ] && rm -f "$STRAY" && rmdir "$(dirname "$STRAY")" 2>/dev/null
 ```
 
-- **MANDATORY**：`mv` 不 `cp` — codex 預設位置只是中繼、留著會堆積。
 - 最終交付 = `$OUT_JPG`。**只有 user 明講「要留無損 png」才跳過 `rm -f "$OUT_PNG"`**。
+- **絕不把圖留在 `~/.codex/generated_images/`**（堆積 + user 找不到）—— 主路雖然落 cwd，codex 仍可能另存一份在那，務必清。
 
 ### Step 5c: 寫 sidecar
 
@@ -313,14 +352,14 @@ rm -f "$LAST_MSG" "$LOG_FILE" "$START_MARKER"
 - ❌ 對話內嵌圖（本機無檔）硬塞 codex `-i`（吃 file path、抓不到）→ 先問本機路徑
 - ❌ 預設「畫四隻熊 / kemono / 某固定角色群像」這種寫死 style — 沒 context 就問
 - ❌ Skill 內部偷偷加 NSFW filter 替 user 做決策（只警告 + 給選項）
-- ❌ 把生圖結果留在 `~/.codex/generated_images/` 不搬走（堆積 + user 找不到）
-- ❌ 圖搬到 cwd 根但 cwd 是 git repo（會雜進 git status / 容易誤 commit）
-- ❌ 用 `cp` 不用 `mv` 搬 codex 中繼檔
-- ❌ 依賴 `LAST_MSG` grep 圖片路徑收圖（0.134 起 codex 不吐路徑、此法必撲空）
-- ❌ 用 shell glob（`ls $DIR/*.png`）收圖（巢狀目錄漏抓 + 空 glob 在 zsh 中止）→ 改 `find … -newer <marker檔>`
-- ❌ 收圖用 `find -newermt`（任何形式：`@epoch` 或相對 `'-30 minutes'`，macOS BSD find 都 silently 假陰性、誤判「沒圖」其實都生好了）→ 改 launch 前 `touch` marker + `find -newer "$MARKER"`
-- ❌ 在 cwd / repo 內 `find .` 找 codex 生成圖（圖落 `~/.codex/generated_images/<session>/`、不在 cwd）→ 搜 codex home，或改走 prompt-save `-C` 法讓圖落 cwd
-- ❌ 把 subagent / 道聽塗說的「codex 新版不寫 generated_images 了」當事實就改流程 → 先本機 `find` 實證再說（0.136 實測仍寫）
+- ❌ 把收圖**主路**放在「翻 `generated_images` / 解 rollout base64」（0.141.0 撈空率高、time-bomb）→ 主路用 prompt-save 叫 codex 存指定 `$OUT_PNG`，find / base64 只當 fallback
+- ❌ 把生圖結果留在 `~/.codex/generated_images/` 不搬走/不清（堆積 + user 找不到）；0.141 兩邊都寫時要清掉那份多餘 copy
+- ❌ 圖搬到 cwd 根但 cwd 是 git repo（會雜進 git status / 容易誤 commit）→ git repo 走 `./generated_images/` 子夾
+- ❌ 把 codex 官方範例的 `-i ./input.png 'prompt'`（image 在 prompt 前）照抄 → `-i` variadic 會把 prompt 吃成第二張圖；一律 prompt 第一 positional、`-i` 擺後
+- ❌ **單**靠「自動」`LAST_MSG` 抓路徑（沒在 prompt 叫 codex 回報就不吐）→ prompt-save 主路自己指定 `$OUT_PNG`、讀檔即可，LAST_MSG 只拿來交叉驗證
+- ❌ 用 shell glob（`ls $DIR/*.png`）收 fallback 圖（巢狀目錄漏抓 + 空 glob 在 zsh 中止）→ 改 `find … -newer <marker檔>`
+- ❌ fallback 收圖用 `find -newermt`（任何形式：`@epoch` 或相對 `'-30 minutes'`，macOS BSD find 都 silently 假陰性）→ 改 launch 前 `touch` marker + `find -newer "$MARKER"`
+- ❌ 把單次觀察當鐵則（不論「不寫 generated_images 了」或「一定寫」）→ 0.141 實測**時有時無**；別賭它的行為，prompt-save 主路本就不依賴它
 - ❌ 生完自動 `open` 圖（user 不要）
 - ❌ sidecar 寫死 `codex_model: gpt-image-2`（實際是 log 裡的 model）
 - ❌ 失敗自動重試（codex 失敗通常是 prompt 本身問題或 quota，重試只浪費 token）
@@ -328,7 +367,7 @@ rm -f "$LAST_MSG" "$LOG_FILE" "$START_MARKER"
 - ❌ heartbeat 刷屏（user 已經知道在跑了，給一行就好）
 - ❌ 背景啟動後用 `sleep N; tail` 前景輪詢等 codex（阻塞主線程、卡死 user 對話）→ 讓出控制權、等 task 完成通知自動喚回
 - ❌ 圖被 keep / 搬走卻把 sidecar 留在原（暫存）目錄 → prompt 隨目錄清掉就永久消失（sidecar 要跟圖走）
-- ❌ prompt 字串內 `$imagegen` 沒 escape（shell 會展開成空，codex 不會啟用 imagegen skill）
+- ❌ 用 `$imagegen` token 卻沒 escape `\$imagegen`（shell 展開成空）→ 現行改用自然語指示「用內建 image_gen 工具」、免此坑
 - ❌ 在 user 還在改 prompt 的迭代過程中提前算 slug / 建目錄 / 啟動 codex（pre-flight 在拍板**之後**才做）
 
 ---
@@ -340,7 +379,7 @@ rm -f "$LAST_MSG" "$LOG_FILE" "$START_MARKER"
 3. **不寫死預設風格** — 風格 100% 來自當下 context 與 user 描述
 4. **NSFW 判斷依 context，警告而非阻擋** — 不替 user 做安全決策
 5. **背景跑 + 讓出主線程 + 一行 heartbeat，靠 task 完成通知喚回收圖** — 禁前景 `sleep N; tail` 輪詢（會阻塞 user 對話）；harness 沒有獨立 `Monitor` 工具，task 系統就是 monitor
-6. **cwd 是 git repo → `./generated_images/` 子資料夾；否則 → cwd 根**
+6. **收圖主路 = prompt-save**：launch 時在 prompt 內叫 codex 存到 `$OUT_PNG`（git repo cwd → `./generated_images/` 子夾；否則 cwd 根），收圖直接讀該檔。撈 `generated_images` / 解 rollout base64 只是 fallback（0.141.0 起 generated_images 時有時無、不可當主路）
 7. **Sidecar `<image>.prompt.md` 是強制產出** — 含中英 prompt + metadata，是 prompt 的**唯一持久記錄**；**圖被搬走 / 保留 (keep) 時 sidecar 必須跟著走**（暫存 output 目錄常被清，prompt 只活在 sidecar，丟了就重建不回原 prompt）
 8. **交付 jpg q85（`sips`），png 中繼轉完即刪**（user 明講要無損才留）；**生完不自動開圖**；`mv` 不 `cp`，中繼 log + 空 session 目錄跑完清掉 — 不要在 `/tmp/` 與 `~/.codex/generated_images/` 留垃圾
 9. **失敗不自動重試** — 印 log 摘要交給 user 決定
