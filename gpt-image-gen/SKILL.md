@@ -178,7 +178,6 @@ codex exec "<英文 prompt 內容> \$imagegen" \
 - **`-o, --output-last-message`**：把 codex 最後 assistant message 寫進指定檔，後續用來 parse 圖片實際路徑。
 - **`-i, --image <FILE>`**：img2img 用 — 有底圖時帶 `-i "$REF"`（鎖臉/角色一致，已實測可行）。⚠️ **`-i` 是 variadic `<FILE>...`**：prompt 必須當**第一個 positional 放最前**、`-i` 擺後面，否則 prompt 會被吃成第二張圖 → codex 沒 positional prompt → 轉讀 stdin → 失敗。
 - **批次/迴圈跑 codex 必加 `< /dev/null`**：在 `while read … done < file` 內跑 codex 會繼承迴圈 stdin（= prompt 檔）→ 一個 session 狂生多圖 + 吃掉 read fd。`< /dev/null` 切斷即解。多條並行各自獨立 `CODEX_HOME`（cp auth.json + config.toml）避免搶圖。
-  - 🔴 **自訂 `CODEX_HOME` 路徑必須落在 sandbox 可寫範圍（`/tmp` / `$TMPDIR` / cwd 內，例 `/tmp/codex_stream_X`）**：`--sandbox workspace-write` 只准寫 cwd ＋ 系統暫存。CODEX_HOME 指到範圍外（如某些 job / 暫存目錄）→ `image_gen` 寫 `$CODEX_HOME/generated_images/ig_*.png` 被 sandbox **靜默擋掉**：codex 仍 exit 0、log 照印「Generated the image」、但**磁碟無檔**、`find` 全空。圖只剩 base64 躺在該 home 的 `sessions/<date>/rollout-*.jsonl` 的 `result` 欄（開頭 `iVBORw0KGgo` = PNG magic）。**修法**：CODEX_HOME 用 `/tmp/codex_stream_X`（在 sandbox 內、已驗），或乾脆別覆寫、用預設 `~/.codex`。搶救已生圖：python 解 rollout `result` base64 還原 PNG。
 
 **Prompt 字串注意**：
 - prompt 內的 `$imagegen` 在 bash 字串裡要 escape 成 `\$imagegen`，不然 shell 會把它當變數展開成空字串，codex 不會啟用 imagegen skill。
@@ -322,7 +321,6 @@ rm -f "$LAST_MSG" "$LOG_FILE" "$START_MARKER"
 - ❌ 收圖用 `find -newermt`（任何形式：`@epoch` 或相對 `'-30 minutes'`，macOS BSD find 都 silently 假陰性、誤判「沒圖」其實都生好了）→ 改 launch 前 `touch` marker + `find -newer "$MARKER"`
 - ❌ 在 cwd / repo 內 `find .` 找 codex 生成圖（圖落 `~/.codex/generated_images/<session>/`、不在 cwd）→ 搜 codex home，或改走 prompt-save `-C` 法讓圖落 cwd
 - ❌ 把 subagent / 道聽塗說的「codex 新版不寫 generated_images 了」當事實就改流程 → 先本機 `find` 實證再說（0.136 實測仍寫）
-- ❌ 自訂 `CODEX_HOME` 指到 sandbox 寫不到的路徑（cwd 外、又非 `/tmp` / `$TMPDIR`）→ `image_gen` 寫檔被 `--sandbox workspace-write` 靜默擋、圖不落地只剩 rollout base64（codex 仍 exit 0、`find` 全空、誤判失敗）；並行要嘛 `CODEX_HOME=/tmp/codex_stream_X`、要嘛別覆寫用 `~/.codex`
 - ❌ 生完自動 `open` 圖（user 不要）
 - ❌ sidecar 寫死 `codex_model: gpt-image-2`（實際是 log 裡的 model）
 - ❌ 失敗自動重試（codex 失敗通常是 prompt 本身問題或 quota，重試只浪費 token）
