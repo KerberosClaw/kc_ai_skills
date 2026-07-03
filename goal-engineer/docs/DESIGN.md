@@ -1,6 +1,6 @@
 # goal-engineer — 為什麼它不叫 loop-engineer 了
 
-> **English summary:** Design notes for `goal-engineer` (formerly `loop-engineer`). It authors a blind-runnable *dispatch spec* for an unattended, goal-driven evaluator-optimizer loop of the **generate-and-select** kind (produce candidates → grade → iterate by reason-code → human picks the winner). It is the **upstream spec author, not a runtime** — the spec is executed by Claude Code's built-in `/goal`, a headless `claude -p` session, or any unattended agent. Renamed from `loop-engineer` because that name over-claimed the whole "Loop Engineering" idea while the skill only covers the inner, convergent goal-loop; the "loop" word belonged to the engine (`/goal`) and the recurring-heartbeat flavor, neither of which this skill is.
+> **English summary:** Design notes for `goal-engineer` (formerly `loop-engineer`). It authors a blind-runnable *dispatch spec* for an unattended, goal-driven evaluator-optimizer loop of the **generate-and-select** kind (produce candidates → grade → iterate by reason-code → human picks the winner). One narrow exception: when a build spec is **already frozen** (approved ADR / locked design / machine-checkable AC) and the only missing piece is the unattended-execution wrapper, it packages a *lean build dispatch* instead of redirecting to a full PRD — gated by the Frozen Spec Check; it still never authors build specs or product decisions. It is the **upstream spec author, not a runtime** — the spec is executed by Claude Code's built-in `/goal`, a headless `claude -p` session, or any unattended agent. Renamed from `loop-engineer` because that name over-claimed the whole "Loop Engineering" idea while the skill only covers the inner, convergent goal-loop; the "loop" word belonged to the engine (`/goal`) and the recurring-heartbeat flavor, neither of which this skill is.
 
 ## 這東西在做什麼
 
@@ -19,20 +19,23 @@
 
 而當初會想固化它,其實是因為**同一套規格手寫了三遍**(系列抽卡一次、一份 agent-run PRD 一次、又一次)—— 那個「loop」感長在**人類重複勞動**裡,不在 runtime 裡。固化重複勞動正是 skill 的本職;改名只是把名字擺回正確的位置。
 
-## 三軸定位（叫對工具用)
+## 四軸定位（叫對工具用)
 
-這支不是一條鏈上的一環,而是三個正交軸的一軸:
+這支不是一條鏈上的一環,而是四個正交軸的其中兩軸。關鍵是把「內容規格由誰寫」跟「無人值守 dispatch 由誰包」拆開 —— 之前只按 WHAT 路由,漏掉「規格已凍結、只差打包」這格:
 
 | 軸 | 管什麼 | 誰 |
 |---|---|---|
-| **內容**(WHAT) | build 什麼 / generate 什麼 | `prd-create`(build-to-spec)、**`goal-engineer`**(generate-and-select) |
+| **內容規格**(WHAT) | 決定 build 什麼 / generate 什麼 | `prd-create`(build PRD)、**`goal-engineer`**(generate-and-select 規格) |
+| **dispatch 打包** | 把已定義的工作包成 agent 可 blind 跑的執行規格 | **`goal-engineer`**(generate-and-select;或凍結 build spec 的 lean dispatch,Frozen Spec Check 把關) |
 | **執行紀律**(HOW,給 agent 跑) | 紅綠燈 / 3 出口 / delta / pre-flight / 機器 AC / stop-and-ask / 可重現 | `references/loop-run-protocol.md`(內容無關、可共用) |
 | **心跳**(WHEN,選用) | 要不要週期再進場 | 任意排程器(cron / launchd / CI / skill-cron) |
+
+判準一句話:**要不要產 PRD,看「build spec 需不需要被寫出來」;要不要用 goal-engineer,看「工作是不是只剩把凍結規格包成無人值守 dispatch」。**
 
 ## 跟容易搞混的東西劃界
 
 - **vs Claude Code `/goal`(引擎)**:`/goal` 給條件、每輪用獨立小模型判達標、達標自停 —— 它**跑迴圈**。本 skill **寫規格**(達標的定義 + 兩層閘 + 原因碼 + 對抗審查 + 通知),產出可丟給 `/goal` 跑。`/goal` 的判官是單一 yes/no、對主觀目標太粗;本 skill 的評估層補的就是這塊。
-- **vs `prd-create`(build-to-spec)**:把一份 codebase 寫到滿足凍結的 AC、跑完一份交付物 —— 那是另一種 loop archetype,走 prd-create。它的 §13 Test Strategy 在 agent-run 時,執行紀律對齊本 skill 的 `loop-run-protocol.md`(同一份正典)。本 skill 不碰 PRD。
+- **vs `prd-create`(build-to-spec)**:要**從 raw input 寫出 build spec**(產 PRD、補產品決策、定 AC)—— 那是 prd-create,本 skill 不碰。它的 §13 Test Strategy 在 agent-run 時,執行紀律對齊本 skill 的 `loop-run-protocol.md`(同一份正典)。**窄例外**:build spec 已凍結(已核可 ADR / 鎖定設計 / AC 可機器檢核)、只差無人值守打包 → 本 skill 出 lean build dispatch(SKILL.md「Frozen Spec Check」六條全過才放行),不必為一個已經拍板的決策回頭跑整份 PRD;dispatch 只包執行紀律,一樣不補任何規格決策。
 - **vs 心跳 / cron / skill-cron**:本 skill 的 dispatch 是**收斂型**(跑到目標就停),不是週期重跑。要週期再進場,把 dispatch 做成 headless 入口、交任意排程器點火 —— **scheduler-agnostic**,就像它對通知 **channel-agnostic** 一樣,不寫死哪個排程器。
 
 ## 收斂 vs 週期(為什麼「沒有循環續跑」不是缺點)
