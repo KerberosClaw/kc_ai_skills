@@ -1,7 +1,7 @@
 ---
 name: prd-create
-description: "Use when user wants to draft a PRD (Product Requirements Document) from raw input (meeting transcripts, hand-waved descriptions, scattered decisions). Workflow: load org's PRD Guideline + writing discipline → lock execution mode (human-run vs unattended-agent-run) → ingest raw input → quiz user numbered-list iterate to fill §1-§15 → draft v0.1 → handle stakeholder merge (review feedback, surface conflicts) → lock v1.0 + sanitize per ADO publication contract → publish to ADO Wiki. For an agent-run PRD, §13 carries the unattended-execution discipline (machine-checkable AC + traffic-light + 3-exits + stop-and-ask), aligned with goal-engineer's loop-run-protocol. Pure prompt-driven — Claude is the runtime, no Python helper. Trigger phrases: 寫 PRD / PRD 撰寫 / prd-create / 初版 PRD / 起 PRD."
-version: 0.2.0
+description: "Use when user wants to draft a PRD (Product Requirements Document) from raw input (meeting transcripts, hand-waved descriptions, scattered decisions). Workflow: load org's PRD Guideline + writing discipline → lock execution mode (human-run vs unattended-agent-run) → ingest raw input → quiz user numbered-list iterate to fill §1-§15 → draft v0.1 → handle stakeholder merge (review feedback, surface conflicts) → lock v1.0 + sanitize per ADO publication contract → publish to ADO Wiki. For an agent-run PRD, §13 carries the unattended-execution discipline (machine-checkable AC + traffic-light + 3-exits + stop-and-ask), aligned with goal-engineer's loop-run-protocol. NOT for packaging an ALREADY-FROZEN build spec (approved ADR / locked design / machine-checkable AC) into an unattended dispatch — that is goal-engineer's lean build dispatch. Pure prompt-driven — Claude is the runtime, no Python helper. Trigger phrases: 寫 PRD / PRD 撰寫 / prd-create / 初版 PRD / 起 PRD."
+version: 0.2.1
 status: mvp
 triggers:
   - "prd-create"
@@ -25,7 +25,7 @@ User 必須先提供：
 
 - **PRD Guideline path**：例 `<caller-repo>/raw/board/hackmd/PRD_架構設計_Guideline.md` — 若 caller 沒提供，fallback skill internal `templates/prd_full_guideline.md` (generic 15-章 skeleton)
 - **撰寫紀律 reference**（optional）：caller 自家 doc_writing 紀律（如「engineering audience 受眾紀律」）— 若無，skill 用 generic「writing for engineering audience」default
-- **ADO 公開化 contract**（publish phase 才需）：caller 自家 sanitization rules — fallback `references/ado_publication_contract.md`
+- **ADO 公開化 contract**（publish phase 才需）：caller 自家 sanitization rules — 缺則用本 skill Phase 6a 內建的標準砍 8 條
 - **az CLI 2.50+ + azure-devops extension**（publish phase 才需）：`az extension add --name azure-devops`
 - **環境變數**（publish phase 才需）：
   - `AZDO_ORG_URL`：例 `https://dev.azure.com/your-org`
@@ -50,6 +50,8 @@ User 觸發詞如「寫 PRD」「prd-create」「起 PRD」時走這條。
 - POC 走簡化版 + §15 Deviation 段標明偏離 Guideline 的點
 
 **同時鎖定執行模式**：這份 PRD 是 **人跑** 還是 **agent 無人值守跑**?（POC / Production scope 也一併確認）。agent-run 會讓 §13 Test Strategy 額外承載無人值守執行紀律（見 Phase 4）— 缺這資訊就先問，不要預設。
+
+**同時判規格成熟度（路由檢查）**：若 input 已是**凍結的 build spec**（已核可 ADR / 鎖定設計 / AC 可機器檢核）、需求只剩「包成無人值守 agent 可跑的 dispatch」→ **不需要產 PRD**，導去 `goal-engineer` 的 lean build dispatch（其 Frozen Spec Check 把關）。只有 build spec 還需要被**寫出來**（raw input → 決策 → AC）才走本 skill。
 
 告知 user：「已 load Guideline + 撰寫紀律 + 鎖定執行模式，準備接 raw input」。
 
@@ -116,7 +118,7 @@ Claude 讀進來，識別：
 
 **§13 Test Strategy 依執行模式分形**（Phase 1 鎖定的）：
 - **人跑** → 一般測試策略（測試層級 / 覆蓋率 / 驗收方式）。
-- **agent 無人值守跑** → §13 額外承載**無人值守執行紀律**：每條 AC 機器可檢核、紅綠燈通知（🟢🟡🔴 + pre-flight 測通才開跑）、3 出口（`NEEDS_INPUT`/`ESCALATE`/`REFUSE`）+ delta 防空轉、授權邊界 + stop-and-ask、可重現（recipe + run log）。這層紀律的**正典在 `goal-engineer/references/loop-run-protocol.md`**（內容無關、跨 skill 共用）;prd-create 內化同一份 checklist 進 §13、與其同步（per「algorithm 內化未 vendor」原則）。human-run 不帶這層。
+- **agent 無人值守跑** → §13 額外承載**無人值守執行紀律**：每條 AC 機器可檢核（silent cap 明講）、兩層閘（floor + ceiling）、原因碼迭代、紅綠燈通知（🟢🟡🔴 + pre-flight 測通才開跑）、3 出口（`NEEDS_INPUT`/`ESCALATE`/`REFUSE`）+ delta 防空轉、授權邊界 + stop-and-ask、可重現（recipe + run log）。這層紀律的**正典在 `goal-engineer/references/loop-run-protocol.md`**（內容無關、跨 skill 共用）;prd-create 內化同一份 checklist 進 §13、與其同步（per「algorithm 內化未 vendor」原則）。human-run 不帶這層。
 
 POC scope simplification：
 - 章末附 §15 Deviation 段，明列偏離 Guideline 的點 + 理由（如「§3.4 量化 NFR：POC 不適用 SLO 99.9%，改方向性敘述」）
@@ -152,7 +154,7 @@ User 喊「lock v1.0」/「鎖版」/「上 wiki」時走這條。
 
 **Step 6a. Sanitize per ADO publication contract**
 
-讀 caller's ADO publication contract（fallback `references/ado_publication_contract.md`）。標準砍 8 條：
+讀 caller's ADO publication contract；缺則直接用下列標準砍 8 條（本 skill 內建 fallback，無外部檔）：
 
 1. 個人真名（PRD author / implementer / cross-team stakeholder 抽象化，砍真名 / email）
 2. 日期 / 排查紀錄 / Sprint N / PBI #N（內部 ADO ref）
@@ -216,6 +218,7 @@ Caller 不確定怎麼寫某章節時，可貼 fixture 對應段給 Claude 對�
 ## Anti-patterns
 
 - ❌ **Fabricate missing info** — Raw input 沒提的事不要硬填，列為 question quiz user
+- ❌ **對已凍結的 spec 重跑整份 PRD 訪談** — 已核可 ADR / 鎖版 PRD 只差無人值守包裝 → 導去 goal-engineer 的 lean build dispatch，不是重新 quiz §1-§15
 - ❌ **Skip First-Principles check** — Problem / Goal / Non-Goal / Constraints 任一缺即停下對齊，不先寫架構
 - ❌ **Auto-merge stakeholder feedback with conflicts** — implementer 答案跟 Constraint 矛盾要 surface user 拍板，不擅自選邊
 - ❌ **Batch quiz** — 一口氣丟所有 §1-§15 questions，認知負擔太大；用 numbered list iterate
@@ -240,7 +243,7 @@ Caller 不確定怎麼寫某章節時，可貼 fixture 對應段給 Claude 對�
 
 - **`prd-breakdown`（同 repo）**：拿 prd-create 產出的 PRD.md → 拆 vertical slice → push ADO tasks。Chain：`prd-create` → `prd-breakdown` → ADO
 - **`spec` skill（同 repo）**：caller 自家開發 spec workflow（spec.md / plan.md / tasks.md / report.md）。`prd-create` 產出 PRD 作 input；`spec` 是「caller 自身 codebase 開發 spec」不是「產品需求 PRD」
-- **`goal-engineer`（同 repo）**：當 PRD 要交 agent 無人值守跑，§13 的執行紀律對齊它的 `references/loop-run-protocol.md`（同一份正典）。分工：prd-create 寫「build 什麼」、loop-run-protocol 寫「agent 怎麼無人值守跑 + 回報」。goal-engineer 本身做的是 generate-and-select dispatch（≠ build-to-spec PRD），兩者 archetype 不同
+- **`goal-engineer`（同 repo）**：當 PRD 要交 agent 無人值守跑，§13 的執行紀律對齊它的 `references/loop-run-protocol.md`（同一份正典）。分工：prd-create 寫「build 什麼」、loop-run-protocol 寫「agent 怎麼無人值守跑 + 回報」。goal-engineer 主體是 generate-and-select dispatch；另收一個窄例外 — **已凍結的 build spec 只差無人值守包裝**時，出 lean build dispatch（其 Frozen Spec Check 把關）。判準：spec 還要被**寫出來** → 本 skill；spec 已鎖版（含本 skill 產的 v1.0 PRD 事後要改交 agent 跑）→ goal-engineer lean build dispatch，不必回頭重寫 PRD
 - 這些 skill 透過 markdown 文件對接，不互相 import
 
 ## Important rules
@@ -258,6 +261,7 @@ Caller 不確定怎麼寫某章節時，可貼 fixture 對應段給 Claude 對�
 9. **Industry term retain English** — JWT / OAuth / API / token / WinForm / ONNX / mp4 等不譯
 10. **Public repo discipline** — 此 skill repo 為 public；fixtures 用 placeholders（無真名 / 真客戶 / 真政治 context）
 11. **執行模式分形** — Phase 1 先鎖定「人跑 / agent 跑」，缺則 quiz 不預設；agent-run PRD 的 §13 要帶無人值守執行紀律（對齊 `goal-engineer/references/loop-run-protocol.md`），human-run 不帶
+12. **凍結規格不重寫** — input 已是凍結 build spec、只差無人值守包裝 → 導去 goal-engineer lean build dispatch，本 skill 只在「spec 還需要被寫出來」時進場
 
 ## Acknowledgments
 
