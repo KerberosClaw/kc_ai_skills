@@ -39,6 +39,16 @@ Grouped by what you're trying to get done — every skill is still a self-contai
 | [spec](spec/) | Spec-driven development workflow — from fuzzy idea to verified deliverable. One command, auto-detects project state, walks you through: requirements → review → implement → verify → report. Because "just start coding" is how you end up rewriting everything |
 | [goal-engineer](goal-engineer/) | For when you want an agent to grind on something overnight without you hovering over it. Interview-style, it pins down a goal-driven evaluator-optimizer loop of the generate-and-select kind (generate candidates -> grade against a rubric -> iterate by reason-code -> you pick the winner), then emits a self-contained dispatch doc a fresh session runs blind while you just watch the green/yellow/red pings roll in. It is the upstream *spec author*, not the engine -- hand the dispatch to Claude Code's built-in `/goal`, a headless `claude -p`, or any unattended agent. NOT `/goal` itself, NOT a build-to-spec PRD writer (that's prd-create), NOT a cron timer. One narrow exception: if your build spec is *already frozen* (approved ADR, locked design, machine-checkable AC) and all you're missing is the unattended-run wrapper, it packages a lean build dispatch instead of making you write a full PRD for a decision you already made. Channel-agnostic notifications (Telegram/Discord/Slack/iMessage), and it bakes in a "want an adversarial review before we ship?" gate -- because we got tired of remembering to ask ourselves |
 
+### Engineering discipline
+
+> This group's discipline mechanics are adapted from [mattpocock/skills](https://github.com/mattpocock/skills) (MIT) — grilling / diagnosing-bugs / domain-modeling — rewritten in Chinese and fitted to this repo's conventions.
+
+| Skill | What It Actually Does |
+|-------|----------------------|
+| [grill](grill/) | "Let's discuss first," institutionalized. You drop a fuzzy idea, it refuses to touch code, asks you one question at a time — each with a suggested answer — until shared understanding is confirmed. Its sharpest rule: anything answerable by grep may not be asked. It interrogates the filesystem before it interrogates you. When vocabulary drifts, it also grows a CONTEXT.md glossary for the repo |
+| [diagnose](diagnose/) | Build the lie detector before the interrogation. Until there's one command that reproduces the symptom, no root-cause theory is allowed; and even then you list 3-5 ranked hypotheses with falsifiable predictions before testing the first one. Cures the age-old habit — in AIs and humans — of reading code for two minutes and declaring "found it" |
+| [adr](adr/) | Records architecture decisions, but its first job is talking you out of it. Three gates (hard to reverse / confusing without context / real trade-off) must all pass before it writes anything, and the default format is a title plus three sentences — an ADR's value is in recording *why*, not in filling out a template. It watches for two things especially: deliberate departures from the obvious path, and explicit no's |
+
 ### Research & security
 
 | Skill | What It Actually Does |

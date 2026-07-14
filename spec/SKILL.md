@@ -1,7 +1,7 @@
 ---
 name: spec
 description: "Spec-driven 開發流程 — 從模糊需求到驗收結案。自動判斷專案狀態，引導 user 走完：需求釐清 → 技術審查 → 實作 → 驗收 → 結案報告。"
-version: 1.2.0
+version: 1.3.0
 triggers: ["spec", "開 spec", "建 spec", "新功能"]
 ---
 
@@ -88,6 +88,7 @@ triggers: ["spec", "開 spec", "建 spec", "新功能"]
 1. **釐清問題（Forcing Questions）**
 
    逐題問，每題推到拿到具體答案為止。不要一次丟 5 個問題。
+   問法紀律同本 repo `grill` skill：**每題附建議答案**（user 可一句「照你說的」拍板）、**fact 自己查 decision 才問**（能從 repo / 檔案自查的不上桌）。
 
    **Q1: 痛點確認**
    「這個專案要解決什麼具體問題？誰會遇到這個問題？」
@@ -152,6 +153,7 @@ triggers: ["spec", "開 spec", "建 spec", "新功能"]
    - 只問會影響設計的問題
    - 不問 user 已經在需求描述中回答過的問題
    - 如果從 DESIGN.md 能找到答案，不要再問
+   - 每題附建議答案讓 user 可一鍵拍板；能從 repo / 檔案自查的 fact 自己查，只問需要拍板的 decision（紀律同 `grill` skill）
 
 3. **建立 spec 資料夾**
    - 命名：`specs/active/NN-feature-name/`

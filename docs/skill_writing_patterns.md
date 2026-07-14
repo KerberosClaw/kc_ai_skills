@@ -185,6 +185,27 @@ argument-hint: '"<project description>" [--port <number>] [--max-iterations <num
 
 當 skill 有大量參數選擇時用。`Defaults` section 給 fallback 心智，`Resources` section 列可選參考檔。
 
+### P16. 薄殼 / 本體分層（from mattpocock/skills invocation 慣例）
+
+當一組 skill 有「user 打的入口」跟「可重用的紀律」兩種角色時用：
+
+- **入口殼**（user-invoked）：只做編排、可以短到一行（「跑 X 紀律 + 套 Y」）；description 以人類可讀一行摘要開頭（slash 選單用）——仍照 P1 寫觸發情境、兩面不互斥，字面觸發詞交 `triggers` 欄位承擔
+- **紀律本體**（model-invoked）：可重用的流程 / checklist；description 寫給模型看（塞滿 "Use when ..." 觸發語句）
+- **鐵律：入口殼可以呼叫紀律本體，永遠不呼叫另一個入口殼**（編排不套編排）
+- 同一 skill 可兼兩角（自帶觸發詞、又被入口以紀律身分呼叫，如 grill）；鐵律限制的是呼叫對方的「編排面」，呼叫其「紀律面」不受限
+- **互引一律 prose 呼叫**（「跑 `grill` skill」），**禁止跨目錄深連結**別的 skill 的檔案；共用參考檔放在「擁有它的 skill」目錄內，別人要用就呼叫該 skill。（prose 指出「正典在某檔」不算深連結；禁的是把「讀取他 skill 的檔案」寫成執行步驟）
+
+判準：「模型自主伸手拿它有用嗎？」——可重用是抽成 skill 的理由，不是留 model-invoked 的判準。
+
+### P17. 停止句 + 不阻塞條款（防偷跑）
+
+Agent 容易偷跑的環節（未對齊先動工、沒證據先下結論、未確認先寫測試），放**明文停止句**：
+
+- 格式：「**X 未發生前，禁止 Y**」（例：「共同理解未確認前禁動手」「no red-capable command, no hypothesis」）
+- 完成判準用 checklist，不用形容詞（「跑過至少一次、貼出輸出」而不是「充分驗證」）
+- **必配不阻塞條款**：user 不在場（背景 / 無人值守）→ 照建議答案 / 自排序續走，假設明文標「未確認」——停止句擋的是偷跑，不是把 agent 卡死
+- **不阻塞條款只適用「資訊不足」類閘**；授權閘 / 安全閘 / 破壞性動作閘沒有 fallback，一律停下等人
+
 ---
 
 ## 發布前：對抗審查（互動詢問；public skill 必做）
@@ -222,10 +243,12 @@ skill 寫完、**release 前主動問 user 要不要對抗審查**（不要等 u
 
 [場景選用]
 - [ ] 有外部 script？→ Agent vs Script 分權 section
-- [ ] 主 SKILL.md > 5KB？→ 拆 references/ 子檔
+- [ ] 主 SKILL.md > 5KB 且有「進階 / 少用才讀」段落？→ 拆 references/ 子檔（緊湊單體可豁免）
 - [ ] 長 workflow / 會跨 session？→ State persistence + resume 設計
 - [ ] 接 $ARGUMENTS？→ argument-hint + flag 說明
 - [ ] 自我改進 / iteration loop？→ cross-iteration history awareness
+- [ ] 有「入口編排 + 可重用紀律」兩種角色？→ 薄殼 / 本體分層（P16）
+- [ ] 有 agent 易偷跑的環節？→ 停止句 + 不阻塞條款（P17）
 
 [發布前]
 - [ ] release 前問 user 要不要對抗審查（public skill 必做：leak 掃 + 品質；codex + 獨立 sub-agent 交叉、可多輪）
