@@ -107,7 +107,7 @@ def make_job_id(skill: str, label: str) -> str:
 def cmd_add(args: list[str]) -> None:
     if len(args) < 3:
         print("Usage: add <skill> <cron_expr> <label>")
-        print('Example: add banini "7,37 9-12 * * 1-5" 盤中')
+        print('Example: add morning-brief "0 7 * * 1-5" 晨間')
         sys.exit(1)
 
     skill = args[0]
