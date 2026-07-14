@@ -146,7 +146,7 @@ python3 ${CLAUDE_SKILL_DIR}/scripts/cron_manager.py list
 python3 ${CLAUDE_SKILL_DIR}/scripts/cron_manager.py add <skill> "<cron_expr>" "<label>"
 ```
 
-如果一組自然語言產生多條 cron entries，每條各自建立一個 job（用 label + 序號區分）。
+如果一組自然語言產生多條 cron entries，每條各自建立一個 job。**label 必須各自唯一**——job id = `<skill>-<label>`（由 cron_manager 產生），同 skill 同 label 會被判為重複而拒建。
 
 ---
 
@@ -241,7 +241,7 @@ python3 ${CLAUDE_SKILL_DIR}/scripts/cron_manager.py run <job_id>
   },
   "jobs": [
     {
-      "id": "morning-brief-1",
+      "id": "morning-brief-晨間",
       "skill": "morning-brief",
       "cron": "30 9 * * 1",
       "label": "晨間",

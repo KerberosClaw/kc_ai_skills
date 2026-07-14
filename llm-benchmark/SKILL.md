@@ -27,12 +27,15 @@ which ollama 2>/dev/null || echo "NOT_INSTALLED"
 
 ```bash
 # 檢查是否有 LLM gateway 類容器正在運行（例：OpenClaw、LM 代理服務）
-docker ps --format '{{.Names}}' | grep -i <your-llm-gateway>
+LLM_GATEWAY="your-llm-gateway"   # 換成你的服務名，例：openclaw
+docker ps --format '{{.Names}}' | grep -i "$LLM_GATEWAY"
 ```
 
 - 若有相關容器正在運行 → 停止它：
   ```bash
-  cd <your-llm-stack-dir> && docker compose stop <gateway-service>
+  LLM_STACK_DIR="$HOME/your-llm-stack"   # 換成你的 compose 目錄
+  GATEWAY_SERVICE="gateway"              # 換成你的服務名
+  cd "$LLM_STACK_DIR" && docker compose stop "$GATEWAY_SERVICE"
   ```
 - 若無相關容器，或容器已停止 → 跳過此步驟
 
@@ -57,7 +60,7 @@ nvidia-smi --query-gpu=memory.used,memory.free --format=csv,noheader,nounits
 
 若步驟 1 有停止服務，benchmark 全部完成後執行：
 ```bash
-cd <your-llm-stack-dir> && docker compose start <gateway-service>
+cd "$LLM_STACK_DIR" && docker compose start "$GATEWAY_SERVICE"
 ```
 
 ---
