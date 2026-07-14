@@ -39,6 +39,16 @@
 | [spec](spec/) | Spec-driven 開發流程 — 從模糊想法到驗收結案。一個指令，自動判斷專案狀態，引導你走完：需求釐清 → 審查 → 實作 → 驗收 → 結案報告。因為「先寫再說」就是你之後要全部重寫的原因 |
 | [goal-engineer](goal-engineer/) | 給那種「想丟給 agent 自己磨一整晚、又不想全程盯著」的場景。它用訪談式問答幫你把一條目標驅動的 evaluator-optimizer loop（generate-and-select 型:產候選 → 依 rubric 評 → 依原因碼迭代 → 你挑最終那個）釘死，吐一份新 session 能 blind 執行的 dispatch 文件，你只要看著紅黃綠燈通知滾進來就好。它是**寫規格的上游、不是引擎** — dispatch 丟給 Claude Code 內建的 `/goal`、headless `claude -p`、或任何無人值守 agent 去跑。不是 `/goal` 本身、不是 build-to-spec 的 PRD 作者（那是 prd-create）、也不是 cron 定時器。唯一窄例外：build spec **已經凍結**（核可的 ADR / 鎖定的設計 / 可機器檢核的 AC）、只差無人值守執行的包裝 → 它直接出一份 lean build dispatch，不會逼你為一個已經拍板的決策回頭寫整份 PRD。通知通道隨你換（Telegram/Discord/Slack/iMessage），而且內建一道「ship 前要不要先對抗審查?」的閘 — 因為我們自己每次都忘記問 |
 
+### 工程紀律
+
+> 這一組的紀律機制參考 [mattpocock/skills](https://github.com/mattpocock/skills)（MIT）的 grilling / diagnosing-bugs / domain-modeling，中文重寫、並調整成本 repo 慣例。
+
+| Skill | 它到底幹嘛 |
+|-------|----------|
+| [grill](grill/) | 「先討論」的制度化。你丟個模糊想法，它不准自己動手，一次問你一題、每題附建議答案，問到雙方理解一致才放行。最鋒利的一條規則：grep 查得到的事不准問你 — 拷問你之前先拷問 filesystem。詞彙飄了還會順手幫 repo 養一本 CONTEXT.md 詞彙表 |
+| [diagnose](diagnose/) | 先架測謊機，再准審問。沒有一條能重現症狀的指令之前，禁止提任何 root cause 理論；要猜也得一次列 3-5 個假說、附可否證預測、排好序先給你過目。專治 AI（和人類）讀兩眼 code 就宣稱「找到原因了」的老毛病 |
+| [adr](adr/) | 幫你記架構決策，但它的第一件事是勸你別記。三重閘（難回頭 / 沒脈絡會困惑 / 真實取捨）全過才動筆，預設格式是標題加三句話 — ADR 的價值在「記下為什麼」，不在填滿模板。特別會盯兩種東西：刻意偏離顯然路徑的決策、和被否決的方案 |
+
 ### 研究與安全
 
 | Skill | 它到底幹嘛 |

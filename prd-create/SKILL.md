@@ -1,7 +1,7 @@
 ---
 name: prd-create
 description: "Use when user wants to draft a PRD (Product Requirements Document) from raw input (meeting transcripts, hand-waved descriptions, scattered decisions). Workflow: load org's PRD Guideline + writing discipline → lock execution mode (human-run vs unattended-agent-run) → ingest raw input → quiz user numbered-list iterate to fill §1-§15 → draft v0.1 → handle stakeholder merge (review feedback, surface conflicts) → lock v1.0 + sanitize per ADO publication contract → publish to ADO Wiki. For an agent-run PRD, §13 carries the unattended-execution discipline (machine-checkable AC + traffic-light + 3-exits + stop-and-ask), aligned with goal-engineer's loop-run-protocol. NOT for packaging an ALREADY-FROZEN build spec (approved ADR / locked design / machine-checkable AC) into an unattended dispatch — that is goal-engineer's lean build dispatch. Pure prompt-driven — Claude is the runtime, no Python helper. Trigger phrases: 寫 PRD / PRD 撰寫 / prd-create / 初版 PRD / 起 PRD."
-version: 0.2.1
+version: 0.3.0
 status: mvp
 triggers:
   - "prd-create"
@@ -89,6 +89,7 @@ Claude 讀進來，識別：
 ```
 
 **Quiz pattern**: numbered-list iterate（不要一口氣丟所有 questions，認知負擔太大）。Caller 回答 → update internal context → 再 quiz 下一輪缺漏。
+**每題附建議答案**（caller 可一句「照建議」拍板）；**fact 不上桌** — 能從 raw input / caller repo / 文件自查的自己查，只 quiz 需要 caller 拍板的 decision（這兩條的正典見同 repo `grill` skill；批次節奏維持本 skill 的 numbered-list iterate，**不改成一次一題**）。
 
 **MANDATORY**: 遇不確定的事一律明說「這是猜的」+ 列為 question，不擅自 hard-code assumption。
 
@@ -128,6 +129,8 @@ POC scope simplification：
 - Headings 中譯（FR → 功能需求；NFR → 非功能需求 等）
 - Body inline 詞彙（stateless → 無狀態；endpoint → 端點）
 - Code / 變數名 / API path / 框架名（WinForm / DirectShow / ONNX）保留原文
+
+**PRD 內禁寫具體檔案路徑與 code snippet**（實作一動就過期、變成誤導；範圍描述用模組 / 元件名，不用 `src/...` 路徑）。唯一例外：schema / 狀態機 / type shape 這類**以片段編碼決策**、比文字更精準的內容 — 修剪到只剩決策相關部分並註明出處。
 
 寫 draft path 由 caller 指定，建議 `drafts/<feature>_prd.md` 或 `<feature>/PRD.md`。
 
@@ -222,6 +225,8 @@ Caller 不確定怎麼寫某章節時，可貼 fixture 對應段給 Claude 對�
 - ❌ **Skip First-Principles check** — Problem / Goal / Non-Goal / Constraints 任一缺即停下對齊，不先寫架構
 - ❌ **Auto-merge stakeholder feedback with conflicts** — implementer 答案跟 Constraint 矛盾要 surface user 拍板，不擅自選邊
 - ❌ **Batch quiz** — 一口氣丟所有 §1-§15 questions，認知負擔太大；用 numbered list iterate
+- ❌ **Quiz facts** — 能自查的事上桌問 caller（fact 自查、decision 才 quiz）
+- ❌ **PRD 內嵌具體路徑 / code snippet** — 很快過期；例外只有編碼決策的 schema / 狀態機 / type shape 片段（修剪 + 註出處）
 - ❌ **Skip §15 Deviation for POC** — POC 簡化版必須在 §15 Appendix 標明偏離 Guideline 的點 + 理由
 - ❌ **Sanitize during draft phase** — Sanitization 只在 Phase 6 publish 前做；draft 期間用真實 context（caller 自家 repo 是 source of truth，sanitized 版只是 published copy）
 - ❌ **Sanitize-then-edit-in-wiki** — Wiki 是 published copy，single-direction publish；要改 source（caller's PRD.md）後 republish，不在 wiki 直接 edit（lossy publication contract 無法 reverse）
@@ -241,6 +246,7 @@ Caller 不確定怎麼寫某章節時，可貼 fixture 對應段給 Claude 對�
 
 ## 跟其他 skill 的關係
 
+- **`grill`（同 repo）**：Phase 3 quiz loop 的問法紀律（附建議答案、fact 自查 decision 才問）正典在它那；prd-create 管章節結構與優先序
 - **`prd-breakdown`（同 repo）**：拿 prd-create 產出的 PRD.md → 拆 vertical slice → push ADO tasks。Chain：`prd-create` → `prd-breakdown` → ADO
 - **`spec` skill（同 repo）**：caller 自家開發 spec workflow（spec.md / plan.md / tasks.md / report.md）。`prd-create` 產出 PRD 作 input；`spec` 是「caller 自身 codebase 開發 spec」不是「產品需求 PRD」
 - **`goal-engineer`（同 repo）**：當 PRD 要交 agent 無人值守跑，§13 的執行紀律對齊它的 `references/loop-run-protocol.md`（同一份正典）。分工：prd-create 寫「build 什麼」、loop-run-protocol 寫「agent 怎麼無人值守跑 + 回報」。goal-engineer 主體是 generate-and-select dispatch；另收一個窄例外 — **已凍結的 build spec 只差無人值守包裝**時，出 lean build dispatch（其 Frozen Spec Check 把關）。判準：spec 還要被**寫出來** → 本 skill；spec 已鎖版（含本 skill 產的 v1.0 PRD 事後要改交 agent 跑）→ goal-engineer lean build dispatch，不必回頭重寫 PRD
