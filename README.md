@@ -39,6 +39,18 @@ Grouped by what you're trying to get done — every skill is still a self-contai
 | [spec](spec/) | Spec-driven development workflow — from fuzzy idea to verified deliverable. One command, auto-detects project state, walks you through: requirements → review → implement → verify → report. Because "just start coding" is how you end up rewriting everything |
 | [goal-engineer](goal-engineer/) | For when you want an agent to grind on something overnight without you hovering over it. Interview-style, it pins down a goal-driven evaluator-optimizer loop of the generate-and-select kind (generate candidates -> grade against a rubric -> iterate by reason-code -> you pick the winner), then emits a self-contained dispatch doc a fresh session runs blind while you just watch the green/yellow/red pings roll in. It is the upstream *spec author*, not the engine -- hand the dispatch to Claude Code's built-in `/goal`, a headless `claude -p`, or any unattended agent. NOT `/goal` itself, NOT a build-to-spec PRD writer (that's prd-create), NOT a cron timer. One narrow exception: if your build spec is *already frozen* (approved ADR, locked design, machine-checkable AC) and all you're missing is the unattended-run wrapper, it packages a lean build dispatch instead of making you write a full PRD for a decision you already made. Channel-agnostic notifications (Telegram/Discord/Slack/iMessage), and it bakes in a "want an adversarial review before we ship?" gate -- because we got tired of remembering to ask ourselves |
 
+> **Which planning skill do I reach for?** These overlap because they share the same interview-then-document DNA — but they sit at different layers:
+>
+> | You have… | Reach for |
+> |---|---|
+> | A pile of notes/requests → a **product requirements doc for others** to read (ships to a wiki) | `prd-create` |
+> | A finished PRD → **Azure DevOps work items** | `prd-breakdown` |
+> | A fuzzy idea *you* will build in your own codebase, **all the way to verified code** | `spec` |
+> | One **hard-to-reverse decision** just made, worth recording *why* | `adr` |
+> | A goal to hand an agent to **grind unattended overnight** | `goal-engineer` |
+>
+> The two confused most: **prd-create vs spec** — prd-create writes a product doc *for stakeholders* and stops at the doc; spec walks *your own* build from requirements to verified code. **spec vs adr** — spec is a whole feature's design+build lifecycle; adr is a *single* consequential decision pulled out into its own record (only if it clears the three gates). `grill` isn't a competitor — it's the shared "one question at a time" interview discipline the others reuse.
+
 ### Engineering discipline
 
 > This group's discipline mechanics are adapted from [mattpocock/skills](https://github.com/mattpocock/skills) (MIT) — grilling / diagnosing-bugs / domain-modeling — rewritten in Chinese and fitted to this repo's conventions.

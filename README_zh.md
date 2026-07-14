@@ -39,6 +39,18 @@
 | [spec](spec/) | Spec-driven 開發流程 — 從模糊想法到驗收結案。一個指令，自動判斷專案狀態，引導你走完：需求釐清 → 審查 → 實作 → 驗收 → 結案報告。因為「先寫再說」就是你之後要全部重寫的原因 |
 | [goal-engineer](goal-engineer/) | 給那種「想丟給 agent 自己磨一整晚、又不想全程盯著」的場景。它用訪談式問答幫你把一條目標驅動的 evaluator-optimizer loop（generate-and-select 型:產候選 → 依 rubric 評 → 依原因碼迭代 → 你挑最終那個）釘死，吐一份新 session 能 blind 執行的 dispatch 文件，你只要看著紅黃綠燈通知滾進來就好。它是**寫規格的上游、不是引擎** — dispatch 丟給 Claude Code 內建的 `/goal`、headless `claude -p`、或任何無人值守 agent 去跑。不是 `/goal` 本身、不是 build-to-spec 的 PRD 作者（那是 prd-create）、也不是 cron 定時器。唯一窄例外：build spec **已經凍結**（核可的 ADR / 鎖定的設計 / 可機器檢核的 AC）、只差無人值守執行的包裝 → 它直接出一份 lean build dispatch，不會逼你為一個已經拍板的決策回頭寫整份 PRD。通知通道隨你換（Telegram/Discord/Slack/iMessage），而且內建一道「ship 前要不要先對抗審查?」的閘 — 因為我們自己每次都忘記問 |
 
+> **規劃類 skill 該用哪顆？** 它們會像，是因為共用同一套「先訪談再產文件」的 DNA — 但坐在不同樓層：
+>
+> | 你手上是… | 用這顆 |
+> |---|---|
+> | 一坨筆記／需求 → 要一份**給別人看的產品需求書**（會上 wiki） | `prd-create` |
+> | 一份完成的 PRD → **Azure DevOps 工作項** | `prd-breakdown` |
+> | 一個模糊想法，**你自己**要在 codebase 裡一路做到**驗收過的 code** | `spec` |
+> | 剛做了一個**難回頭的決策**，值得記下**為什麼** | `adr` |
+> | 一個目標，要丟給 agent **無人值守整晚磨** | `goal-engineer` |
+>
+> 最常被搞混的兩組：**prd-create vs spec** — prd-create 寫給 stakeholder 看的產品文件、停在文件；spec 走你自己 codebase 從需求到驗收過的 code。**spec vs adr** — spec 是整個 feature 的設計＋實作生命週期；adr 是其中**單一**關鍵決策抽出來的獨立紀錄（過三重閘才寫）。`grill` 不是競爭者 — 它是其他幾顆共用的「一次問一題」訪談紀律。
+
 ### 工程紀律
 
 > 這一組的紀律機制參考 [mattpocock/skills](https://github.com/mattpocock/skills)（MIT）的 grilling / diagnosing-bugs / domain-modeling，中文重寫、並調整成本 repo 慣例。

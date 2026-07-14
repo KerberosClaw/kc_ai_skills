@@ -1,7 +1,7 @@
 ---
 name: prd-create
 description: "Use when user wants to draft a PRD (Product Requirements Document) from raw input (meeting transcripts, hand-waved descriptions, scattered decisions). Workflow: load org's PRD Guideline + writing discipline → lock execution mode (human-run vs unattended-agent-run) → ingest raw input → quiz user numbered-list iterate to fill §1-§15 → draft v0.1 → handle stakeholder merge (review feedback, surface conflicts) → lock v1.0 + sanitize per ADO publication contract → publish to ADO Wiki. For an agent-run PRD, §13 carries the unattended-execution discipline (machine-checkable AC + traffic-light + 3-exits + stop-and-ask), aligned with goal-engineer's loop-run-protocol. NOT for packaging an ALREADY-FROZEN build spec (approved ADR / locked design / machine-checkable AC) into an unattended dispatch — that is goal-engineer's lean build dispatch. Pure prompt-driven — Claude is the runtime, no Python helper. Trigger phrases: 寫 PRD / PRD 撰寫 / prd-create / 初版 PRD / 起 PRD."
-version: 0.3.0
+version: 0.3.1
 status: mvp
 triggers:
   - "prd-create"
@@ -52,6 +52,8 @@ User 觸發詞如「寫 PRD」「prd-create」「起 PRD」時走這條。
 **同時鎖定執行模式**：這份 PRD 是 **人跑** 還是 **agent 無人值守跑**?（POC / Production scope 也一併確認）。agent-run 會讓 §13 Test Strategy 額外承載無人值守執行紀律（見 Phase 4）— 缺這資訊就先問，不要預設。
 
 **同時判規格成熟度（路由檢查）**：若 input 已是**凍結的 build spec**（已核可 ADR / 鎖定設計 / AC 可機器檢核）、需求只剩「包成無人值守 agent 可跑的 dispatch」→ **不需要產 PRD**，導去 `goal-engineer` 的 lean build dispatch（其 Frozen Spec Check 把關）。只有 build spec 還需要被**寫出來**（raw input → 決策 → AC）才走本 skill。
+
+**同時判受眾/目的（路由檢查，vs `spec`）**：本 skill 產的是**給 stakeholder 看、要上 wiki 的產品需求文件、停在文件**。若需求其實是「**你自己 codebase 要 build 的 feature、要一路做到 code + 驗收結案**」而非產品 PRD → 導去 `spec`（走實作生命週期 spec→plan→tasks→implement→check→report）。兩者前半都做需求釐清、手感易混——**先問一句「這是給別人看的產品 PRD、還是你自己要 build 的 feature？」把入口岔開**，別預設。
 
 告知 user：「已 load Guideline + 撰寫紀律 + 鎖定執行模式，準備接 raw input」。
 
