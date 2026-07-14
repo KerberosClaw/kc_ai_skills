@@ -1,14 +1,14 @@
-# skill-cron — 因為 `claude -p "/banini"` 會卡住
+# skill-cron — 因為 `claude -p "/your-skill"` 會卡住
 
 > **English summary:** Design doc for skill-cron, a launchd-based scheduler for Claude Code skills. Born from discovering that `claude -p "/skill"` hangs silently — skills only work in interactive mode. Solution: a `headless-prompt` field in SKILL.md frontmatter + a runner script. Uses macOS launchd (not crontab) because `claude -p` needs the user's login session for OAuth — crontab runs in a bare daemon context without it. Includes Telegram push via urllib and auto-rotating logs.
 
 ## 這東西為什麼存在
 
-Claude Code 的 skill 在互動模式下很好用 — 打 `/banini` 就跑。但如果你想用排程定時跑呢？
+Claude Code 的 skill 在互動模式下很好用 — 打 `/your-skill` 就跑。但如果你想用排程定時跑呢？
 
 ```bash
 # 你以為可以這樣
-claude -p "/banini"
+claude -p "/your-skill"
 
 # 實際上會無限卡住，沒有任何輸出
 # 我們在凌晨一點 debug 了 40 分鐘才搞懂為什麼
@@ -24,7 +24,7 @@ claude -p "/banini"
 
 ```bash
 # 這個能跑
-claude -p "Run python3 ~/.claude/skills/banini/scripts/scrape_threads.py banini31 5, then analyze..."
+claude -p "Run python3 ~/.claude/skills/morning-brief/scripts/fetch_news.py --top 5, then summarize..."
 ```
 
 但你不可能把這種一百字的 prompt 塞進排程設定。於是 skill-cron 誕生了。
@@ -36,7 +36,7 @@ claude -p "Run python3 ~/.claude/skills/banini/scripts/scrape_threads.py banini3
 ### 職責分離
 
 ```
-Skill（如 /banini）
+Skill（如 /morning-brief）
   = 純核心功能：爬蟲 + 分析 + 輸出
   = 只管做事，不管什麼時候做
 
@@ -54,8 +54,8 @@ skill-cron（管理器）
 
 ```yaml
 ---
-name: banini
-headless-prompt: "Run python3 ~/.claude/skills/banini/scripts/scrape_threads.py banini31 5, then analyze..."
+name: morning-brief
+headless-prompt: "Run python3 ~/.claude/skills/morning-brief/scripts/fetch_news.py --top 5, then summarize..."
 ---
 ```
 
@@ -158,7 +158,7 @@ skill-cron 在 `~/Library/LaunchAgents/` 下管理以 `com.skill-cron.` 為前�
 
 | Skill | 做什麼 | 建議排程 |
 |-------|--------|---------|
-| [banini](../banini/) | 冥燈追蹤 | 盤中 `平日 9:07-13:07 每 30 分`、盤後 `每天 23:03` |
+| （範例）morning-brief | 晨間新聞摘要 | 每天 `07:00` |
 
 想讓你的 skill 也支援排程？在 SKILL.md frontmatter 加 `headless-prompt` 就好。一行。
 

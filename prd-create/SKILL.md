@@ -176,7 +176,7 @@ User 喊「lock v1.0」/「鎖版」/「上 wiki」時走這條。
 
 **Step 6b. Resolve target wiki location**
 
-User 給 wiki path（如 `/SynaiqDevWiki/TeamWork/<feature>/PRD`）。若 parent page 不存在，先 create parent。
+User 給 wiki path（如 `/YourOrgWiki/TeamWork/<feature>/PRD`）。若 parent page 不存在，先 create parent。
 
 **Step 6c. Publish via az CLI**
 

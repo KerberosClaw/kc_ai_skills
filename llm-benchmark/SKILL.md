@@ -2,6 +2,7 @@
 name: llm-benchmark
 description: "本地 LLM Benchmark 工具。當使用者想測試、比較或選擇本地 Ollama 模型時觸發。流程：檢查 Ollama 安裝 → 依 VRAM 推薦模型大小 → 下載模型 → 跑 benchmark → 與現有模型比較 → 輸出 markdown 報告。"
 version: 1.0.0
+triggers: ["/llm-benchmark", "測本地模型", "模型 benchmark", "比較 ollama 模型"]
 ---
 
 # LLM Benchmark Skill
@@ -22,21 +23,20 @@ which ollama 2>/dev/null || echo "NOT_INSTALLED"
 
 ## Step 0.5：VRAM 清空（benchmark 前必做）
 
-### 1. 停止 OpenClaw（若有且正在運行）
+### 1. 停止其他吃 GPU / RAM 的本地 LLM 服務（若有且正在運行）
 
 ```bash
-# 檢查 OpenClaw 容器是否存在且運行中
-docker ps --format '{{.Names}}' | grep -i openclaw
+# 檢查是否有 LLM gateway 類容器正在運行（例：OpenClaw、LM 代理服務）
+docker ps --format '{{.Names}}' | grep -i <your-llm-gateway>
 ```
 
-- 若有 OpenClaw 容器正在運行 → 停止它：
+- 若有相關容器正在運行 → 停止它：
   ```bash
-  cd ~/openclaw && docker compose stop openclaw-gateway
-  echo "OpenClaw stopped"
+  cd <your-llm-stack-dir> && docker compose stop <gateway-service>
   ```
-- 若無 OpenClaw 容器，或容器已停止 → 跳過此步驟
+- 若無相關容器，或容器已停止 → 跳過此步驟
 
-記錄 OpenClaw 是否原本是啟動的，**benchmark 完成後需還原狀態**。
+記錄該服務是否原本是啟動的，**benchmark 完成後需還原狀態**。
 
 ### 2. 重啟 Ollama 清除 VRAM（必做）
 
@@ -53,12 +53,11 @@ nvidia-smi --query-gpu=memory.used,memory.free --format=csv,noheader,nounits
 
 確認 `memory.used` 降到 ~1500 MB 以下再繼續。若仍偏高，再等 5 秒重確認。
 
-### 4. Benchmark 完成後還原 OpenClaw
+### 4. Benchmark 完成後還原服務
 
-若步驟 1 有停止 OpenClaw，benchmark 全部完成後執行：
+若步驟 1 有停止服務，benchmark 全部完成後執行：
 ```bash
-cd ~/openclaw && docker compose start openclaw-gateway
-echo "OpenClaw restarted"
+cd <your-llm-stack-dir> && docker compose start <gateway-service>
 ```
 
 ---

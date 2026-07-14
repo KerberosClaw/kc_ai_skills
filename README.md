@@ -71,8 +71,6 @@ Grouped by what you're trying to get done — every skill is still a self-contai
 | Skill | What It Actually Does |
 |-------|----------------------|
 | [skill-cron](skill-cron/) | One manager to schedule them all. Register any skill for crontab execution + Telegram push — because `claude -p` doesn't support `/skill` syntax, so somebody had to build the bridge. Config in `~/.claude/configs/`, logs auto-rotate, crontab entries self-managed |
-| [banini](banini/) | Track Taiwan's most famous "reverse indicator" investor on Threads, let Claude do the contrarian analysis on the spot. Zero API cost — Playwright scrapes locally, Claude IS the LLM. Rewritten from [cablate/banini-tracker](https://github.com/cablate/banini-tracker) to eliminate $11/mo in Apify + LLM API fees. Pair with [skill-cron](skill-cron/) for scheduled runs + Telegram push — [setup guide](banini/docs/SETUP.md) |
-| [job-radar](job-radar/) | Your job-hunting autopilot's remote control. Tell your AI "write cover letters" in Telegram and it reads JDs, writes 25 tailored letters, zips them, and sends them back before you finish your coffee. Pairs with [kc_job_radar](https://github.com/KerberosClaw/kc_job_radar) — Docker required, sanity optional |
 | [prep-repo](prep-repo/) | The "did I forget anything?" checklist before pushing to GitHub. README, commits, secrets, broken links — the stuff you always forget at 2 AM |
 
 ## Installation
