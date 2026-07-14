@@ -2,6 +2,7 @@
 name: rewrite-tone
 description: "Rewrite Markdown files with a conversational, humorous, self-deprecating tone. Turns dry technical docs into engaging war stories. Use when user says 'rewrite', 'change tone', 'make it fun', or similar."
 version: 1.0.0
+triggers: ["/rewrite-tone", "改寫語氣", "rewrite tone", "寫得好玩點"]
 ---
 
 # Rewrite Tone

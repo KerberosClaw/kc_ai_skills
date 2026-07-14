@@ -2,6 +2,7 @@
 name: repo-scan
 description: "GitHub 開源專案安全掃描工具。輸入 GitHub repo URL，輸出專案概覽、靜態弱點分析、供應鏈風險、Issues 安全回報、維護者評估與風險總結。適用於安裝前的安全評估。"
 version: 1.0.0
+triggers: ["/repo-scan", "掃這個 repo", "安裝前掃描", "repo 安全掃描"]
 ---
 
 # Repo Scan — GitHub 開源專案安全掃描

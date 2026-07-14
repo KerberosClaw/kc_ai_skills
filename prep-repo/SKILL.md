@@ -2,6 +2,7 @@
 name: prep-repo
 description: "Prepare a project for GitHub: README, commit conventions, sensitive data scan, broken link check, project structure, tests, CI, Docker, and final cleanup."
 version: 2.0.0
+triggers: ["/prep-repo", "推上 GitHub 前檢查", "開源前體檢", "prepare repo"]
 ---
 
 # Prep Repo
@@ -12,7 +13,7 @@ Prepare a local project for publishing to GitHub. Run through all checks and fix
 
 ### 1. README
 
-- [ ] `README.md` exists with an **engaging, descriptive title** (not the repo/folder name — e.g. "Job Radar -- Because Life's Too Short to Browse 104 Manually" instead of "kc_job_radar")
+- [ ] `README.md` exists with an **engaging, descriptive title** (not the repo/folder name — e.g. "Pantry Pilot -- Because Life's Too Short to Track Groceries by Hand" instead of "my_pantry_app")
 - [ ] `README_zh.md` exists (Traditional Chinese version)
 - [ ] `README.md` has `[正體中文](README_zh.md)` link (not 繁體中文、繁體中文版 etc.)
 - [ ] `README_zh.md` has `[English](README.md)` link (not English Version etc.)

@@ -71,8 +71,6 @@
 | Skill | 它到底幹嘛 |
 |-------|----------|
 | [skill-cron](skill-cron/) | 一個管理器統治所有排程。註冊任何 skill 做 crontab 定時執行 + Telegram 推播 — 因為 `claude -p` 不支援 `/skill` 語法，總得有人把橋搭起來。設定存 `~/.claude/configs/`，日誌自動輪替，crontab entries 自動管理 |
-| [banini](banini/) | 追蹤台灣最強反指標女神巴逆逆的 Threads 貼文，讓 Claude 直接做反指標分析。零 API 成本 — Playwright 本地抓資料，Claude 自己就是 LLM。從 [cablate/banini-tracker](https://github.com/cablate/banini-tracker) 改寫而來，省掉每月 $11 的 Apify + LLM API 費用。搭配 [skill-cron](skill-cron/) 可排程 + Telegram 推播 — [使用指南](banini/docs/SETUP.md) |
-| [job-radar](job-radar/) | 求職自動化的遙控器。在 Telegram 說聲「寫信」，AI 就會讀完 JD、寫好 25 封客製化求職信、打包成 zip 傳回來 -- 你咖啡都還沒喝完。搭配 [kc_job_radar](https://github.com/KerberosClaw/kc_job_radar) 使用，Docker 必備，理智選配 |
 | [prep-repo](prep-repo/) | 推上 GitHub 之前的「我是不是忘了什麼」checklist。README、commit、機敏資訊、broken link — 就是那些你凌晨兩點一定會忘的東西 |
 
 ## 安裝

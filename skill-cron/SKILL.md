@@ -2,6 +2,7 @@
 name: skill-cron
 description: "排程推播管理器 — 註冊/管理需定時執行並推送 Telegram 通知的 skill。Use when user says '/skill-cron', '排程', '定時執行', 'crontab', 'telegram 通知' or similar."
 version: 0.2.0
+triggers: ["/skill-cron", "排程", "定時執行", "crontab", "telegram 通知"]
 ---
 
 # skill-cron
@@ -60,7 +61,7 @@ python3 ${CLAUDE_SKILL_DIR}/scripts/cron_manager.py list
 
 ```
 可排程的 skills：
-  a. banini — 巴逆逆反指標追蹤器
+  a. morning-brief — 每日晨間新聞摘要推播
   b. xxx — ...
 
 沒有找到？skill 需要在 SKILL.md frontmatter 加入 headless-prompt 欄位。
@@ -240,10 +241,10 @@ python3 ${CLAUDE_SKILL_DIR}/scripts/cron_manager.py run <job_id>
   },
   "jobs": [
     {
-      "id": "banini-盤中-1",
-      "skill": "banini",
+      "id": "morning-brief-1",
+      "skill": "morning-brief",
       "cron": "30 9 * * 1",
-      "label": "盤中",
+      "label": "晨間",
       "enabled": true
     }
   ]
@@ -256,8 +257,8 @@ python3 ${CLAUDE_SKILL_DIR}/scripts/cron_manager.py run <job_id>
 
 ```yaml
 ---
-name: banini
-headless-prompt: "Run python3 ~/.claude/skills/banini/scripts/scrape_threads.py banini31 5, then analyze..."
+name: morning-brief
+headless-prompt: "Run python3 ~/.claude/skills/morning-brief/scripts/fetch_news.py --top 5, then summarize..."
 ---
 ```
 
