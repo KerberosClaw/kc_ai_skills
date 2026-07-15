@@ -14,6 +14,12 @@
 
 依「你想完成什麼」分組 — 每個 skill 仍是獨立的根目錄資料夾，分組只是張地圖。
 
+### 工作流入口
+
+| Skill | 它到底幹嘛 |
+|-------|----------|
+| [workflow-router](workflow-router/) | 給最容易混的中間地帶當入口：PRD、SD、FR、AC、ADR、拆票、實作、release、無人值守。它最多問一個澄清問題，告訴你該用哪顆 specialist skill，用白話說原因，然後交棒。它刻意不自己寫 PRD/spec/ADR |
+
 ### 生成與創作
 
 | Skill | 它到底幹嘛 |
@@ -30,7 +36,7 @@
 | [md2ppt](md2ppt/) | md2pdf 的吵鬧弟弟。把你的 Markdown 報告變成簡報品質 .pptx，透過互動式設計對話 + 可重用的 Python build script。Generic markdown→pptx 工具（Marp、pandoc）產出來的 slide 技術上對但視覺上爛 — md2ppt 跟你一張一張對話討論 layout，然後吐一份 hand-coded script，內容改動 re-run 5 秒重產。可選 LibreOffice self-check。Brand template 整合走 ad-hoc helpers — 試過 prescribed workflow，5 輪「等等這不是 cover layout」後退掉 |
 | [conference-report](conference-report/) | 你去了場研討會，錄了演講、拍了投影片，回家抱著一堆音檔加糊掉的照片，外帶一句「改天再來整理」的空頭支票。這個 skill 幫你重建忠實的逐場筆記（投影片畫面 + 講者逐字稿，還會標出 Whisper 的幻覺，免得你引用到機器的白日夢），然後在動筆前先問清楚你到底要哪種報告 — 單場、整天、還是跨天綜合 |
 
-### 規格與專案
+### 規格與交付
 
 | Skill | 它到底幹嘛 |
 |-------|----------|
@@ -39,27 +45,18 @@
 | [spec](spec/) | Spec-driven 開發流程 — 從模糊想法到驗收結案。一個指令，自動判斷專案狀態，引導你走完：需求釐清 → 審查 → 實作 → 驗收 → 結案報告。因為「先寫再說」就是你之後要全部重寫的原因 |
 | [goal-engineer](goal-engineer/) | 給那種「想丟給 agent 自己磨一整晚、又不想全程盯著」的場景。它用訪談式問答幫你把一條目標驅動的 evaluator-optimizer loop（generate-and-select 型:產候選 → 依 rubric 評 → 依原因碼迭代 → 你挑最終那個）釘死，吐一份新 session 能 blind 執行的 dispatch 文件，你只要看著紅黃綠燈通知滾進來就好。它是**寫規格的上游、不是引擎** — dispatch 丟給 Claude Code 內建的 `/goal`、headless `claude -p`、或任何無人值守 agent 去跑。不是 `/goal` 本身、不是 build-to-spec 的 PRD 作者（那是 prd-create）、也不是 cron 定時器。唯一窄例外：build spec **已經凍結**（核可的 ADR / 鎖定的設計 / 可機器檢核的 AC）、只差無人值守執行的包裝 → 它直接出一份 lean build dispatch，不會逼你為一個已經拍板的決策回頭寫整份 PRD。通知通道隨你換（Telegram/Discord/Slack/iMessage），而且內建一道「ship 前要不要先對抗審查?」的閘 — 因為我們自己每次都忘記問 |
 
-> **規劃類 skill 該用哪顆？** 它們會像，是因為共用同一套「先訪談再產文件」的 DNA — 但坐在不同樓層：
->
-> | 你手上是… | 用這顆 |
-> |---|---|
-> | 一坨筆記／需求 → 要一份**給別人看的產品需求書**（會上 wiki） | `prd-create` |
-> | 一份完成的 PRD → **Azure DevOps 工作項** | `prd-breakdown` |
-> | 一個模糊想法，**你自己**要在 codebase 裡一路做到**驗收過的 code** | `spec` |
-> | 剛做了一個**難回頭的決策**，值得記下**為什麼** | `adr` |
-> | 一個目標，要丟給 agent **無人值守整晚磨** | `goal-engineer` |
->
-> 最常被搞混的兩組：**prd-create vs spec** — prd-create 寫給 stakeholder 看的產品文件、停在文件；spec 走你自己 codebase 從需求到驗收過的 code。**spec vs adr** — spec 是整個 feature 的設計＋實作生命週期；adr 是其中**單一**關鍵決策抽出來的獨立紀錄（過三重閘才寫）。`grill` 不是競爭者 — 它是其他幾顆共用的「一次問一題」訪談紀律。
+> 不確定用哪顆時，先用 `workflow-router`。最短判斷法：產品需求走 `prd-create`；repo 內的 SD / 工程 AC / 實作走 `spec`；單一重要技術決策走 `adr`；核可 PRD 拆票走 `prd-breakdown`；凍結目標要無人值守跑走 `goal-engineer`。
 
 ### 工程紀律
 
-> 這一組的紀律機制參考 [mattpocock/skills](https://github.com/mattpocock/skills)（MIT）的 grilling / diagnosing-bugs / domain-modeling，中文重寫、並調整成本 repo 慣例。
+> 這一組是交付流程前、中、後都會用到的行為護欄。`grill` / `diagnose` / `adr` 的紀律機制參考 [mattpocock/skills](https://github.com/mattpocock/skills)（MIT），中文重寫、並調整成本 repo 慣例。
 
 | Skill | 它到底幹嘛 |
 |-------|----------|
 | [grill](grill/) | 「先討論」的制度化。你丟個模糊想法，它不准自己動手，一次問你一題、每題附建議答案，問到雙方理解一致才放行。最鋒利的一條規則：grep 查得到的事不准問你 — 拷問你之前先拷問 filesystem。詞彙飄了還會順手幫 repo 養一本 CONTEXT.md 詞彙表 |
 | [diagnose](diagnose/) | 先架測謊機，再准審問。沒有一條能重現症狀的指令之前，禁止提任何 root cause 理論；要猜也得一次列 3-5 個假說、附可否證預測、排好序先給你過目。專治 AI（和人類）讀兩眼 code 就宣稱「找到原因了」的老毛病 |
 | [adr](adr/) | 幫你記架構決策，但它的第一件事是勸你別記。三重閘（難回頭 / 沒脈絡會困惑 / 真實取捨）全過才動筆，預設格式是標題加三句話 — ADR 的價值在「記下為什麼」，不在填滿模板。特別會盯兩種東西：刻意偏離顯然路徑的決策、和被否決的方案 |
+| [prep-repo](prep-repo/) | 推上 GitHub 之前的「我是不是忘了什麼」checklist。README、commit、機敏資訊、broken link、專案結構、測試、CI、Docker、最後清理 — 就是那些你凌晨兩點一定會忘的東西 |
 
 ### 研究與安全
 
@@ -83,7 +80,6 @@
 | Skill | 它到底幹嘛 |
 |-------|----------|
 | [skill-cron](skill-cron/) | 一個管理器統治所有排程。註冊任何 skill 做 crontab 定時執行 + Telegram 推播 — 因為 `claude -p` 不支援 `/skill` 語法，總得有人把橋搭起來。設定存 `~/.claude/configs/`，日誌自動輪替，crontab entries 自動管理 |
-| [prep-repo](prep-repo/) | 推上 GitHub 之前的「我是不是忘了什麼」checklist。README、commit、機敏資訊、broken link — 就是那些你凌晨兩點一定會忘的東西 |
 
 ## 安裝
 
@@ -109,7 +105,7 @@ cp -r kc_ai_skills/searxng ~/.openclaw/workspace/skills/
 
 ```
 skill-name/
-├── SKILL.md          # Frontmatter（name, description, version）+ 指令
+├── SKILL.md          # Frontmatter（name, description, version, status, triggers）+ 指令
 └── scripts/          # 可執行腳本（選用）
     └── script.py
 ```
@@ -119,4 +115,3 @@ skill-name/
 - [kc_tradfri_mcp](https://github.com/KerberosClaw/kc_tradfri_mcp) — 「把客廳的燈打開」— 對，我們真的讓 AI 去做這件事了
 - [kc_openclaw_local_llm](https://github.com/KerberosClaw/kc_openclaw_local_llm) — 我們測了 13 個本地 LLM，只有 2 個能穩定呼叫 tool。完整報告在這裡
 ```
-

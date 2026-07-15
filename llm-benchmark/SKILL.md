@@ -1,13 +1,26 @@
 ---
 name: llm-benchmark
-description: "本地 LLM Benchmark 工具。當使用者想測試、比較或選擇本地 Ollama 模型時觸發。流程：檢查 Ollama 安裝 → 依 VRAM 推薦模型大小 → 下載模型 → 跑 benchmark → 與現有模型比較 → 輸出 markdown 報告。"
-version: 1.0.0
-triggers: ["/llm-benchmark", "測本地模型", "模型 benchmark", "比較 ollama 模型"]
+description: "Use when the user wants to test, compare, or choose local Ollama models for their machine. Checks Ollama/GPU state, recommends model sizes from available VRAM, preserves existing benchmark records, pulls only approved models, runs repeatable benchmarks, restores stopped services, and writes a markdown comparison report. NOT for hosted API model evaluation or subjective chat-quality judging without local benchmark commands."
+version: 1.0.1
+status: stable
+triggers:
+  - "/llm-benchmark"
+  - "測本地模型"
+  - "模型 benchmark"
+  - "比較 ollama 模型"
 ---
 
 # LLM Benchmark Skill
 
-你是本地 LLM 效能評測專家。執行以下完整流程：
+You are a local LLM benchmarking specialist. 你負責用可重現的命令測 Ollama 模型效能，保護使用者現有服務狀態，並把推薦和限制講清楚。
+
+## 不適用
+
+- 不評測雲端 API 模型。
+- 不用單次主觀聊天感覺取代 benchmark。
+- 不在未確認硬體與服務狀態前直接 pull 大模型或重啟服務。
+
+執行以下完整流程：
 
 ## Step 0：環境檢查
 

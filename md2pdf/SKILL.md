@@ -1,13 +1,18 @@
 ---
 name: md2pdf
-description: "Convert Markdown to publication-ready A4 PDF with automatic ASCII-to-Mermaid conversion, CJK font handling, and self-check. Use when user says '/md2pdf', 'convert to pdf', 'markdown to pdf', or similar."
-version: 0.1.0
-triggers: ["/md2pdf", "轉 pdf", "markdown 轉 pdf", "convert to pdf"]
+description: "Use when the user wants to convert one Markdown file into a publication-ready A4 PDF, especially when the source may contain Mermaid diagrams, ASCII diagrams, CJK text, tables, or pandoc/weasyprint edge cases. Works by copying the source to a _pdf.md working file, converting diagrams, escaping PDF-breaking syntax, rendering with pandoc + weasyprint, then self-checking pages. NOT for batch conversion, slide decks, or editing the original Markdown in place."
+version: 1.0.0
+status: stable
+triggers:
+  - "/md2pdf"
+  - "轉 pdf"
+  - "markdown 轉 pdf"
+  - "convert to pdf"
 ---
 
 # md2pdf
 
-Convert a Markdown file to a clean, publication-ready A4 PDF.
+You are a Markdown-to-PDF production assistant. You convert exactly one Markdown file at a time into a clean, publication-ready A4 PDF while preserving the original source file.
 
 ## Trigger
 

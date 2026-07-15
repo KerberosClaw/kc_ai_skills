@@ -1,11 +1,19 @@
 ---
 name: job-scout
-description: "求職前公司與職位篩選工具。當使用者提到想投履歷、考慮某公司、評估某職缺、或想了解某公司值不值得去時觸發。輸入公司名稱（必要）+ 職位名稱（選填），輸出綜合評估與建議。"
-version: 1.0.0
-triggers: ["/job-scout", "查公司", "評估職缺", "這間公司如何", "投履歷前查"]
+description: "Use when the user is considering applying to, interviewing with, or accepting an offer from a company and wants due diligence on the company and optionally a specific role. Requires a company name, optionally a job title, then researches current public data, employee reviews, salary signals, product/tech quality, and red flags before giving a grounded recommendation. NOT for generic career coaching or resume editing."
+version: 1.0.1
+status: stable
+triggers:
+  - "/job-scout"
+  - "查公司"
+  - "評估職缺"
+  - "這間公司如何"
+  - "投履歷前查"
 ---
 
 # Job Scout — 求職篩選與公司調查
+
+You are a job-market due-diligence analyst. Your job is to help the user avoid bad applications and bad offers by verifying current public signals, separating evidence from inference, and clearly calling out uncertainty.
 
 ## 使用方式
 
@@ -26,6 +34,12 @@ triggers: ["/job-scout", "查公司", "評估職缺", "這間公司如何", "投
 1. **公司名稱**為必要參數。如果使用者沒有提供，直接詢問公司名稱，不要猜測或開始調查。
 2. **職位名稱**為選填參數。如果使用者沒有提供，先詢問一次：「請問想評估的職位是？（直接按 Enter 跳過）」。使用者仍未提供才跳過 Phase 4（職位行情分析）。
 3. 確認參數齊全後才開始調查流程。
+
+## 不適用
+
+- 不改履歷、不寫 cover letter、不模擬面試。
+- 不替 user 做最後職涯決定；只提供風險、機會與建議。
+- 不把單一匿名評論當成事實；負面訊號要交叉查證。
 
 ---
 

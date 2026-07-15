@@ -2,6 +2,7 @@
 name: gpt-image-gen
 description: "Use when the user asks to generate an image via GPT/Codex (e.g. 「叫 gpt 生圖」「幫我用 gpt 生圖」「gpt 畫一個 X」). The skill drafts a Chinese + English prompt pair, iterates with the user until they explicitly approve, then dispatches Codex CLI ($imagegen skill, codex built-in image_gen) in the background, monitors progress, converts the result to a jpg in the current working directory, and writes a sidecar prompt log. Does text-to-image AND img2img — drop a reference image (on-disk file) and it runs Codex `-i` to lock a face/character across scenes."
 version: 0.4.0
+status: mvp
 triggers:
   - "叫 gpt 生圖"
   - "叫gpt生圖"

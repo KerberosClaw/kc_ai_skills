@@ -2,7 +2,12 @@
 name: memory-lint
 description: "Use when the user wants to lint a Claude Code memory directory (~/.claude/memory or custom path) for index inconsistency, stale project state, duplicate / conflicting feedback rules, naming convention violations, frontmatter gaps, and oversized files. The skill detects path, scans root-level *.md, reports findings by severity. Read-only — never auto-fixes, never deletes, never merges."
 version: 0.2.0
-triggers: ["/memory-lint", "memory lint", "掃 memory", "memory 健檢"]
+status: mvp
+triggers:
+  - "/memory-lint"
+  - "memory lint"
+  - "掃 memory"
+  - "memory 健檢"
 argument-hint: "[path]"
 ---
 

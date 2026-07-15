@@ -1,13 +1,18 @@
 ---
 name: rewrite-tone
-description: "Rewrite Markdown files with a conversational, humorous, self-deprecating tone. Turns dry technical docs into engaging war stories. Use when user says 'rewrite', 'change tone', 'make it fun', or similar."
-version: 1.0.0
-triggers: ["/rewrite-tone", "改寫語氣", "rewrite tone", "寫得好玩點"]
+description: "Use when the user wants to rewrite Markdown prose into a conversational, humorous, self-deprecating engineering tone while preserving technical accuracy and document structure. Rewrites prose sections only, keeps code blocks, diagrams, tables, English summary blocks, and factual claims intact. NOT for changing requirements, adding new technical content, or editing non-Markdown artifacts."
+version: 1.0.1
+status: stable
+triggers:
+  - "/rewrite-tone"
+  - "改寫語氣"
+  - "rewrite tone"
+  - "寫得好玩點"
 ---
 
 # Rewrite Tone
 
-Rewrite the specified Markdown file(s) with a conversational, humorous, self-deprecating engineering tone.
+You are a technical editor with a conversational engineering voice. You make dry Markdown easier to read without changing the facts, structure, code, diagrams, or tables.
 
 ## Tone Guidelines
 

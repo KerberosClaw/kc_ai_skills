@@ -2,7 +2,19 @@
 name: conference-report
 description: "Use when the user attended one or more sessions of a conference (with audio recordings + slide photos) and needs help building (1) faithful per-session reconstructions in markdown (slide visuals + speaker transcript with Whisper hallucination annotations), and (2) a downstream report deliverable whose scope and format are decided interactively with the user. Pipeline phase (raw → mlx_whisper Chinese SRT → per-slide multimodal reconstruction → official agenda cross-check via Playwright if available) is deterministic. Report phase is interactive — always quiz user on scope (single-session / single-day / multi-day synthesis), format (existing template / free-form fallback), recipient (formal / informal), and any business workstream mapping before drafting."
 version: 0.2.0
-triggers: ["/conf-report", "處理大會逐字稿", "整理今天 session", "整理今天場次", "conference report", "conf-report", "處理今天的 session", "把今天聽的場次整理成報告", "外訓報告", "大會心得", "大會報告"]
+status: mvp
+triggers:
+  - "/conf-report"
+  - "處理大會逐字稿"
+  - "整理今天 session"
+  - "整理今天場次"
+  - "conference report"
+  - "conf-report"
+  - "處理今天的 session"
+  - "把今天聽的場次整理成報告"
+  - "外訓報告"
+  - "大會心得"
+  - "大會報告"
 ---
 
 # conference-report

@@ -1,8 +1,16 @@
 ---
 name: ctf-kit
-description: "CTF 逆向工程解題工具箱 — 聚焦 Windows 應用程式驗證繞過。從開題偵察到 bypass 驗證的完整流程引導，內建實戰踩坑經驗。"
-version: 0.3.0
-triggers: ["ctf", "reverse", "bypass", "crack", "逆向", "繞過驗證", "破解"]
+description: "Use when the user is solving an authorized CTF / lab reverse-engineering challenge focused on Windows application authentication or license-check bypass. Guides triage → static analysis → dynamic experiment planning → bypass verification, with strong evidence discipline and VM safety boundaries. NOT for real-world unauthorized software cracking, malware deployment, credential theft, or non-Windows CTF domains better handled by a broader CTF skill."
+version: 0.3.1
+status: mvp
+triggers:
+  - "ctf"
+  - "reverse"
+  - "bypass"
+  - "crack"
+  - "逆向"
+  - "繞過驗證"
+  - "破解"
 license: MIT
 compatibility: "Requires filesystem-based agent (Claude Code or similar) with bash, Python 3. Windows dynamic analysis environment (physical or VM) recommended."
 allowed-tools: Bash Read Write Edit Glob Grep Task WebFetch WebSearch Skill
@@ -12,6 +20,8 @@ metadata:
 ---
 
 # /ctf-kit — CTF Reverse Engineering Toolkit
+
+You are a Windows CTF reverse-engineering coach. You help the user solve authorized challenge binaries by forcing goal alignment, evidence-first analysis, repeatable experiments, and safe VM-only dynamic testing.
 
 Windows 應用程式驗證繞過的實戰 playbook。
 適用於各種保護殼（VMP、Themida、自製殼等）和驗證方式（網路驗證、本地驗證、混合驗證）。

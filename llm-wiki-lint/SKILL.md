@@ -2,7 +2,13 @@
 name: llm-wiki-lint
 description: "Use when the user wants to lint a repo following the Karpathy LLM Wiki pattern (raw/ + wiki/ + SCHEMA.md / index.md / log.md). The skill detects path, scans wiki pages + schema layer, reports frontmatter gaps, broken in-body links, source traceability breaks, stale claims, orphan pages, index synopsis contradictions, and SCHEMA-vs-reality drift. Phase 1 is read-only report; Phase 2 (fix + log.md LINT entry) only runs after the user explicitly approves."
 version: 0.3.1
-triggers: ["/llm-wiki-lint", "llm wiki lint", "wiki lint", "掃 wiki", "wiki 健檢"]
+status: mvp
+triggers:
+  - "/llm-wiki-lint"
+  - "llm wiki lint"
+  - "wiki lint"
+  - "掃 wiki"
+  - "wiki 健檢"
 argument-hint: "[path]"
 ---
 

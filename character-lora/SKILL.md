@@ -2,7 +2,15 @@
 name: character-lora
 description: "Use when the user wants to build a consistent-identity LoRA for an original character — defining the character, generating a face/body-consistent multi-angle dataset (via the gpt-image-gen skill for codex image generation), captioning it, doing base-specific homework, training on a chosen base (Pony / Z-Image / others) on a local GPU, and producing a usable LoRA. This skill ORCHESTRATES the end-to-end pipeline and gates every expensive/irreversible step; it delegates actual image generation to gpt-image-gen and never improvises training settings from memory."
 version: 0.2.1
-triggers: ["/character-lora", "做角色 lora", "訓練角色 lora", "角色 lora 流程", "做一個角色的 lora", "train a character lora", "character lora pipeline"]
+status: mvp
+triggers:
+  - "/character-lora"
+  - "做角色 lora"
+  - "訓練角色 lora"
+  - "角色 lora 流程"
+  - "做一個角色的 lora"
+  - "train a character lora"
+  - "character lora pipeline"
 ---
 
 # character-lora
