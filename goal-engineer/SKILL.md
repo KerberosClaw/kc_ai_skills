@@ -1,8 +1,21 @@
 ---
 name: goal-engineer
 description: "Use when the user wants to AUTHOR an unattended dispatch for either: (1) a goal-driven evaluator-optimizer loop of the GENERATE-AND-SELECT kind (generate candidates → grade against a rubric → iterate by reason-code → keep the best; the human picks the final selection), or (2) a lean build-to-spec run whose build spec is ALREADY FROZEN (approved ADR / locked design / accepted machine-checkable AC) and the only missing piece is the unattended-execution wrapper. A fresh-session agent runs the dispatch hands-off while the human only watches traffic-light push notifications. Interview-style forcing questions lock the spec, then it emits a self-contained dispatch markdown + a channel-agnostic notification protocol. This is the upstream SPEC AUTHOR, NOT a runtime: the dispatch is run by Claude Code's /goal, a headless `-p` session, or any unattended agent — /goal is the engine, this writes what you feed it. It NEVER authors build specs, product decisions, or AC — creating a build spec / PRD from raw input is prd-create. NOT a time scheduler (/loop or cron), NOT a recurring-push registrar (skill-cron)."
-version: 0.4.0
-triggers: ["/goal-engineer", "goal engineering", "goal engineer", "設計無人值守 loop", "固化 goal-loop", "unattended loop", "evaluator-optimizer loop", "generate-and-select loop", "dispatch 換手文件", "lean build dispatch", "凍結規格包 dispatch", "frozen spec dispatch"]
+version: 1.0.0
+status: stable
+triggers:
+  - "/goal-engineer"
+  - "goal engineering"
+  - "goal engineer"
+  - "設計無人值守 loop"
+  - "固化 goal-loop"
+  - "unattended loop"
+  - "evaluator-optimizer loop"
+  - "generate-and-select loop"
+  - "dispatch 換手文件"
+  - "lean build dispatch"
+  - "凍結規格包 dispatch"
+  - "frozen spec dispatch"
 ---
 
 # /goal-engineer — Unattended Goal-Loop Dispatch Architect

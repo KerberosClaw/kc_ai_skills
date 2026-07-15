@@ -1,8 +1,9 @@
 ---
 name: searxng
-description: Privacy-respecting metasearch using your local SearXNG instance. Search the web, images, news, and more without external API dependencies.
+description: "Use when the user wants privacy-respecting web, image, news, or video search through a configured local SearXNG instance instead of external search APIs. Calls the bundled script against SEARXNG_URL, supports result limits/categories/language/time range, and can return human-readable or JSON output. NOT for searches when no SearXNG instance is configured or when authenticated/private data retrieval is required."
 author: Avinash Venkatswamy
-version: 1.0.1
+version: 1.0.2
+status: stable
 homepage: https://searxng.org
 triggers:
   - "search for"
@@ -14,7 +15,15 @@ metadata: {"clawdbot":{"emoji":"🔍","requires":{"bins":["python3"]},"config":{
 
 # SearXNG Search
 
+You are a privacy-preserving search operator. You route search requests through the user's configured SearXNG instance and report results without introducing third-party API dependencies.
+
 Search the web using your local SearXNG instance - a privacy-respecting metasearch engine.
+
+## Not For
+
+- Do not use if `SEARXNG_URL` is missing and no local/default instance is reachable.
+- Do not scrape authenticated pages or private user accounts.
+- Do not treat search snippets as verified facts; cite uncertainty and follow sources when needed.
 
 ## Commands
 
@@ -59,11 +68,11 @@ Default (if not set): `http://localhost:8080`
 
 ## Features
 
-- 🔒 Privacy-focused (uses your local instance)
-- 🌐 Multi-engine aggregation
-- 📰 Multiple search categories
-- 🎨 Rich formatted output
-- 🚀 Fast JSON mode for programmatic use
+- Privacy-focused (uses your local instance)
+- Multi-engine aggregation
+- Multiple search categories
+- Rich formatted output
+- Fast JSON mode for programmatic use
 
 ## API
 

@@ -1,11 +1,18 @@
 ---
 name: spec
-description: "Spec-driven 開發流程 — 從模糊需求到驗收結案。自動判斷專案狀態，引導 user 走完：需求釐清 → 技術審查 → 實作 → 驗收 → 結案報告。"
-version: 1.3.0
-triggers: ["spec", "開 spec", "建 spec", "新功能"]
+description: "Use when the user wants a spec-driven development workflow for implementing a feature in the current codebase, from fuzzy idea or existing active spec through requirements, technical plan, tasks, implementation, verification, and closure report. Auto-detects project/spec state, writes persistent files under specs/, asks one grounded question at a time when requirements are ambiguous, and stops at stage gates. NOT for stakeholder PRDs (prd-create), ADO ticket breakdown (prd-breakdown), single architecture-decision records (adr), or already-frozen tasks that should simply be implemented."
+version: 1.3.1
+status: stable
+triggers:
+  - "spec"
+  - "開 spec"
+  - "建 spec"
+  - "新功能"
 ---
 
 # /spec — Spec-Driven Development
+
+You are a spec-driven development lead. You turn a user feature request into persistent requirements, implementation plan, task checklist, verified code, and a closure report while respecting the current repository state.
 
 把「實作 feature 的流程」標準化：需求釐清 → 技術審查 → 實作 → 驗收 → 結案。
 一個入口，自動判斷該做什麼。
@@ -491,6 +498,18 @@ triggers: ["spec", "開 spec", "建 spec", "新功能"]
 ```
 
 **為什麼分 active/completed？** 一眼看到還剩幾個 active，completed 歸檔不擋視野。靈感來自 OpenAI 的 `docs/exec-plans/{active,completed}/` 慣例（harness-engineering 文章）。
+
+---
+
+## 跟其他工程流程 skill 的關係
+
+- **`grill`**：只做「先討論、對齊理解」，不產 spec/plan/tasks、不實作。需求還在霧裡、user 明確說先討論 → 先用 `grill`；一旦要落成可執行開發流程 → 回到本 skill。
+- **`diagnose`**：處理已經壞掉的軟體。症狀是 bug/crash/錯誤輸出/flaky → 先用 `diagnose` 建 reproduction 和假說，不要開新 spec 假裝是 feature。
+- **`prd-create`**：寫給 stakeholder 的產品需求文件，停在 PRD/wiki。若目標是「給別人看的產品規格」→ `prd-create`；若目標是「我在這個 repo 把 feature 做完並驗收」→ 本 skill。
+- **`prd-breakdown`**：把已核可 PRD 拆成 Azure DevOps tickets。本 skill 的 `tasks.md` 是本地開發 checklist，不負責推 ADO。
+- **`goal-engineer`**：把已凍結的目標/規格包成無人值守 dispatch。若規格還需要釐清或 code 還要在當前 repo 實作 → 本 skill；若規格已鎖，只差交給 agent blind run → `goal-engineer`。
+- **`adr`**：記錄單一難回頭決策的「為什麼」。本 skill 可以產生需要 ADR 的決策，但不要把 ADR 寫成 spec，也不要把整個 feature lifecycle 塞進 ADR。
+- **`prep-repo`**：發布前總檢查。功能已做完、要公開或推 GitHub 前 → `prep-repo`；不要用它取代 spec 的需求/實作/驗收流程。
 
 ---
 

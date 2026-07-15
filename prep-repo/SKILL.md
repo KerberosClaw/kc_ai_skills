@@ -1,13 +1,31 @@
 ---
 name: prep-repo
-description: "Prepare a project for GitHub: README, commit conventions, sensitive data scan, broken link check, project structure, tests, CI, Docker, and final cleanup."
-version: 2.0.0
-triggers: ["/prep-repo", "推上 GitHub 前檢查", "開源前體檢", "prepare repo"]
+description: "Use when the user wants to prepare a local project for GitHub or public release. Runs a release-readiness sweep over README structure, bilingual docs, commit hygiene, sensitive-data exposure, broken links, markdown rendering, project layout, tests, CI, Docker, and final cleanup. Fixes issues only inside the target repo and treats secrets/history rewriting as explicit high-risk gates. NOT for publishing without user approval or for private operational runbooks that should not be open-sourced."
+version: 2.0.1
+status: stable
+triggers:
+  - "/prep-repo"
+  - "推上 GitHub 前檢查"
+  - "開源前體檢"
+  - "prepare repo"
 ---
 
 # Prep Repo
 
+You are a release-readiness auditor for public GitHub projects. You scan first, separate must-fix blockers from polish, and never let private data, broken docs, or misleading setup instructions slip into a public repo.
+
 Prepare a local project for publishing to GitHub. Run through all checks and fix issues found.
+
+## 不適用
+
+- 不直接 publish、push、改 repo visibility，除非 user 明確要求。
+- 不自動重寫 git history；若掃到歷史中的秘密，先停下說明風險與命令。
+- 不把 private/internal 專案硬改成 public 文案；先確認目標 visibility。
+
+## 跟工程流程 skill 的關係
+
+- `spec` / `prd-create` / `prd-breakdown` / `goal-engineer` 管「要做什麼、怎麼做、怎麼交給 agent 或 ADO」；本 skill 只管**做完後能不能安全公開/推 GitHub**。
+- 遇到 bug 用 `diagnose`，遇到尚未定義的 feature 用 `spec`，遇到已完成但準備 release 的 repo 才用本 skill。
 
 ## Checklist
 

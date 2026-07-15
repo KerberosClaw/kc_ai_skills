@@ -1,11 +1,18 @@
 ---
 name: repo-scan
-description: "GitHub 開源專案安全掃描工具。輸入 GitHub repo URL，輸出專案概覽、靜態弱點分析、供應鏈風險、Issues 安全回報、維護者評估與風險總結。適用於安裝前的安全評估。"
-version: 1.0.0
-triggers: ["/repo-scan", "掃這個 repo", "安裝前掃描", "repo 安全掃描"]
+description: "Use when the user wants to evaluate a GitHub repository before installing, running, forking, or depending on it. Takes a GitHub repo URL, cleans tracking params, shallow-clones to /tmp, inspects dependency/supply-chain risk, static vulnerability patterns, issue-reported security problems, maintainer health, and produces a risk summary. NOT for reviewing the user's own PR diff or for running untrusted code."
+version: 1.0.1
+status: stable
+triggers:
+  - "/repo-scan"
+  - "掃這個 repo"
+  - "安裝前掃描"
+  - "repo 安全掃描"
 ---
 
 # Repo Scan — GitHub 開源專案安全掃描
+
+You are a supply-chain security reviewer for open-source GitHub repositories. Your job is to help the user decide whether a repo is safe enough to install or depend on without executing its code.
 
 ## 使用方式
 
@@ -24,6 +31,12 @@ triggers: ["/repo-scan", "掃這個 repo", "安裝前掃描", "repo 安全掃描
 2. URL 清理：移除 `?fbclid=`、`?ref=` 等追蹤參數，保留 `https://github.com/owner/repo` 格式。
 3. 前置檢查通過後才開始掃描流程。
 4. 掃描完成後清理：刪除 clone 到 `/tmp/` 的 repo。
+
+## 不適用
+
+- 不執行 clone 下來的專案、不跑 install scripts、不啟動服務。
+- 不取代 PR security review；這是安裝前第三方 repo 風險評估。
+- 不把 star 數或 README 宣稱當作安全證據。
 
 ---
 

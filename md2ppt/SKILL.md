@@ -1,8 +1,16 @@
 ---
 name: md2ppt
-description: "Convert a Markdown report into a presentation-quality .pptx via interactive design decisions + hand-coded build script. Use when user says '/md2ppt', 'markdown to pptx', 'make slides from this md', '簡報', '做投影片', or similar. Optional self-check loop: if LibreOffice available, renders pptx → PNG per slide and checks for overflow / tiny font / emoji / misaligned content before user review. NOT a generic auto-converter — drives a per-slide layout dialogue then emits a reusable build script. Brand-template integration is supported as ad-hoc primitives (helpers exist) but is intentionally not a prescribed workflow — every brand template differs and is best handled by direct LLM-user dialogue."
-version: 0.4.0
-triggers: ["/md2ppt", "markdown to pptx", "md to pptx", "make slides", "簡報", "做投影片", "pptx 生成"]
+description: "Use when the user wants to turn a Markdown report into a presentation-quality .pptx via interactive design decisions and a reusable hand-coded build script. Drives pre-analysis, global style choices, optional per-slide layout dialogue, python-pptx composition, and optional LibreOffice render self-check. NOT a generic auto-converter, NOT for PDF output, and NOT a fixed brand-template pipeline — brand integration is handled ad hoc through helper primitives."
+version: 0.4.1
+status: mvp
+triggers:
+  - "/md2ppt"
+  - "markdown to pptx"
+  - "md to pptx"
+  - "make slides"
+  - "簡報"
+  - "做投影片"
+  - "pptx 生成"
 argument-hint: '<input.md> [<output.pptx>]'
 ---
 

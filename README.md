@@ -14,6 +14,12 @@ A collection of AI agent skills that solve real problems — not "summarize this
 
 Grouped by what you're trying to get done — every skill is still a self-contained top-level folder, the grouping is just a map.
 
+### Workflow entrypoint
+
+| Skill | What It Actually Does |
+|-------|----------------------|
+| [workflow-router](workflow-router/) | The front door for the confusing middle: PRD, SD, FR, AC, ADR, tickets, implementation, release, or unattended runs. It asks at most one clarifying question, tells you which specialist skill to use, explains why in plain language, then hands off. It deliberately does not write the PRD/spec/ADR itself |
+
 ### Generate & create
 
 | Skill | What It Actually Does |
@@ -30,7 +36,7 @@ Grouped by what you're trying to get done — every skill is still a self-contai
 | [md2ppt](md2ppt/) | md2pdf's louder sibling. Turn your Markdown report into a presentation-quality .pptx via interactive design dialogue + a reusable Python build script. Generic markdown→pptx tools (Marp, pandoc) produce slides that are syntactically correct but visually broken — md2ppt walks per-slide layout decisions with you, then emits a hand-coded script you can re-run in 5 seconds after content edits. Optional self-check via LibreOffice. Brand template integration via ad-hoc helpers — we tried prescribing a workflow, pulled it back after 5 rounds of "wait that's not the cover layout" |
 | [conference-report](conference-report/) | You went to a conference, recorded the talks, photographed the slides, and came home with a pile of audio, blurry photos, and a vague promise to "write it up someday". This rebuilds faithful per-session notes (slide visuals + speaker transcript, with Whisper hallucinations flagged so you do not quote a robot daydream), then actually asks what report you need -- one talk, a full day, or a multi-day synthesis -- before writing a single word |
 
-### Spec & project
+### Spec & delivery
 
 | Skill | What It Actually Does |
 |-------|----------------------|
@@ -39,27 +45,18 @@ Grouped by what you're trying to get done — every skill is still a self-contai
 | [spec](spec/) | Spec-driven development workflow — from fuzzy idea to verified deliverable. One command, auto-detects project state, walks you through: requirements → review → implement → verify → report. Because "just start coding" is how you end up rewriting everything |
 | [goal-engineer](goal-engineer/) | For when you want an agent to grind on something overnight without you hovering over it. Interview-style, it pins down a goal-driven evaluator-optimizer loop of the generate-and-select kind (generate candidates -> grade against a rubric -> iterate by reason-code -> you pick the winner), then emits a self-contained dispatch doc a fresh session runs blind while you just watch the green/yellow/red pings roll in. It is the upstream *spec author*, not the engine -- hand the dispatch to Claude Code's built-in `/goal`, a headless `claude -p`, or any unattended agent. NOT `/goal` itself, NOT a build-to-spec PRD writer (that's prd-create), NOT a cron timer. One narrow exception: if your build spec is *already frozen* (approved ADR, locked design, machine-checkable AC) and all you're missing is the unattended-run wrapper, it packages a lean build dispatch instead of making you write a full PRD for a decision you already made. Channel-agnostic notifications (Telegram/Discord/Slack/iMessage), and it bakes in a "want an adversarial review before we ship?" gate -- because we got tired of remembering to ask ourselves |
 
-> **Which planning skill do I reach for?** These overlap because they share the same interview-then-document DNA — but they sit at different layers:
->
-> | You have… | Reach for |
-> |---|---|
-> | A pile of notes/requests → a **product requirements doc for others** to read (ships to a wiki) | `prd-create` |
-> | A finished PRD → **Azure DevOps work items** | `prd-breakdown` |
-> | A fuzzy idea *you* will build in your own codebase, **all the way to verified code** | `spec` |
-> | One **hard-to-reverse decision** just made, worth recording *why* | `adr` |
-> | A goal to hand an agent to **grind unattended overnight** | `goal-engineer` |
->
-> The two confused most: **prd-create vs spec** — prd-create writes a product doc *for stakeholders* and stops at the doc; spec walks *your own* build from requirements to verified code. **spec vs adr** — spec is a whole feature's design+build lifecycle; adr is a *single* consequential decision pulled out into its own record (only if it clears the three gates). `grill` isn't a competitor — it's the shared "one question at a time" interview discipline the others reuse.
+> Not sure which one fits? Start with `workflow-router`. The shortest rule of thumb: product requirements go to `prd-create`; repo-local software design / engineering AC / implementation goes to `spec`; one durable technical decision goes to `adr`; approved PRD tickets go to `prd-breakdown`; frozen unattended execution goes to `goal-engineer`.
 
 ### Engineering discipline
 
-> This group's discipline mechanics are adapted from [mattpocock/skills](https://github.com/mattpocock/skills) (MIT) — grilling / diagnosing-bugs / domain-modeling — rewritten in Chinese and fitted to this repo's conventions.
+> These are behavior guardrails used before, during, or after the delivery workflows. `grill`, `diagnose`, and `adr` adapt discipline mechanics from [mattpocock/skills](https://github.com/mattpocock/skills) (MIT), rewritten in Chinese and fitted to this repo's conventions.
 
 | Skill | What It Actually Does |
 |-------|----------------------|
 | [grill](grill/) | "Let's discuss first," institutionalized. You drop a fuzzy idea, it refuses to touch code, asks you one question at a time — each with a suggested answer — until shared understanding is confirmed. Its sharpest rule: anything answerable by grep may not be asked. It interrogates the filesystem before it interrogates you. When vocabulary drifts, it also grows a CONTEXT.md glossary for the repo |
 | [diagnose](diagnose/) | Build the lie detector before the interrogation. Until there's one command that reproduces the symptom, no root-cause theory is allowed; and even then you list 3-5 ranked hypotheses with falsifiable predictions before testing the first one. Cures the age-old habit — in AIs and humans — of reading code for two minutes and declaring "found it" |
 | [adr](adr/) | Records architecture decisions, but its first job is talking you out of it. Three gates (hard to reverse / confusing without context / real trade-off) must all pass before it writes anything, and the default format is a title plus three sentences — an ADR's value is in recording *why*, not in filling out a template. It watches for two things especially: deliberate departures from the obvious path, and explicit no's |
+| [prep-repo](prep-repo/) | The "did I forget anything?" checklist before pushing to GitHub. README, commits, secrets, broken links, project structure, tests, CI, Docker, and final cleanup — the stuff you always forget at 2 AM |
 
 ### Research & security
 
@@ -83,7 +80,6 @@ Grouped by what you're trying to get done — every skill is still a self-contai
 | Skill | What It Actually Does |
 |-------|----------------------|
 | [skill-cron](skill-cron/) | One manager to schedule them all. Register any skill for crontab execution + Telegram push — because `claude -p` doesn't support `/skill` syntax, so somebody had to build the bridge. Config in `~/.claude/configs/`, logs auto-rotate, crontab entries self-managed |
-| [prep-repo](prep-repo/) | The "did I forget anything?" checklist before pushing to GitHub. README, commits, secrets, broken links — the stuff you always forget at 2 AM |
 
 ## Installation
 
@@ -109,7 +105,7 @@ Every skill follows a dead-simple convention. If you can write markdown, you can
 
 ```
 skill-name/
-├── SKILL.md          # Frontmatter (name, description, version) + instructions
+├── SKILL.md          # Frontmatter (name, description, version, status, triggers) + instructions
 └── scripts/          # Executable scripts (optional)
     └── script.py
 ```

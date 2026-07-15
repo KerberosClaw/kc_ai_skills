@@ -62,7 +62,7 @@
 
 ## kc_ai_skills framework 自定 frontmatter 擴充
 
-除了 0x0funky 通用的 `name + description + argument-hint`，kc_ai_skills 自己的 skill loader 多支援兩個欄位（**寫 kc_ai_skills 內的 skill 必加**）：
+除了 0x0funky 通用的 `name + description + argument-hint`，kc_ai_skills 自己的 skill loader 多支援三個欄位（**寫 kc_ai_skills 內的 skill 必加**）：
 
 ### EX1. `version`
 
@@ -73,21 +73,38 @@ version: 0.1.0
 ```
 
 - 用途：skill 變更追蹤、breaking change 判斷
-- `0.x.x` = 還在 iterate 階段，介面可能變
-- `1.0.0+` = stable，breaking change 要 bump major
+- `0.x.x` = `status: experimental` 或 `status: mvp`，還在 iterate 階段，介面可能變
+- `1.0.0+` = `status: stable`，breaking change 要 bump major
 - patch（0.1.0 → 0.1.1）= bug fix / 文案修
 - minor（0.1.0 → 0.2.0）= 新功能不 break 既有
 - major（0.x → 1.0）= breaking 介面變
 
-### EX2. `triggers`
+### EX2. `status`
+
+成熟度標記（必填）：
+
+```yaml
+status: mvp
+```
+
+- `experimental` = 還在摸索，入口/流程可能大改，只適合早期試用
+- `mvp` = 可用，但仍在調整；version 應維持 `0.x.x`
+- `stable` = 常用且成熟；version 應為 `1.0.0+`，破壞既有用法要 bump major
+- 不要用 `status` 取代 version：status 說「穩定度」，version 說「變更序列」
+
+### EX3. `triggers`
 
 Explicit trigger pattern list（指令觸發 + 自然語言觸發都可）：
 
 ```yaml
-triggers: ["/llm-wiki-lint", "wiki lint", "掃 wiki"]
+triggers:
+  - "/llm-wiki-lint"
+  - "wiki lint"
+  - "掃 wiki"
 ```
 
 - 用途：補強 description 的 trigger 判斷，命中任一觸發詞 = 啟用 skill
+- canonical 格式 = YAML block list（每個 trigger 一行），不要用 inline array
 - **中文指令式**（「掃 wiki」「整理 memory」「投履歷前查公司」）特別需要 explicit list — 因為自然中文沒有 standardize trigger phrase
 - 跟 description 不衝突 — description 寫**情境**（「Use when ...」），triggers 列**字面觸發詞**
 - slash command 形式（`/skill-name`）也要列進來
@@ -95,7 +112,7 @@ triggers: ["/llm-wiki-lint", "wiki lint", "掃 wiki"]
 ### 為什麼 0x0funky 沒這兩個
 
 - 0x0funky 的 skill 跑在 Codex / Claude Code 原生 skill loader，那邊用 `description` + `argument-hint` 就夠（英文 trigger 自然包在 description 裡）
-- kc_ai_skills 是**自有 skill loader**，要支援中文 trigger + 版本管理，故擴充
+- kc_ai_skills 是**自有 skill loader**，要支援中文 trigger + 版本管理 + 成熟度標記，故擴充
 - **互不衝突，並存使用** — 套 0x0funky patterns 不會把這兩欄位拿掉
 
 ---
@@ -233,7 +250,8 @@ skill 寫完、**release 前主動問 user 要不要對抗審查**（不要等 u
 
 [kc_ai_skills 自定擴充（寫 kc_ai_skills 內 skill 必加）]
 - [ ] frontmatter `version` 欄位（semver，初版 0.1.0）
-- [ ] frontmatter `triggers` 欄位（含 slash command + 中文自然語言觸發詞）
+- [ ] frontmatter `status` 欄位（experimental / mvp / stable，且與 version 對齊）
+- [ ] frontmatter `triggers` 欄位（block list，含 slash command + 中文自然語言觸發詞）
 
 [高頻推薦]
 - [ ] 重要事項用 **CRITICAL** / **MANDATORY** 標記
