@@ -1,7 +1,7 @@
 ---
 name: prep-repo
 description: "Use when the user wants to prepare a local project for GitHub or public release. Runs a release-readiness sweep over README structure, bilingual docs, commit hygiene, sensitive-data exposure, broken links, markdown rendering, project layout, tests, CI, Docker, and final cleanup. Fixes issues only inside the target repo and treats secrets/history rewriting as explicit high-risk gates. NOT for publishing without user approval or for private operational runbooks that should not be open-sourced."
-version: 2.0.1
+version: 2.1.0
 status: stable
 triggers:
   - "/prep-repo"
@@ -75,24 +75,46 @@ Common categories:
 
 ### 6. Sensitive Data Scan
 
-Scan **all tracked files AND git history** for:
-- Real IP addresses (e.g. `192.168.x.x` with actual values)
-- API tokens, bot tokens, gateway tokens
-- Telegram user IDs, chat IDs
-- SSH key paths with usernames
-- Tailscale domains
-- Real usernames / home directory paths
+用兩層互補、不重疊的方式掃 **working tree 與整條 git history**，不要只靠其中一種：
+
+- **Layer A — `gitleaks`（credential / token 類）**：抓 API keys、bot/gateway tokens、private keys、cloud creds 等有明確格式的秘密，且會逐 commit 掃過整條 history。這類正是手刻 grep 最容易漏的。
+- **Layer B — targeted grep（營運情境洩漏類）**：抓 gitleaks 預設規則**不會**flag 的 project-specific PII，例如內網 IP、Telegram user/chat id、含使用者名稱的 SSH 路徑、Tailscale 網域、home directory 路徑。這類沒有通用秘密特徵、gitleaks 預設放行，必須自己補。
+
+兩層都要跑；任一層命中 history 就進入下方的 history-rewrite 高風險 gate。
+
+**Layer A — gitleaks**（若未安裝：`brew install gitleaks`）：
 
 ```bash
-# Scan tracked files
-grep -rn --exclude-dir=.git --exclude-dir=vendor --exclude-dir=node_modules --exclude-dir=.venv \
-  -iE "192\.168\.[0-9]+\.[0-9]+|bot.?token.*[0-9]{9}|chat.?id.*[0-9]{9}" .
+# 掃整條 git history（所有 commit）
+gitleaks git . --no-banner --redact -v
 
-# Scan git history
-git log --all -p | grep -E "KNOWN_SENSITIVE_VALUES_HERE"
+# 掃 working tree（含尚未 commit 的檔案）
+gitleaks dir . --no-banner --redact -v
 ```
 
-If found in git history, use `git filter-repo --replace-text` to rewrite history.
+- exit code `1` = 有 leak（blocker，必須先處理才能 publish）；`0` = clean。
+- 誤報處理：**先由人確認確實是 placeholder / 公開範例**，再把該 finding 的 fingerprint 加進 repo 根目錄的 `.gitleaksignore`。不要用寬鬆 regex 一次 allowlist 一整類，否則等於關掉該類偵測。
+- 想更嚴可加自訂規則檔（`gitleaks ... --config .gitleaks.toml`）延伸預設 rule set，但預設 rule set 已涵蓋主流 token 格式，通常不需要。
+
+**Layer B — targeted grep**（gitleaks 不管的營運類）：
+
+```bash
+# 掃 working tree
+grep -rn --exclude-dir=.git --exclude-dir=vendor --exclude-dir=node_modules --exclude-dir=.venv \
+  -iE "192\.168\.[0-9]+\.[0-9]+|10\.[0-9]+\.[0-9]+\.[0-9]+|(chat|user).?id.*[0-9]{9}|bot.?token|\.ts\.net|/Users/[a-z]+|/home/[a-z]+" .
+
+# 掃 git history（把已知敏感值填進 pattern；或用 gitleaks git 的結果反查 commit）
+git log --all -p | grep -nE "KNOWN_SENSITIVE_VALUES_HERE"
+```
+
+> Layer B 的 pattern 是通用範例，依專案調整；命中後人工判斷是真洩漏還是無害（例如文件裡的 `192.168.x.x` 佔位範例不算）。
+
+**History-rewrite gate（高風險，不自動跑）**：任一層在 **git history** 命中真實秘密時：
+
+1. 停下，明確告訴 user 洩漏值、所在 commit 與檔案，說明 rewrite history 會改寫所有後續 commit SHA、需要 force-push、且已 clone 的人仍留有舊值。
+2. 經 user 同意後才執行 `git filter-repo --replace-text <file>`（或 BFG）清除，並提醒相關 token 應直接**作廢重簽**，因為它已進過版本庫。
+
+（進階：可把 `gitleaks git --staged` 掛成 pre-commit hook、或把 `gitleaks git .` 放進 CI job，讓之後每次 commit 自動擋秘密；那屬持續防護、不在這份一次性 release sweep 範圍內，可在收尾時建議 user 設置。）
 
 ### 7. Co-Authored-By Removal
 
