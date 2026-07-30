@@ -1,7 +1,7 @@
 ---
 name: prep-repo
 description: "Use when the user wants to prepare a local project for GitHub or public release. Runs a release-readiness sweep over README structure, bilingual docs, commit hygiene, sensitive-data exposure, broken links, markdown rendering, project layout, tests, CI, Docker, and final cleanup. Fixes issues only inside the target repo and treats secrets/history rewriting as explicit high-risk gates. NOT for publishing without user approval or for private operational runbooks that should not be open-sourced."
-version: 2.1.0
+version: 2.2.0
 status: stable
 triggers:
   - "/prep-repo"
@@ -248,6 +248,24 @@ gh repo edit OWNER/REPO --add-topic python --add-topic modbus --add-topic mcp-se
 ```
 
 - [ ] Language badge is displaying correctly (should reflect primary language, not lock files)
+
+## Anti-patterns
+
+- ❌ **未經同意就 publish / push / 改 visibility** — 這些是 user 的決定，本 skill 只做「準備」，發布動作要 user 明確要求
+- ❌ **自動重寫 git history** — 掃到歷史裡的秘密先停下、說明風險與命令；`filter-repo` / force-push 是高風險 gate，經同意才跑
+- ❌ **只掃 working tree 不掃 history** — 秘密常躺在舊 commit；Layer A（gitleaks）逐 commit 掃、Layer B（grep）補營運類 PII，兩層都要跑
+- ❌ **寬鬆 regex 一次 allowlist 一整類** — 誤報要逐條確認是 placeholder 再加 fingerprint 進 `.gitleaksignore`，不要關掉整類偵測
+- ❌ **把 private / 內部 runbook 硬改成 public 文案** — 先確認目標 visibility，不該公開的別套開源體檢
+- ❌ **README 樹與實際目錄不符** — tree 列的檔案要真的存在、重要目錄不能漏；misleading setup 跟壞掉的 docs 一樣是 blocker
+
+## Important rules
+
+1. **掃描優先，先分類再修** — 先跑完檢查、把 must-fix blocker 跟 polish 分開，再動手
+2. **秘密與改歷史是高風險 gate** — 停下說明、等 user 同意，不自動執行
+3. **雙語 README 同步** — 改 `README.md` 必同步 `README_zh.md`，語言連結用 `正體中文` / `English`
+4. **只在目標 repo 內修** — 不外溢改別的專案
+5. **進了版本庫的 token 一律作廢重簽** — 清掉不等於安全，已 clone 的人還留有舊值
+6. **post-push 檢查（§16）在推上 GitHub 後才跑**
 
 ## Execution
 

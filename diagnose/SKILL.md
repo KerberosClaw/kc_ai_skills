@@ -1,7 +1,7 @@
 ---
 name: diagnose
 description: "Use when the user reports misbehaving software to investigate — a bug, crash, wrong output, flaky behavior, or '為什麼壞掉/不會動/查一下' — and the root cause is not yet established. Enforces building a red-capable reproduction command BEFORE any hypothesis is allowed, then 3-5 ranked falsifiable hypotheses before testing any single one. NOT for conceptual questions, code reading requests, or feature work. When a failing command already exists, Step 1 is pre-satisfied — still apply, jumping straight to the hypothesis discipline."
-version: 0.2.0
+version: 0.3.0
 status: mvp
 triggers:
   - "/diagnose"
@@ -104,6 +104,12 @@ H3：...
 6. **沒有正確 seam = finding**，不是硬寫測試的理由
 7. **期望值不得由實作反推** — 恆真的測試等於沒有測試
 8. **建不出 loop 要明講**，列出嘗試、要資源，不轉入猜謎模式
+
+## 跟其他 skill 的關係
+
+- **`spec`**：處理「還沒做的 feature」。症狀是既有行為壞掉（bug / crash / 錯誤輸出 / flaky）→ 本 skill；需求是新功能 → `spec`。別把 debug 包裝成開新 spec。
+- **`adr`**：debug 若催出難回頭的決策，驗完可用 `adr` 記「為什麼這樣修」；debug 流程本身留在本 skill。
+- 選哪顆有疑問 → 見 README 決策框或 `workflow-router`。
 
 ## Acknowledgments
 

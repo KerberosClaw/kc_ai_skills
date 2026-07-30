@@ -1,7 +1,7 @@
 ---
 name: adr
 description: "Use when a durable technical decision was just made in conversation and should be recorded, or when user asks to write/record an ADR (開 ADR / 記個決策 / 這要不要 ADR). Runs a three-gate check FIRST and actively talks the user out of writing one when the decision doesn't qualify — then writes a lightweight (title + 1-3 sentences) ADR following the repo's own ADR conventions if any exist. Repo conventions always override this skill's defaults. NOT for requirement specs (spec / prd-create) or for rewriting history (superseded ADRs get a new ADR, never an edit)."
-version: 0.1.0
+version: 0.2.0
 status: mvp
 triggers:
   - "/adr"
@@ -89,6 +89,12 @@ ls -d adr decisions doc/adr docs/adr doc/adrs docs/adrs doc/decisions docs/decis
 5. **Lazy 建立** — 第一篇 ADR 需要時才建目錄，不預鋪結構
 6. **歷史不可改** — 取代用新 ADR，不編輯舊 ADR
 7. **不記實作細節** — 決策與理由 only
+
+## 跟其他 skill 的關係
+
+- **`spec` / `prd-create`**：那兩顆產「要做什麼、怎麼做」的需求規格；本 skill 只記「為什麼選了這條路」的單一決策。feature lifecycle 用 `spec`、stakeholder PRD 用 `prd-create`，別把整份規格塞進 ADR。
+- **`diagnose`**：debug 過程若催出一個難回頭的決策（換架構 / 換依賴），驗完可用本 skill 把「為什麼這樣修」記成 ADR；但 debug 本身走 `diagnose`。
+- 選哪顆規劃類 skill 有疑問 → 見 README 的規劃類決策框或 `workflow-router`。
 
 ## Acknowledgments
 

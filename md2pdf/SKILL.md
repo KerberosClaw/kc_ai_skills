@@ -1,7 +1,7 @@
 ---
 name: md2pdf
 description: "Use when the user wants to convert one Markdown file into a publication-ready A4 PDF, especially when the source may contain Mermaid diagrams, ASCII diagrams, CJK text, tables, or pandoc/weasyprint edge cases. Works by copying the source to a _pdf.md working file, converting diagrams, escaping PDF-breaking syntax, rendering with pandoc + weasyprint, then self-checking pages. NOT for batch conversion, slide decks, or editing the original Markdown in place."
-version: 1.0.0
+version: 1.1.0
 status: stable
 triggers:
   - "/md2pdf"
@@ -141,6 +141,15 @@ Output:
 - PDF file path
 - Page count
 - Any known remaining issues (if retry limit was hit)
+
+## Anti-patterns
+
+- ❌ **Editing the original `.md`** — all changes happen on the `_pdf.md` copy; the source is never touched
+- ❌ **SVG for Mermaid** — weasyprint mis-renders SVG fonts; always render diagrams to PNG
+- ❌ **Leaving `$` unescaped outside code blocks** — pandoc pairs them into LaTeX math spans and eats table rows; escape every bare `$`
+- ❌ **Batch-converting in one call** — one file per invocation; loop by re-invoking, don't glob
+- ❌ **Retrying forever on a broken page** — cap at 3 regenerations, then stop and report the remaining issue instead of silently shipping a bad page
+- ❌ **Leaving temp files behind** — remove `mermaid-filter.lua` / `style.css`; ask before deleting `_pdf.md`
 
 ## Important Rules
 

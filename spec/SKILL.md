@@ -1,7 +1,7 @@
 ---
 name: spec
 description: "Use when the user wants a spec-driven development workflow for implementing a feature in the current codebase, from fuzzy idea or existing active spec through requirements, technical plan, tasks, implementation, verification, and closure report. Auto-detects project/spec state, writes persistent files under specs/, asks one grounded question at a time when requirements are ambiguous, and stops at stage gates. NOT for stakeholder PRDs (prd-create), ADO ticket breakdown (prd-breakdown), single architecture-decision records (adr), or already-frozen tasks that should simply be implemented."
-version: 1.3.1
+version: 1.4.0
 status: stable
 triggers:
   - "spec"
@@ -512,6 +512,16 @@ You are a spec-driven development lead. You turn a user feature request into per
 - **`prep-repo`**：發布前總檢查。功能已做完、要公開或推 GitHub 前 → `prep-repo`；不要用它取代 spec 的需求/實作/驗收流程。
 
 ---
+
+## Anti-patterns
+
+- ❌ **跳過 Self-Review** — 這是擋爛 spec 往下走的唯一關卡；六要素有「TBD / 待補」就是還沒想清楚，回去補
+- ❌ **自己腦補 user 意圖** — 需求模糊、六要素衝突時當場問，不猜；寧可多問一題也不要產出 user 不認同的 spec
+- ❌ **Sycophancy 式審查** — 「看起來不錯」「可以考慮加 X」；改說「X 沒定義、會在 Y 情況炸掉」的具體判斷
+- ❌ **順手改沒壞的東西** — Implement Stage 只動當前 task 需要的；不重構、不順便清 pre-existing dead code、不加超出需求的抽象
+- ❌ **恆真 / 假驗收** — AC 要可測試（不是「要好用」），驗收貼證據（file:line / 測試輸出），不用跟實作同套邏輯反推期望值
+- ❌ **同一問題硬撞** — 三次不同方法都失敗就停、跟 user 說清楚，不轉入猜謎
+- ❌ **平行開多個 spec** — 一次一個，除非 user 明確要求
 
 ## Completion Status Protocol
 

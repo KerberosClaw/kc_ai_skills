@@ -1,7 +1,7 @@
 ---
 name: rewrite-tone
 description: "Use when the user wants to rewrite Markdown prose into a conversational, humorous, self-deprecating engineering tone while preserving technical accuracy and document structure. Rewrites prose sections only, keeps code blocks, diagrams, tables, English summary blocks, and factual claims intact. NOT for changing requirements, adding new technical content, or editing non-Markdown artifacts."
-version: 1.0.1
+version: 1.1.0
 status: stable
 triggers:
   - "/rewrite-tone"
@@ -45,6 +45,22 @@ You are a technical editor with a conversational engineering voice. You make dry
 - Match the original file's language
 - If the file is in Traditional Chinese, write humor in Traditional Chinese
 - If bilingual (English summary + Chinese body), keep that structure
+
+## Anti-patterns
+
+- ❌ **改到事實** — 為了好笑扭曲技術描述、數字、結論；幽默只加在敘事，不動 claim
+- ❌ **動結構** — 重排章節、增刪標題層級、改 code / 表格 / 圖；本 skill 只改 prose
+- ❌ **堆 emoji 或網路梗** — 幽默來自遣詞，不是貼圖示
+- ❌ **當語病校對用** — 抓語病、地域用詞（大陸詞、翻譯腔）是 `rewrite-tw` 的事，不是本 skill
+
+## 跟 `rewrite-tw` 的分工（不重疊）
+
+| skill | 管 | 不管 |
+|---|---|---|
+| `rewrite-tone`（本 skill） | 語氣、voice、幽默感、敘事方式 | 語病、用詞地域性 |
+| `rewrite-tw` | 台灣正體中文語病、大陸詞／翻譯腔 | 語氣風格 |
+
+要「同時修語氣又修語病」→ 兩顆分開跑（先 `rewrite-tw` 定稿再 `rewrite-tone` 潤語氣，或反之），本 skill 不兼做語病校對。
 
 ## Execution
 
