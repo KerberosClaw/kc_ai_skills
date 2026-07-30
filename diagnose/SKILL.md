@@ -1,7 +1,7 @@
 ---
 name: diagnose
 description: "Use when the user reports misbehaving software to investigate — a bug, crash, wrong output, flaky behavior, or '為什麼壞掉/不會動/查一下' — and the root cause is not yet established. Enforces building a red-capable reproduction command BEFORE any hypothesis is allowed, then 3-5 ranked falsifiable hypotheses before testing any single one. NOT for conceptual questions, code reading requests, or feature work. When a failing command already exists, Step 1 is pre-satisfied — still apply, jumping straight to the hypothesis discipline."
-version: 0.1.0
+version: 0.2.0
 status: mvp
 triggers:
   - "/diagnose"
@@ -81,6 +81,7 @@ H3：...
 - [ ] grep 前綴、清光 debug log；刪拋棄式 harness / fixture
 - [ ] **驗證成立的那個假說寫進 commit message**——下一個 debugger 會感謝你
 - [ ] 迴歸測試：只在**正確的 seam**（可插斷言的自然介面：函式邊界 / HTTP 層 / CLI 入口）上寫；seam 太淺的測試給的是假信心。**沒有正確 seam 可放，本身就是一個 finding**，如實回報、不硬塞
+- [ ] 迴歸測試的期望值來自**獨立來源**（寫死的已知答案 / 手算範例 / spec / issue 裡貼的實際輸出），**不得由實作反推**
 - [ ] 回報時區分「已驗證」與「仍是推測」——alternative 沒全排除前，不用「root cause 確定」這種措辭
 
 ## Anti-patterns
@@ -88,6 +89,7 @@ H3：...
 - ❌ **讀 code 蓋理論** — 沒有重現指令就開始「應該是 X 造成的」
 - ❌ **單假說錨定** — 想到一個解釋就直奔驗證，測完不符再想下一個
 - ❌ **「沒噴錯」當通過** — loop 必須斷言症狀本身
+- ❌ **恆真測試** — 期望值用跟實作同一套算法重算（`expect(add(a,b)).toBe(a+b)`、照實作邏輯手算出來的 snapshot）。它通過是因為結構上不可能失敗，不是因為 code 是對的
 - ❌ **一次改多變數** — 綠了也不知道為什麼綠
 - ❌ **過早宣稱 root cause** — 替代假說未排除前，一律「目前最可能」
 - ❌ **修好但殘留** — debug log、拋棄式腳本、hack 的 config 留在 codebase
@@ -100,8 +102,9 @@ H3：...
 4. **非決定性 bug 目標是拉高重現率**，不是等一個完美重現
 5. **正確假說進 commit message**
 6. **沒有正確 seam = finding**，不是硬寫測試的理由
-7. **建不出 loop 要明講**，列出嘗試、要資源，不轉入猜謎模式
+7. **期望值不得由實作反推** — 恆真的測試等於沒有測試
+8. **建不出 loop 要明講**，列出嘗試、要資源，不轉入猜謎模式
 
 ## Acknowledgments
 
-Feedback-loop-first 與多假說紀律參考 [mattpocock/skills](https://github.com/mattpocock/skills)（MIT）的 diagnosing-bugs，中文重寫並融入自家排查教訓（過早結論、單假說錨定為實戰高頻失誤）。
+Feedback-loop-first 與多假說紀律參考 [mattpocock/skills](https://github.com/mattpocock/skills)（MIT）的 diagnosing-bugs，中文重寫並融入自家排查教訓（過早結論、單假說錨定為實戰高頻失誤）。恆真測試反模式參考同 repo 的 tdd。
