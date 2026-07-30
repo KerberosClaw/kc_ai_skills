@@ -1,7 +1,7 @@
 ---
 name: ctf-kit
 description: "Use when the user is solving an authorized CTF / lab reverse-engineering challenge focused on Windows application authentication or license-check bypass. Guides triage → static analysis → dynamic experiment planning → bypass verification, with strong evidence discipline and VM safety boundaries. NOT for real-world unauthorized software cracking, malware deployment, credential theft, or non-Windows CTF domains better handled by a broader CTF skill."
-version: 0.3.1
+version: 0.4.0
 status: mvp
 triggers:
   - "ctf"
@@ -471,6 +471,26 @@ python3 -c "print(' '.join(f'{b:02X}' for b in '你要搜的字'.encode('utf-8')
 | tshark | 命令行抓包 | 網路驗證協議分析 |
 
 ---
+
+## Anti-patterns
+
+- ❌ **猜了就動手** — 「可能是 X」還沒驗證就開始改；先設計最小驗證實驗拿到資料再決策（準則 2）
+- ❌ **靜態沒挖乾淨就跳動態** — 動態測試消耗資源、每輪要 user 配合；靜態做到沒東西可挖再一次規劃批量動態（準則 4）
+- ❌ **重試已失敗的方法** — 提方案前先對照 `failed_methods` / failure-patterns.md，相似邏輯要講清楚這次差在哪（準則 3）
+- ❌ **從加密層開刀** — Session-bound 加密直接放棄協議層；bypass 從決策層（CreateWindowEx / 錯誤訊息 backtrace）進（Phase 3）
+- ❌ **在 host 上做高風險操作** — debugger attach / 記憶體注入 / 首次跑未知行為程式一律進 VM（準則 6）
+- ❌ **目標搞錯就狂搜 flag** — 目標是 bypass 就別搜 flag、別提議用真 key；每個方案先問「達成目標了嗎」（準則 1）
+- ❌ **拿真實軟體來破** — 本 skill 只服務授權的 CTF / lab 題目；未授權的商業軟體破解不在範圍
+
+## Important rules
+
+1. **授權邊界** — 只做授權 CTF / lab；非授權破解、惡意部署、竊取憑證一律拒
+2. **先驗證再行動** — 觀察 → 最小實驗 → 資料 → 決策，不猜；區分「已驗證」與「未驗證假設」
+3. **靜態到底、動態批量** — 不消耗資源的先做滿，消耗資源的一次規劃
+4. **決策層優先於加密層** — bypass 從 if/else 判斷點進，不硬拆加密
+5. **高風險進 VM** — attach / 注入 / 未知程式首跑，全在 VM
+6. **記錄失敗** — 改了什麼、為什麼、哪些方法失敗，寫進專案 memory
+7. **卡關 15 分鐘就停** — 回查失敗模式、換層級 / 工具，不同方向硬撞
 
 ## 參考資料
 

@@ -1,7 +1,7 @@
 ---
 name: skill-cron
 description: "Use when the user wants to register, inspect, manually run, or remove scheduled Claude skills with Telegram push notifications. Presents a menu, discovers schedulable skills with headless-prompt frontmatter, converts natural-language schedules into cron entries with conflict confirmation, writes managed config, and verifies notification delivery. NOT for one-off task execution without scheduling or for running skills that lack a headless prompt."
-version: 0.2.1
+version: 0.3.0
 status: mvp
 triggers:
   - "/skill-cron"
@@ -286,6 +286,14 @@ headless-prompt: "Run python3 ~/.claude/skills/morning-brief/scripts/fetch_news.
 排程執行的日誌存放在：`~/.claude/logs/skill-cron/`
 
 每個 job 保留最近 50 筆 log，自動清理舊的。
+
+## Anti-patterns
+
+- ❌ **模糊時間自己猜成 cron** — 描述有重疊（「平日 9:00」＋「週一 9:30」）必須問，不自行拍板哪個贏
+- ❌ **替沒有 `headless-prompt` 的 skill 硬排程** — 先要求該 skill 補 frontmatter，`-p` 模式跑不了沒 headless prompt 的 skill
+- ❌ **輸出 / log 出 Telegram token** — 只驗證設定存在與可用，token 內容不回顯、不寫進對話
+- ❌ **破壞性操作不確認** — 移除 / 覆蓋排程直接執行；每個都要先確認
+- ❌ **headless-prompt 用 `/skill` 語法** — `-p` 模式不支援 slash command，會被 silently drop；一律寫完整絕對路徑指令
 
 ## 互動規則
 

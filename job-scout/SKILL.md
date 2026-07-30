@@ -1,7 +1,7 @@
 ---
 name: job-scout
 description: "Use when the user is considering applying to, interviewing with, or accepting an offer from a company and wants due diligence on the company and optionally a specific role. Requires a company name, optionally a job title, then researches current public data, employee reviews, salary signals, product/tech quality, and red flags before giving a grounded recommendation. NOT for generic career coaching or resume editing."
-version: 1.0.1
+version: 1.1.0
 status: stable
 triggers:
   - "/job-scout"
@@ -201,6 +201,14 @@ You are a job-market due-diligence analyst. Your job is to help the user avoid b
 ```
 
 ---
+
+## Anti-patterns
+
+- ❌ **單一匿名評論當事實** — 一則負評 / 一則好評就下結論；負面訊號要跨平台交叉查證才寫進報告
+- ❌ **沒查到就腦補** — 找不到的欄位標「查無資料」，不要用產業印象或公司規模去猜營收 / 薪資
+- ❌ **舊資料當現況** — 引用沒有日期的薪資 / 財報數字；每筆都要標來源時間，過期的明講
+- ❌ **替 user 做最後決定** — 「你應該去 / 不要去」；本 skill 給風險與機會，決定權在 user
+- ❌ **道德審判紅旗** — 紅旗客觀陳述事實（低於行情多少 %、幾個月沒 commit），不加價值判斷語氣
 
 ## 注意事項
 

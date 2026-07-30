@@ -1,7 +1,7 @@
 ---
 name: repo-scan
 description: "Use when the user wants to evaluate a GitHub repository before installing, running, forking, or depending on it. Takes a GitHub repo URL, cleans tracking params, shallow-clones to /tmp, inspects dependency/supply-chain risk, static vulnerability patterns, issue-reported security problems, maintainer health, and produces a risk summary. NOT for reviewing the user's own PR diff or for running untrusted code."
-version: 1.0.1
+version: 1.1.0
 status: stable
 triggers:
   - "/repo-scan"
@@ -292,6 +292,14 @@ gh api repos/{owner}/{repo}/contributors --jq '.[].login' | head -10
 - **Low**：防禦縱深問題，或影響範圍小
 
 ---
+
+## Anti-patterns
+
+- ❌ **執行掃描目標** — 跑 install script、`npm install`、啟服務來「看看它做什麼」；本 skill 純靜態分析，clone 下來的 code 一律不執行
+- ❌ **star 數 / README 宣稱當安全證據** — 高星、漂亮 README 不代表安全；只看實際 code、依賴、issue、維護訊號
+- ❌ **報理論性問題湊數** — 信心不足 70% 或無實際利用場景的發現不列入；每條都要附檔案 + 行號 + 利用場景
+- ❌ **掃完不清** — clone 到 `/tmp/` 的 repo 掃完要刪，不留殘骸
+- ❌ **gh 不可用就整份放棄** — 只跳過 Phase 5（Issues），其餘照跑並註明跳過原因
 
 ## 注意事項
 

@@ -1,7 +1,7 @@
 ---
 name: llm-benchmark
 description: "Use when the user wants to test, compare, or choose local Ollama models for their machine. Checks Ollama/GPU state, recommends model sizes from available VRAM, preserves existing benchmark records, pulls only approved models, runs repeatable benchmarks, restores stopped services, and writes a markdown comparison report. NOT for hosted API model evaluation or subjective chat-quality judging without local benchmark commands."
-version: 1.0.1
+version: 1.1.0
 status: stable
 triggers:
   - "/llm-benchmark"
@@ -181,6 +181,14 @@ benchmark 完成後，讀取 `~/benchmark_results.json`，生成 `~/model_benchm
 - 回答品質排名（重點標注邏輯題正確性）
 - VRAM 使用量
 - **最終推薦**：哪個模型適合什麼情境
+
+## Anti-patterns
+
+- ❌ **沒清 VRAM 就測** — 前一個模型 / gateway 還佔著顯存，量到的 token/s 是髒的；Step 0.5 的重啟釋放是必做
+- ❌ **主觀聊感覺當 benchmark** — 「這個模型回得比較好」不算數；用可重跑的固定題目 + 數字
+- ❌ **重跑已有記錄的模型** — `benchmark_results.json` 已有的直接沿用，不浪費時間重測
+- ❌ **測完不還原服務** — 有停過的 gateway / container，全部測完要 start 回去，不留使用者服務掛掉
+- ❌ **cpu_offload 的數字混進甜蜜點** — KV cache 溢出 VRAM 被 offload 到 CPU 的 ctx，速度已失真、不列入評估
 
 ## 注意事項
 
