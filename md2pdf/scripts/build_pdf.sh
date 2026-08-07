@@ -251,7 +251,7 @@ pandoc "$WORK/doc.md" \
   --syntax-highlighting=none \
   -o "$OUT"
 
-echo "wrote: $PWD/$OUT"
+case "$OUT" in /*) echo "wrote: $OUT" ;; *) echo "wrote: $PWD/$OUT" ;; esac
 
 # ---------------------------------------------------------------- self-check
 # Two different failures, two different thresholds:
