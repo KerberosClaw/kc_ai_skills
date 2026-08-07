@@ -1,7 +1,7 @@
 ---
 name: md2pdf
 description: "Use when the user wants to convert one Markdown file into a publication-ready A4 PDF, especially when the source may contain Mermaid diagrams, ASCII diagrams, CJK text, tables, or pandoc/weasyprint edge cases. Works by copying the source to a _pdf.md working file, converting diagrams, escaping PDF-breaking syntax, balancing table column widths, rendering with pandoc + weasyprint, then self-checking pages by ink coverage. Cleans up intermediates only after the user calls the version final. NOT for batch conversion, slide decks, or editing the original Markdown in place."
-version: 1.2.0
+version: 1.3.0
 status: stable
 triggers:
   - "/md2pdf"
@@ -42,13 +42,29 @@ If `{filename}_pdf.md` already exists, ask the user:
 - **Use existing**: convert `_pdf.md` directly to PDF (user may have manually tuned it)
 - **Regenerate**: copy from original and redo all conversions
 
-### Step 2: Ask CSS style preference
+### Step 2: Ask style, and ask about a table of contents
 
-Present options to the user. If they don't choose, pick the most suitable one automatically:
+**2a. CSS style.** Present options; if the user doesn't choose, pick the most suitable one automatically:
 
 - **Professional** — dark blue headers, gray alternating rows, blue accent blockquotes (good for client-facing docs)
 - **Technical** — compact, orange accent blockquotes, smaller fonts (good for dev manuals)
 - **Minimal** — black and white, no colored headers (good for printing)
+
+**2b. Table of contents — always ask, never assume.** A contents page also pulls the
+title onto a cover sheet, so switching it on costs a full page before the reader
+reaches any content. That is right for a report and absurd for a two-page memo.
+
+Ask outright. If the user has no opinion, decide by length and say which you picked:
+
+| Source length | Default | Why |
+|---------------|---------|-----|
+| Under ~6 pages of content | **No TOC** | A cover plus a contents list for a handful of sections is pure overhead |
+| Longer, or many `##` sections | **TOC** | Real page numbers make it navigable |
+
+**2c. Version footer.** If the document carries a `> Version: ...` (or `> 版本：...`)
+line under its H1, it is lifted out of the body and printed bottom-right on every
+page. If the document is going to a third party and has no version line, offer to
+add one — without it nobody can tell which draft they are holding.
 
 ### Step 3: Copy original → {filename}_pdf.md
 
@@ -67,7 +83,7 @@ Scan all code blocks (` ``` ` without language tag) and classify:
 | Anything uncertain | Unknown | Keep as-is |
 
 When converting to Mermaid:
-- Determine flow direction: prefer `LR` (horizontal) for linear flows, `TD` (vertical) for hierarchical
+- Write the direction that reads best at the source (usually `LR` for linear flows). **Do not hand-tune direction for the PDF** — Step 6 measures both orientations and picks the legible one.
 - Keep node text short (< 20 chars per line)
 - Use `<br/>` for line breaks (never `\n`)
 - Avoid markdown-triggering syntax in nodes: no `1.` prefix, no `*`, no `[]()`
@@ -80,7 +96,7 @@ When converting to Mermaid:
 - `\n` → `<br/>`
 - Remove numbered prefixes in node text (`1. `, `2. ` etc.)
 - Simplify special characters that may cause parsing errors
-- If a vertical flowchart has > 5 nodes, consider switching to `LR`
+- **Leave the flow direction alone** — Step 6 chooses it by measurement
 
 **5b. Dollar sign escaping** — pandoc interprets `$...$` as LaTeX inline math. In markdown table cells, an unescaped `$` (e.g. `NT$1`) will pair with a later `$` (e.g. `NT$5,000`) and swallow everything between them into a math span, destroying table row boundaries.
 - Escape ALL `$` signs outside of code blocks: `$` → `\$`
@@ -121,33 +137,49 @@ Re-run the script after any table edit — it is idempotent, and ratios are reco
 
 ### Step 6: Generate PDF
 
-Create temporary files:
+Use the bundled builder. It carries the CSS, the diagram pipeline, the version
+footer and the page-break rules, so none of that has to be reassembled per run:
 
-**Lua filter** (mermaid-filter.lua):
-- Intercept `mermaid` code blocks
-- Call `mmdc -o output.png -b white --scale 3`
-- Embed as PNG (never SVG — SVG has font rendering issues with weasyprint)
-
-**CSS** (based on user's style choice):
-- Body font: `"Heiti TC", "PingFang TC", "Arial Unicode MS", sans-serif`
-- Code font: `"Menlo", "Heiti TC", "Arial Unicode MS", monospace`
-- `pre code { background-color: transparent; }`
-- `img { max-width: 100%; max-height: 700px; }`
-- `white-space: pre-wrap; word-wrap: break-word;` on `pre`
-- Page: `@page { size: A4; margin: 2cm; }`
-- **`table { table-layout: fixed; }`** — required, or Step 5c's column ratios are ignored
-- **`td, th { word-wrap: break-word; overflow-wrap: break-word; }`** — keeps long cells inside their column
-- **`thead { display: table-header-group; } tr { page-break-inside: avoid; }`** — a table taller than one page should split between rows and repeat its header, not get pushed whole onto the next page leaving a mostly-blank one
-
-**pandoc command:**
 ```bash
-pandoc "{filename}_pdf.md" \
-  --lua-filter=mermaid-filter.lua \
-  --pdf-engine=weasyprint \
-  --css=style.css \
-  --no-highlight \
-  -o "{filename}.pdf"
+scripts/build_pdf.sh "{filename}_pdf.md" "{filename}.pdf" \
+  --style professional \
+  --no-toc                 # or --toc, per Step 2b
 ```
+
+Options: `--style professional|technical|minimal`, `--toc` / `--no-toc`,
+`--toc-depth N`, `--mermaid vertical|keep`.
+
+**Diagram orientation is measured, not guessed.** A horizontal chain that reads
+fine on screen is scaled to roughly a quarter inside A4's ~17cm text column and
+its labels stop being readable. But flipping blindly is also wrong: a vertical
+version can be tall enough that the height cap shrinks it right back. So the
+builder renders each `LR` diagram both ways, computes the scale the page will
+actually apply — `min(width_fit, height_fit)` — and keeps whichever orientation
+holds the larger one. Vertical costs page height, which is the cheaper resource.
+
+Measured on a six-diagram report: LR chains came out at 4.4–5.0 : 1 and were
+unreadable; going vertical grew the document from 7 to 11 pages and was still
+clearly the right trade. Pass `--mermaid keep` to opt out.
+
+What the builder handles that a bare pandoc call does not:
+
+| Behaviour | Why it matters |
+|-----------|----------------|
+| `> Version:` / `> 版本：` line → bottom-right on every page, removed from body | Otherwise nobody can tell which draft they are holding |
+| TOC off by default; title inlined when off | A named CSS page forces a break, so a cover sheet appears even with no TOC unless the title's `page:` rule is also dropped |
+| Diagrams rendered to PNG, empty alt text | SVG mis-renders fonts in weasyprint; a non-empty alt becomes a visible figure caption under every diagram |
+| `table-layout: fixed` + `thead` repeat + `tr` unbreakable | Step 5c's ratios are a no-op without `fixed`; tables taller than a page must split between rows, not jump whole to the next page |
+| Ink self-check including the **last** page | See Step 7 |
+
+⚠️ **Never add `"Apple Color Emoji"` to the CSS `font-family`, at any position.**
+It carries keycap glyphs for 0–9, and weasyprint routes every Arabic numeral in
+the document to it — they print as blank space. The text layer still contains the
+digits, so `pdftotext` looks correct and the damage is invisible until someone
+reads the paper. For coloured status markers, embed a PNG.
+
+If you need something the builder doesn't cover, fall back to assembling pandoc
+by hand — but copy the CSS out of the script rather than rewriting it, or you
+will rediscover the traps above one at a time.
 
 ### Step 7: Self-check
 
@@ -163,22 +195,38 @@ Read every page of the generated PDF. Check for:
 | A Latin word split mid-token | `PostgreS / QL` across two lines | Column narrower than its longest token → raise `TOKEN_FACTOR` in `table_widths.py` and re-run |
 | Mostly-blank page before a big table | Page under ~4% ink, next page starts with that table | Table set to `page-break-inside: avoid` but taller than one page → allow it to split, keep `tr` unbreakable, repeat `thead` |
 
-Reading 40 pages by eye is slow and misses things. Measure ink coverage first, then only look at the outliers:
+Reading 40 pages by eye is slow and misses things. `build_pdf.sh` runs this check
+automatically; the logic, if you are assembling by hand:
 
 ```bash
 pdftoppm -png -r 80 out.pdf /tmp/pg
 python3 - <<'PY'
 import glob
 from PIL import Image
-for p in sorted(glob.glob("/tmp/pg-*.png")):
+pages = sorted(glob.glob("/tmp/pg-*.png"))
+for i, p in enumerate(pages):
     im = Image.open(p).convert("L")
     ink = sum(im.histogram()[:240]) / (im.size[0] * im.size[1]) * 100
-    if ink < 4:
-        print(f"{p}: {ink:.1f}% — inspect this page")
+    last = i == len(pages) - 1
+    if (ink < 1.5 if last else ink < 4):
+        print(f"{p}: {ink:.2f}% — {'trailing orphan' if last else 'inspect this page'}")
 PY
 ```
 
-Under ~4% almost always means something got pushed to the next page. A final page below the threshold is normal (it is just the tail of the document).
+Under ~4% on a middle page almost always means a table or diagram was pushed off it.
+
+⚠️ **Do not exempt the final page from the check.** It is tempting — a tail page is
+legitimately sparse — but blanket-skipping it is exactly how a document ships with
+one stranded line on its own sheet. A genuine tail page still carries a paragraph
+or two; under ~1.5% ink means one or two lines, which is an orphan, not a tail.
+
+Fixing an orphan is not "delete a sentence until it fits". The reliable move is to
+**fold the closing line into the block above it** — into the last table row, or
+into the preceding paragraph. Trimming prose is unreliable: shortening a line that
+still wraps to the same number of rendered lines frees nothing, and the boundary
+does not move. Measure instead of guessing: if the free space at the bottom of the
+previous page is smaller than one line height plus the paragraph's top margin, no
+amount of rewording that keeps the paragraph separate will pull it up.
 
 If issues found: fix `_pdf.md`, regenerate. **Maximum 3 retries**, then stop and report remaining issues to user.
 
@@ -218,6 +266,12 @@ Output:
 - ❌ **Leaving `|---|---|---|` on every table** — equal widths make a `#` column as wide as a prose column and waste a large share of each page; run `scripts/table_widths.py`
 - ❌ **Setting column ratios but forgetting `table-layout: fixed`** (or vice versa) — the two halves only work together; one alone is a silent no-op
 - ❌ **Reading `-f gfm` output and wondering why widths are ignored** — the gfm reader drops separator proportions; use pandoc's default markdown reader
+- ❌ **Hand-picking diagram direction for the PDF** — `LR` looks right in the source and prints too small; blind flipping to `TD` can be worse. Let the builder render both and measure
+- ❌ **Adding `"Apple Color Emoji"` to the font stack** — every digit in the document silently prints blank while `pdftotext` still shows them
+- ❌ **Non-empty alt text on rendered diagrams** — pandoc promotes it to a figure caption, printing the alt word under every diagram
+- ❌ **Turning the TOC on by default** — it drags the title onto a cover sheet; two pages of overhead in front of a short memo. Ask
+- ❌ **Exempting the last page from the ink check** — that is how a one-line orphan page ships
+- ❌ **Trimming prose to kill an orphan page** — shortening text that still wraps to the same line count frees nothing; fold the line into the block above instead
 - ❌ **Cleaning up before the user signs off** — deleting `_pdf.md` and the CSS mid-iteration means rebuilding all manual tuning on the next round
 - ❌ **Overwriting a PDF the user asked to keep** — give the new render a version suffix instead
 - ❌ **Leaving temp files behind after sign-off** — once the version is final, remove `_pdf.md`, `mermaid-filter.lua`, `style.css` and diagram PNGs without asking again
@@ -231,4 +285,8 @@ Output:
 - **Fixed A4 page size** — no other options
 - **One file at a time** — user can invoke multiple times for batch
 - **Table widths need markdown ratios AND `table-layout: fixed`** — neither half works alone
+- **Ask before adding a TOC** — it costs a cover sheet plus a contents page
+- **Lift the version line into a per-page footer** — a third party must be able to tell which draft they hold
+- **Let the builder measure diagram orientation** — never hand-tune `LR`/`TD` for print
+- **Check the last page too** — under ~1.5% ink is an orphan, not a tail
 - **Clean up only after the user calls the version final** — then delete the intermediates outright, no second confirmation
