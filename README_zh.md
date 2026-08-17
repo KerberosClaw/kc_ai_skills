@@ -72,7 +72,7 @@
 
 | Skill | 它到底幹嘛 |
 |-------|----------|
-| [memory-lint](memory-lint/) | AI memory 養久了會堆積重複規則、過時的「進行中」專案、孤兒檔案。這個 skill 把它們全部掃出來，免得 Claude 哪天很有自信地把錯的規則搬出來打臉你。純 read-only — 只挑問題，怎麼改你自己決定 |
+| [memory-lint](memory-lint/) | AI memory 養久了會堆積重複規則、過時的「進行中」專案、孤兒檔案。這個 skill 把它們全部掃出來，免得 Claude 哪天很有自信地把錯的規則搬出來打臉你。分三段：掃描階段純 read-only，也是預設行為；只有你點名的 finding 才會真的動檔案，改完再交給獨立行程複驗，沒過就回退 |
 | [llm-wiki-lint](llm-wiki-lint/) | Karpathy 的 LLM Wiki pattern 有個盲點 — 超過 15 頁之後，陳舊聲明、孤立 cross-ref、缺失主題會默默腐爛。這個 skill 是 lint pass：矛盾、source traceability、data gap、frontmatter 完整性、index drift。針對 `raw/` + `wiki/` + `schema` 三層 repo。純 read-only。搭配 [memory-lint](memory-lint/) 做 full-stack AI 知識庫保健 |
 | [llm-benchmark](llm-benchmark/) | 在你浪費 30 分鐘下載一個塞不進 GPU 的模型之前，先搞清楚哪個 Ollama 模型適合你的顯卡 |
 

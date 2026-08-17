@@ -72,7 +72,7 @@ Grouped by what you're trying to get done — every skill is still a self-contai
 
 | Skill | What It Actually Does |
 |-------|----------------------|
-| [memory-lint](memory-lint/) | Your AI's memory directory accumulates duplicate rules, stale "active" projects, and orphan files over time. This skill scans for all of that and reports before Claude confidently quotes the wrong rule back at you. Read-only — finds problems, you decide what to fix |
+| [memory-lint](memory-lint/) | Your AI's memory directory accumulates duplicate rules, stale "active" projects, and orphan files over time. This skill scans for all of that and reports before Claude confidently quotes the wrong rule back at you. Three phases: the scan is read-only and is the default; it only edits files for findings you explicitly approve, then has an independent process verify the result and rolls back if that fails |
 | [llm-wiki-lint](llm-wiki-lint/) | Karpathy's LLM Wiki pattern has a blind spot — past ~15 pages, stale claims, orphan cross-refs, and missing topics silently rot your knowledge base. This skill is the lint pass: contradictions, source traceability, data gaps, frontmatter completeness, index drift. For three-tier `raw/` + `wiki/` + `schema` repos. Read-only. Pair with [memory-lint](memory-lint/) for full-stack AI knowledge hygiene |
 | [llm-benchmark](llm-benchmark/) | Find out which Ollama model actually fits in your GPU — before you waste 30 minutes downloading one that doesn't |
 
