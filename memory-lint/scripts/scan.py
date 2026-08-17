@@ -9,16 +9,25 @@
 - 不用固定路徑的暫存檔（並行執行會互相覆蓋）
 - 不 import 第三方套件（唯讀階段不該動使用者的 Python 環境）
 """
-import os, re, sys, json
+import os, re, sys, json, urllib.parse
 
 ROOT_SKIP = re.compile(r"^(MEMORY|index_)")
-LINK = re.compile(r"\]\(([^)]+\.md)\)")
+LINK = re.compile(r"\]\(\s*<?([^)>]+\.md)>?\s*\)")   # 同時吃 (a.md)、(<a b.md>)、(a%20b.md)
 WIKI = re.compile(r"\[\[([^\]]+)\]\]")
 FENCED = re.compile(r"^```.*?^```", re.S | re.M)
 INLINE = re.compile(r"`[^`\n]*`")
 
 
 def norm(p):
+    """正規化 markdown 連結目標：去掉 <>、URL 解碼、去掉 ./ 前綴。
+
+    含空格的檔名在 markdown 裡會寫成 my%20note.md 或 <my note.md>，
+    不還原的話同一個檔會同時被報成 orphan 與 missing，兩個都是假的。
+    """
+    p = p.strip()
+    if p.startswith("<") and p.endswith(">"):
+        p = p[1:-1]
+    p = urllib.parse.unquote(p)
     return p[2:] if p.startswith("./") else p
 
 
