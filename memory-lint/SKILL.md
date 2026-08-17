@@ -134,7 +134,11 @@ python3 <skill_dir>/scripts/scan.py "$MEMORY_PATH"
 常常**不是** repo。整套回退機制不能預設 git 存在。
 
 ```bash
-git -C "$MEMORY_PATH" rev-parse --git-dir >/dev/null 2>&1 && echo git || echo 非git
+# 🔴 要比對 top-level 是不是它自己，不能只問「這裡有沒有 git」——
+#    rev-parse --git-dir 會往上找父層 repo，memory 目錄只要剛好放在某個 repo 底下
+#    就會被誤判成 git 模式，接著把 memory 的改動提交進那個不相干的 repo
+top=$(git -C "$MEMORY_PATH" rev-parse --show-toplevel 2>/dev/null)
+[ -n "$top" ] && [ "$top" = "$(cd "$MEMORY_PATH" && pwd -P)" ] && echo git || echo 非git
 ```
 
 **2. 依上一步建立回退點：**
