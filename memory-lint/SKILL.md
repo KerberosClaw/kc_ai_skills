@@ -82,10 +82,26 @@ find "$MEMORY_PATH" -maxdepth 1 -name '*.md' -type f
 🔴 **索引來源不一定只有 `MEMORY.md`。** `MEMORY.md` 有 200 行的讀取上限，長大的 memory 庫
 常會拆成兩層：`MEMORY.md` 只留常駐規則與路由，完整條目搬進 `index_*.md`。**先偵測是哪一種**：
 
+🔴 **索引圖要從 `MEMORY.md` 走可達性建起來，不是把目錄裡所有 `index_*.md` 一律採信。**
+只看檔名存在會有兩個洞：磁碟上有一份沒人指向的**孤立舊索引**，會讓已經不該被收錄的檔案看起來仍在索引內；
+反過來 `MEMORY.md` 指到一個**不存在的子索引**，則會被無聲跳過。
+
 ```bash
-ls "$MEMORY_PATH"/index_*.md >/dev/null 2>&1 && echo "兩層（索引來源 = MEMORY.md ∪ index_*.md）" \
-                                              || echo "單層（索引來源 = MEMORY.md）"
+# 🔴 一律用 bash 跑：zsh 的未匹配 glob 會在 grep 執行前就中止整條指令，
+#    而且 2>/dev/null 擋不住（失敗發生在展開階段），結果是索引比對輸出全空 → 整庫誤判
+bash -c '
+cd "$MEMORY_PATH" || exit 1
+# 從 MEMORY.md 指出去、且檔名為 index_*.md 的才算子索引
+grep -ho "](index_[^)]*\.md)" MEMORY.md 2>/dev/null | tr -d "](" | tr -d ")" | sort -u > "$TMP/sub_declared"
+# 磁碟上實際存在的 index_*.md
+find . -maxdepth 1 -name "index_*.md" -type f | sed "s|^\./||" | sort > "$TMP/sub_ondisk"
+echo "宣告但不存在的子索引（Error）:"; comm -23 "$TMP/sub_declared" "$TMP/sub_ondisk"
+echo "存在但沒人指向的孤立子索引（Warning）:"; comm -13 "$TMP/sub_declared" "$TMP/sub_ondisk"
+'
 ```
+
+有任何一份 `index_*.md` 被 `MEMORY.md` 指到 → 判定為兩層，索引來源 = `MEMORY.md` ∪ **可達的**子索引。
+都沒有 → 單層。
 
 **兩層結構下只拿 `MEMORY.md` 當索引，會把整個 memory 庫誤判成 orphan。**
 這是本 skill 踩過的實際失誤，不是假設。
@@ -111,15 +127,20 @@ ls "$MEMORY_PATH"/index_*.md >/dev/null 2>&1 && echo "兩層（索引來源 = ME
 | 索引描述跟檔案 frontmatter `description` 明顯不符 | 🔵 Info（description drift；語意判斷需 user 確認） |
 
 ```bash
-cd "$MEMORY_PATH"
-# 索引來源聯集（單層時 index_*.md 展不開，grep 會自動略過）
-grep -ho '](\([^)]*\.md\))' MEMORY.md index_*.md 2>/dev/null \
-  | tr -d '](' | tr -d ')' | grep -v '^index_' | sort -u > /tmp/_indexed.txt
-# 應被索引的實際檔案
-find . -maxdepth 1 -name '*.md' -type f | sed 's|^\./||' \
-  | grep -vE '^(MEMORY|index_)' | sort > /tmp/_files.txt
-echo "orphan（有檔沒索引）:"; comm -13 /tmp/_indexed.txt /tmp/_files.txt
-echo "missing（索引指不到）:"; comm -23 /tmp/_indexed.txt /tmp/_files.txt
+# 🔴 一律 bash（zsh 未匹配 glob 會中止）；🔴 用 mktemp，不要寫死 /tmp 檔名
+#    兩個 lint 同時跑會互相覆蓋固定檔名，比出來的差集是混到的、而且失敗還會留髒資料
+TMP=$(mktemp -d) && trap 'rm -rf "$TMP"' EXIT
+bash -c '
+cd "$MEMORY_PATH" || exit 1
+# 索引來源 = MEMORY.md ＋ 上一步算出的「可達」子索引（單層時 sub_reachable 為空檔）
+cat MEMORY.md $(cat "$TMP/sub_reachable" 2>/dev/null) 2>/dev/null \
+  | grep -ho "](\([^)]*\.md\))" | tr -d "](" | tr -d ")" \
+  | grep -v "^index_" | sort -u > "$TMP/indexed"
+find . -maxdepth 1 -name "*.md" -type f | sed "s|^\./||" \
+  | grep -vE "^(MEMORY|index_)" | sort > "$TMP/files"
+echo "orphan（有檔沒索引）:"; comm -13 "$TMP/indexed" "$TMP/files"
+echo "missing（索引指不到）:"; comm -23 "$TMP/indexed" "$TMP/files"
+'
 ```
 
 ⚠️ Dashboard 類檔案常直接掛在 `MEMORY.md` 而不進 `index_*.md`，那是刻意的，不算 orphan。
@@ -182,21 +203,39 @@ grep -E '^##' "$MEMORY_PATH/MEMORY.md"     # 有沒有按 prefix 分類
 `type` 可能寫在頂層，也可能包在 `metadata:` 底下，**兩種都要認**：
 
 ```python
-import os, re
-for f in sorted(x for x in os.listdir(".") if x.endswith(".md")):
+import os, re, yaml   # 沒有 PyYAML 就 pip install pyyaml；別用正則硬幹
+
+def check(f):
     t = open(f, encoding="utf-8").read()
     m = re.match(r"^---\n(.*?)\n---", t, re.S)
     if not m:
-        print(f, "無 frontmatter"); continue
-    for k in ("name", "description", "type"):
-        v = re.search(rf"^\s*{k}\s*:\s*(.*)$", m.group(1), re.M)
-        val = v.group(1).strip().strip('"').strip("'") if v else ""
-        if not val:
-            print(f, f"缺 {k}")
+        return ["無 frontmatter"]
+    try:
+        d = yaml.safe_load(m.group(1)) or {}
+    except yaml.YAMLError as e:
+        return [f"frontmatter 不是合法 YAML: {e}"]
+    if not isinstance(d, dict):
+        return ["frontmatter 不是 mapping"]
+    meta = d.get("metadata") if isinstance(d.get("metadata"), dict) else {}
+    bad = []
+    for k in ("name", "description"):          # 這兩個只認頂層
+        if not str(d.get(k) or "").strip():
+            bad.append(f"缺 {k}")
+    if not str(d.get("type") or meta.get("type") or "").strip():
+        bad.append("缺 type")                   # type 允許在 metadata 底下
+    return bad
+
+for f in sorted(x for x in os.listdir(".") if x.endswith(".md")):
+    for msg in check(f):
+        print(f, msg)
 ```
 
-🔴 **要剝掉引號再判空。** `name: ""` 用「冒號後有非空白字元」去驗會**通過**，
-但它實質等於沒填。這種假通過比缺欄位更難發現。
+🔴 **要判「值是不是空的」，不是「有沒有這個鍵」。** `name: ""` 用「冒號後有非空白字元」
+去驗會**通過**，但它實質等於沒填 —— 這種假通過比缺欄位更難發現。
+
+🔴 **要用 YAML 解析，不要用正則掃行。** 允許任意前導空白的正則會把**巢狀在別的 mapping 底下**
+的 `name:` / `description:`（甚至 block scalar 內文裡的那一行）當成頂層欄位，一樣是假通過。
+`name` 與 `description` 只認頂層；`type` 才允許出現在 `metadata` 底下。
 
 ### Step 2h: 檔案過大
 
@@ -214,20 +253,29 @@ for f in sorted(x for x in os.listdir(".") if x.endswith(".md")):
 | `[[目標]]` 解析不到任何實際檔案 | 🔴 Error（斷鏈） |
 | 同一目標在不同檔案有多種寫法（連字號 / 底線 / 有無 prefix） | 🟡 Warning（格式不一致） |
 
-```bash
-cd "$MEMORY_PATH"
-python3 -c "
+```python
 import os, re, glob
-files = {f[:-3] for f in os.listdir('.') if f.endswith('.md')}
+files = {f[:-3] for f in os.listdir(".") if f.endswith(".md")}
+
+def strip_code(s):
+    s = re.sub(r"^```.*?^```", "", s, flags=re.S | re.M)   # fenced
+    s = re.sub(r"`[^`\n]*`", "", s)                        # inline
+    return s
+
 bad = {}
-for p in glob.glob('*.md'):
-    for t in re.findall(r'\[\[([^\]]+)\]\]', open(p, encoding='utf-8').read()):
+for p in glob.glob("*.md"):
+    for t in re.findall(r"\[\[([^\]]+)\]\]", strip_code(open(p, encoding="utf-8").read())):
         t = t.strip()
-        if t.startswith('archive/') or t in files: continue
+        if t.startswith("archive/") or t in files:
+            continue
         bad.setdefault(t, []).append(p)
-for t, srcs in sorted(bad.items()): print(f'[[{t}]] <- {\", \".join(srcs)}')
-"
+for t, srcs in sorted(bad.items()):
+    print(f"[[{t}]] <- {', '.join(srcs)}")
 ```
+
+🔴 **掃之前一定要先剝掉 fenced code 與行內 code。** 技術類 memory 很常出現
+`[[ -f "$path" ]]` 這種 shell 條件式，或刻意寫來當範例的 `[[example]]`；
+用生文字直接套正則會把它們全部報成紅色斷鏈。
 
 🔴 **這裡有個規範與現實的落差，是斷鏈的根源**：慣例上 `[[...]]` 指的是對方的
 frontmatter `name` 欄位、不是檔名。但 `name` 常年沒人維護，會長成整句標題、
@@ -292,18 +340,48 @@ kebab slug、甚至空字串，跟檔名完全對不上 —— 於是所有連�
 
 **進入條件**：user 點名要修哪幾條，或明說「全部修掉」。**沒點名就不要動。**
 
-## 開工前
+## 開工前（四項前置，缺一不進 Phase 2）
 
-1. **記下回退點**：`git -C "$MEMORY_PATH" log --oneline -1`，把 commit hash 寫進回報。
-   Phase 3 沒過就退回這裡。
-2. **確認工作區乾淨**：有未提交的改動先問 user，別把別人的東西混進來。
+**1. 先判斷這個目錄是不是 git repo。** Step 1 只要求有 `MEMORY.md`，而預設的
+`~/.claude/memory/` 常常**不是** git repo。整段 Phase 2 的回退機制不能預設 git 存在。
+
+```bash
+git -C "$MEMORY_PATH" rev-parse --git-dir >/dev/null 2>&1 && echo "git" || echo "非 git"
+```
+
+**2. 依上一步建立回退點**：
+
+| 情況 | 回退點 | 回退方式 |
+|---|---|---|
+| 是 git repo | `git -C "$MEMORY_PATH" log --oneline -1` 的 commit hash，寫進回報 | `git revert` 或退回該 commit |
+| 不是 git repo | 整目錄複製一份到 `$MEMORY_PATH.bak.<timestamp>`（**放在 memory 目錄外**，免得被自己掃到） | 把備份複製回去 |
+
+**3. 確認工作區乾淨**（git 情況）：有未提交的改動先問 user，別把別人的東西混進來。
+
+**4. 先確認 Phase 3 的外部驗證工具叫得動。**
+
+```bash
+command -v codex >/dev/null 2>&1 && echo "codex 可用" || echo "🔴 codex 不可用"
+```
+
+🔴 **這步不能等到 Phase 3 才發現。** 驗證工具沒裝或沒登入，卻等到 Phase 2 已經改完並提交
+才撞到，使用者就會拿著一批**沒驗證過的既成改動**卡在那裡。叫不動就**先告訴 user**，
+由他選擇：換一個獨立驗證管道、接受「只做自檢不做外部複驗」，或是不要進 Phase 2。
 
 ## 動手紀律
 
 🔴 **Edit / Write 工具可能被背景 session 的隔離守衛擋住。**
 memory 目錄常伴隨一個「Edit/Write 後自動 commit」的 hook，而**用 Bash 改檔不會觸發那個 hook**。
-所以被擋時的正解是：**用 Bash 寫檔，最後手動 `git add -A && git commit && git push`**。
+所以被擋時的正解是：**用 Bash 寫檔，最後手動 `git add -A && git commit`**。
 改完務必 `git status -s` 確認工作區乾淨才算數。
+
+🔴 **`git push` 要另外問過，不含在 Phase 2 的授權範圍內。**
+user 同意的是「修這幾條 finding」，不是「把 memory 發佈到遠端」。memory 內容通常私密，
+而推上去這件事在多數託管服務上不可逆（就算之後刪掉，中間狀態可能已經被同步或快取）。
+**commit 完停手，明確問一句「要推上遠端嗎」再動。**
+
+⚠️ 例外：該目錄若本來就掛著自動推送的 hook，那是既有行為、不是本 skill 觸發的 ——
+但仍要在回報裡講明「這個目錄的 hook 會自動推送」，別讓 user 以為東西只留在本機。
 
 🔴 **不要在 memory 目錄內開 worktree。** 若該目錄的 hook 跑的是 `git add -A`，
 worktree 會被當成 gitlink 提交進版控。
