@@ -110,13 +110,14 @@ def main(mem):
     broken, ext = {}, {}
     for f in root:
         body = INLINE.sub("", FENCED.sub("", read(os.path.join(mem, f))))
-        for t in WIKI.findall(body):
-            t = t.strip()
-            if t.endswith(".md"):
-                t = t[:-3]
-            if t in stems or t in names:
-                continue
-            (ext if "/" in t else broken).setdefault(t, []).append(f)
+        for ln, line in enumerate(body.split("\n"), 1):
+            for t in WIKI.findall(line):
+                t = t.strip()
+                if t.endswith(".md"):
+                    t = t[:-3]
+                if t in stems or t in names:
+                    continue
+                (ext if "/" in t else broken).setdefault(t, set()).add(f"{f}:{ln}")
     out["wiki_broken"] = {k: sorted(v) for k, v in sorted(broken.items())}
     out["wiki_external"] = {k: sorted(v) for k, v in sorted(ext.items())}
 
