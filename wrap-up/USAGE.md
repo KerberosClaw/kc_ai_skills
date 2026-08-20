@@ -1,5 +1,7 @@
 # wrap-up 使用說明
 
+> **English summary:** Harvests a long working session's output into the repository before you close or compact — moving stray media in under the project's own conventions, wiring two-way references, merging drafts into the source of truth — then dispatches a context-free sub-agent to blind-test the result from the project's entry file. The bar is behavioural, not structural: not "the links resolve" but "a stranger can pick this up", and an answer only counts if the agent can name the file it came from.
+
 ## 為什麼有這個 skill
 
 你跟 AI 工作了六個小時，查清楚三件卡很久的事，拍板了五個判斷，產出散在十幾個檔案裡。
@@ -121,23 +123,3 @@
 - ❌ **不整理你沒剛工作過的專案**。它的原料是「這次 session 產出了什麼」
 - ❌ **不在沒有入口檔的 repo 留下痕跡**。測試需要時會建一份，測完復原，草稿附在報告裡讓你決定
 - ❌ **不呼叫 `llm-wiki-lint` 當閘門**。那是報告型的、判準是結構性的，照它做完仍可能過不了盲測
-
----
-
-## English summary
-
-**What it is.** A cross-project skill that harvests a long working session's output into the repository before you close or compact it, then proves the result is usable by blind-testing a fresh, context-free sub-agent against the project's entry file.
-
-**Why.** Hours of work routinely evaporate: conclusions stay in chat, media sits on the Desktop and later gets deleted, drafts never get merged into the source of truth. The next session then re-derives everything from scratch — or fails to, because the files can't be found.
-
-**What it does.** Inventory (git state, recent files, off-repo media, the agent's own recollection of what was decided) → file everything following *that project's own conventions*, never its own → wire two-way references, update indexes, merge drafts into the SSOT → dispatch a context-free sub-agent to answer scenario questions starting from `CLAUDE.md` / `AGENTS.md` / `README.md`.
-
-**The bar is behavioural, not structural.** Not "all links resolve" but "a stranger can pick this up". Answering correctly is not enough — the agent must also name the file its answer came from. If it can't, the knowledge is effectively unfiled.
-
-**Graded authority, not two-phase approval.** You invoke this when you are leaving, so blocking on approval for everything defeats the purpose. Reversible actions that follow the project's existing rules proceed automatically; deletions, semantic rewrites of existing prose, and genuinely ambiguous calls always stop and ask. Unattended runs skip those entirely rather than deciding for you.
-
-**Bounded failure.** Three rounds maximum. "Fix until nothing is wrong" is not a termination condition for a document that keeps growing — after three rounds it stops and explains, in plain language, which question went red and why.
-
-**Optional `PreCompact` hook.** Non-blocking by design: it warns that unfiled work exists rather than preventing compaction, because blocking a compaction on a full context would strand you.
-
-**Triggers.** `/wrap-up`, 收尾, 收工, 落檔, 我要關 session, 要 compact 了, 整理一下專案文件, wrap up.
