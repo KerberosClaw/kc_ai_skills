@@ -75,6 +75,7 @@
 | [memory-lint](memory-lint/) | AI memory 養久了會堆積重複規則、過時的「進行中」專案、孤兒檔案。這個 skill 把它們全部掃出來，免得 Claude 哪天很有自信地把錯的規則搬出來打臉你。分三段：掃描階段純 read-only，也是預設行為；只有你點名的 finding 才會真的動檔案，改完再交給獨立行程複驗，沒過就回退 |
 | [llm-wiki-lint](llm-wiki-lint/) | Karpathy 的 LLM Wiki pattern 有個盲點 — 超過 15 頁之後，陳舊聲明、孤立 cross-ref、缺失主題會默默腐爛。這個 skill 是 lint pass：矛盾、source traceability、data gap、frontmatter 完整性、index drift。針對 `raw/` + `wiki/` + `schema` 三層 repo。純 read-only。搭配 [memory-lint](memory-lint/) 做 full-stack AI 知識庫保健 |
 | [llm-benchmark](llm-benchmark/) | 在你浪費 30 分鐘下載一個塞不進 GPU 的模型之前，先搞清楚哪個 Ollama 模型適合你的顯卡 |
+| [wrap-up](wrap-up/) | 你昨天查了六小時才搞懂的事，compact 之後只剩一行摘要 — 隔天的 session 只好從頭再推一次，而它需要的那張底圖還躺在桌面，等你下週大掃除順手刪掉。這個 skill 在你收工前把產出收進專案（照你專案自己的規矩搬、接雙向 ref、把躺在草稿裡的結論併回正式文件），然後派一個完全不知道發生過什麼事的 sub-agent，從入口檔開始考試。判準是行為性的：不是「連結都通了」，是「陌生人接得住」。答對還不算過 — 講不出依據在哪個檔，就代表下次還是找不到。這條是我們自己重踩同一個坑之後才寫的 |
 
 ### 自動化與監看
 
