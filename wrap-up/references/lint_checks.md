@@ -24,8 +24,11 @@ REPO = sys.argv[1] if len(sys.argv) > 1 else os.getcwd()
 STALE = sys.argv[2:]                      # 例：Desktop/scratch_v1 old_exports
 os.chdir(REPO)
 
-mds = subprocess.run(["git", "ls-files", "*.md"],
-                     capture_output=True, text=True).stdout.split()
+# 🔴 -z ＋ core.quotepath=false：否則 git 會把非 ASCII 檔名轉義成 \345\234\226…，整批不可用
+mds = subprocess.run(
+    ["git", "-c", "core.quotepath=false", "ls-files", "-z", "*.md"],
+    capture_output=True, text=True).stdout.split("\0")
+mds = [m for m in mds if m]
 
 
 def archived(p):
@@ -71,9 +74,25 @@ for md, rows in sorted(stale_hits.items()):
     for ln, txt in rows[:3]:
         print(f"      L{ln}: {txt}")
 
-docs = [m for m in mds if not archived(m)]
+# 🔴 孤兒判定要縮範圍，否則整批誤判：
+#   ・伴隨檔（.recipe.md / .prompt.md / sidecar）本來就不該被連 —— 它們掛在媒體旁邊
+#   ・素材目錄（references/ 之類）裡的說明檔同理
+#   只看「本來就該被索引到」的文件層
+SIDECAR = (".recipe.md", ".prompt.md", ".meta.md")
+DOC_ROOTS = ("docs/",)          # 依專案調整；空 tuple = 全 repo
+
+
+def is_doc(p):
+    if archived(p) or p.endswith(SIDECAR):
+        return False
+    if not DOC_ROOTS:
+        return True
+    return p.startswith(DOC_ROOTS)
+
+
+docs = [m for m in mds if is_doc(m)]
 orph = sorted(d for d in docs if d not in linked)
-print(f"\n🟡 孤兒（沒有任何文件連到）：{len(orph)}")
+print(f"\n🟡 孤兒（限 {DOC_ROOTS or '全 repo'}，排除伴隨檔）：{len(orph)}")
 for o in orph:
     print(f"   {o}")
 ```
@@ -91,4 +110,6 @@ for o in orph:
 
 - ❌ **把散文裡提到的檔名當斷連結** — `` `lessons_learned.md` `` 在反引號裡只是提及，不是連結。只檢查 `[x](y)` 形式
 - ❌ **把目錄層連結算成孤兒** — 檢查器只看檔案層，會把被目錄連結涵蓋的子檔全部誤判
+- ❌ **把伴隨檔算成孤兒** — `.recipe.md`／`.prompt.md` 這種掛在媒體旁邊的說明檔本來就不該被索引連到；不排除掉會出現數百個假孤兒
+- ❌ **忘記 `core.quotepath=false`** — git 預設把非 ASCII 檔名轉義成 `\345\234\226…`，中文／日文檔名整批不可用
 - ❌ **改寫 append-only 的 log** — log 是流水帳，過時就過時，加警語不改內容
