@@ -103,6 +103,17 @@ user 不在（背景 / 無人值守 / 被別的 skill 呼叫）時，**照最合
 | **① 底圖的本機絕對路徑** | codex `-i` 只吃檔案路徑 | 沒有就不成立，別退化成「生一張像的」 |
 | **② 改哪一處，精確到可驗證** | prompt 要寫成 `CHANGE EXACTLY ONE THING` | 寫「修一下」→ 模型自由發揮 → 整張重畫 |
 | **③ 其餘一切都不准動** | 這句是編輯模式的核心，**不是廢話** | 不寫，模型會把它當 img2img，重新生成一張「很像的」 |
+| **④ 這是去背還是局部修改**（`EDIT_KIND=bgremove\|local`） | 驗收的第 ② 項只有 `bgremove` 會跑 | 漏設 → 假去背（背景被畫成白色）**驗收會放行** |
+| **⑤ 底圖尺寸 W×H** | Step 2-edit 的畫布鎖定要填實際數字 | 填佔位符 → 模型自己挑畫布 → 主體位置全跑掉 |
+
+④⑤ **要在拍板之前拿到**，因為它們要寫進給 user 過目的那份 prompt。
+量尺寸只是讀一個檔的中繼資料，不花錢也不啟動 codex，**不屬於「pre-flight 在拍板之後才做」那條規矩管的範圍**：
+
+```bash
+REF="<user 給的底圖絕對路徑>"
+EDIT_KIND=<bgremove|local>
+eval "$("$SKILL_DIR/scripts/preflight_edit.sh" "$REF")"   # 給出 SRC_W / SRC_H，缺 Pillow 會直接中止
+```
 
 ②③ 這對是編輯模式成立的關鍵：**模型預設的行為是「重新生成」不是「就地修改」**，要它就地改必須明說。
 
@@ -197,20 +208,18 @@ MODE=generate：
 
 **Step 3a-edit: 編輯模式專屬 pre-flight（MANDATORY）**
 
-```bash
-# ① 相依：驗收要用 Pillow，缺了就跑不了 MANDATORY 的 Step 5b
-python3 -c "import PIL" 2>/dev/null || {
-  echo "編輯模式需要 Pillow：python3 -m pip install pillow"
-  # 🔴 裝不起來就停下告訴 user，不要靜默降級交付未驗過的圖
-}
+相依檢查與量尺寸**已經在 Step 1b 做過**（那時就要拿到 W×H 才寫得出 prompt）。
+這裡只再確認一次底圖還在、`EDIT_KIND` 有給：
 
-# ② 量底圖尺寸 → Step 2-edit 的畫布鎖定要填這兩個數字
-read SRC_W SRC_H < <(python3 -c "
-from PIL import Image; im=Image.open('$REF'); print(im.size[0], im.size[1])")
-echo "底圖 ${SRC_W}x${SRC_H}"
+```bash
+eval "$("$SKILL_DIR/scripts/preflight_edit.sh" "$REF")"   # 缺 Pillow 或底圖不見會直接中止
+case "$EDIT_KIND" in
+  bgremove|local) ;;
+  *) echo "EDIT_KIND 沒指定（bgremove|local）——驗收的透明度檢查會被跳過" >&2; exit 1 ;;
+esac
 ```
 
-⚠️ **畫布尺寸有一個未收斂的風險**：`assert out.size == (SRC_W, SRC_H)` 是硬閘門，
+⚠️ **畫布尺寸有一個未收斂的風險**：`verify_edit.py` 第 ① 項的尺寸比對是硬閘門，
 但 image_gen 不保證任意尺寸都吐得出來。實測**非標準比例（如 720×1080）有成功過**，
 但這不是保證。若這道閘門反覆失敗且尺寸只差一點，**那是管線限制不是 prompt 問題** ——
 告訴 user、讓他決定要不要接受「輸出後自己裁回原尺寸」，不要無限重試。
@@ -265,33 +274,42 @@ LAST_MSG="/tmp/codex_imagegen_${TS}.lastmsg"
 LOG_FILE="/tmp/codex_imagegen_${TS}.log"
 
 # 模式與底圖（Step 1-0 / Step 1b / Step 3a 已經決定，這裡只是落成變數）
-MODE=generate            # generate | edit
-EDIT_KIND=local          # 只在 MODE=edit 時有意義：bgremove | local
-REF=""                   # 底圖絕對路徑；text2img 留空，img2img 與 edit 必填
+MODE=<generate|edit>          # 🔴 佔位符，照抄會讓編輯模式落進 5c-1 轉 jpg 刪 png
+EDIT_KIND=<bgremove|local>    # 只在 MODE=edit 時有意義；不要留預設值
+REF="<底圖絕對路徑>"           # text2img 留空，img2img 與 edit 必填
 
 touch "$START_MARKER"   # fallback 用：萬一 codex 沒照存，Step 5a 退而用 find -newer 撈
 
 # 🔴 落一份 state 檔：每次 Bash 工具呼叫都是「全新的 shell」，上面這些變數活不過這一格。
 #    Step 5 在背景等待之後才跑，屆時一律先 source 回來，不要憑記憶重打路徑。
-cat > "/tmp/codex_imagegen_${TS}.state" <<EOF
-TS=$TS
-MODE=$MODE
-EDIT_KIND=$EDIT_KIND
-REF=$REF
-OUT_PNG=$OUT_PNG
-OUT_JPG=$OUT_JPG
-OUT_SIDECAR=$OUT_SIDECAR
-LAST_MSG=$LAST_MSG
-LOG_FILE=$LOG_FILE
-START_MARKER=$START_MARKER
-EOF
+STATE="/tmp/codex_imagegen_${TS}.state"
+# 🔴 值一律 %q 跳脫。不跳脫的話，路徑帶空白（macOS 截圖檔名預設就帶）在 source
+#    回來時會被拆成「賦值 + 執行命令」，變數靜默變成空字串、整段還回報成功。
+{ printf 'TS=%q\n'           "$TS"
+  printf 'MODE=%q\n'         "$MODE"
+  printf 'EDIT_KIND=%q\n'    "$EDIT_KIND"
+  printf 'REF=%q\n'          "$REF"
+  printf 'OUT_PNG=%q\n'      "$OUT_PNG"
+  printf 'OUT_JPG=%q\n'      "$OUT_JPG"
+  printf 'OUT_SIDECAR=%q\n'  "$OUT_SIDECAR"
+  printf 'LAST_MSG=%q\n'     "$LAST_MSG"
+  printf 'LOG_FILE=%q\n'     "$LOG_FILE"
+  printf 'START_MARKER=%q\n' "$START_MARKER"
+  printf 'STATE=%q\n'        "$STATE"
+} > "$STATE"
 ```
 
 進 Step 5 的每一格 bash 開頭都先：
 
 ```bash
-. "/tmp/codex_imagegen_${TS}.state"      # TS 記在你的訊息裡，或用 ls -t /tmp/codex_imagegen_*.state | head -1
+# 🔴 不能寫 . "/tmp/codex_imagegen_${TS}.state" —— TS 正是還沒撈回來的變數之一。
+STATE=$(ls -t /tmp/codex_imagegen_*.state 2>/dev/null | head -1)
+[ -n "$STATE" ] || { echo "找不到 state 檔"; exit 1; }
+. "$STATE"
 ```
+
+⚠️ **多條並行跑 codex 時 `ls -t` 會撈到別人的 state**（並行做法見 Step 4b 的 flag 註解）。
+並行情境要把 `TS` 明寫進指令，不能靠 `ls -t`。殘留的舊 state 檔同理危險 —— 見 Step 6 的清理。
 
 ### Step 4b: 背景啟動 codex exec
 
@@ -358,7 +376,7 @@ codex exec --skip-git-repo-check \
 > ⚠️ **0.141.0 版差異（實測 2026-06-24，本 skill v0.4.0 改版主因）**：
 > 1. `generated_images` **時有時無** —— 同一版本、同樣指令，有時圖落 `~/.codex/generated_images/<session>/ig_*.png`、有時**完全不落**（圖只剩 rollout JSONL 的 base64）。所以 `find -newer marker` 撈 generated_images 這條**主路不再可靠**（實測整批撈空、得退 base64 還原才救回）。
 > 2. **→ 收圖主路正式改為「prompt-save」**（上面 0.136 早記過的官方作法，現升為預設）：launch 時在 prompt 內叫 codex 存到 `$OUT_PNG`、回報路徑（見 Step 4b / 5a）。實測 0.141.0 圖**確實直接落指定路徑**、`--output-last-message` 也回報了絕對路徑。
-> 3. generated_images `find` 與 rollout base64 解碼**降為 fallback 1 / 2**。注意 0.141.0 有時 prompt-save 與 generated_images **兩邊都寫** → Step 5b 收完主路要順手清掉 generated_images 的多餘 copy。
+> 3. generated_images `find` 與 rollout base64 解碼**降為 fallback 1 / 2**。注意 0.141.0 有時 prompt-save 與 generated_images **兩邊都寫** → Step 5c-3 會清掉 generated_images 的多餘 copy。
 
 ### Step 4c: 非阻塞等待（讓出主線程，靠 task 完成通知喚回）
 
@@ -433,74 +451,27 @@ PY
 肉眼在表情／姿態沒動的情況下分辨不出幾十像素的位移，但那會讓這張圖與同批其他圖對不齊。
 
 ```bash
-python3 - "$REF" "$OUT_PNG" "$EDIT_KIND" <<'PY'
-import sys
-from PIL import Image
-
-SRC, OUT = sys.argv[1], sys.argv[2]
-KIND = sys.argv[3] if len(sys.argv) > 3 else "local"   # bgremove | local
-src, out = Image.open(SRC), Image.open(OUT)
-w, h = src.size
-fail = []
-
-def has_alpha(im):                       # mode P 的透明 PNG 也算，別漏
-    return im.mode in ("RGBA", "LA", "PA") or "transparency" in im.info
-
-# ① 畫布尺寸沒變
-if out.size != (w, h):
-    fail.append(f"畫布跑掉：{out.size} != {(w, h)}")
-
-# ② 透明度 —— 只在「這一輪的意圖就是去背」時驗（看意圖，不看輸出格式）
-if KIND == "bgremove":
-    if not has_alpha(out):
-        fail.append(f"要的是去背，但輸出沒有透明度（mode={out.mode}）")
-    else:
-        a = out.convert("RGBA").getchannel("A")
-        clear = a.histogram()[0] / (a.size[0] * a.size[1])
-        if clear < 0.01:
-            fail.append(f"有 alpha 但幾乎沒有透明像素（{clear:.1%}）：可能是畫上去的假背景")
-        # ⚠️ 刻意不驗「四角必須透明」——主體貼齊邊緣的構圖（半身像、滿版）本來就有不透明的角
-
-# ③ 主體像素保真（尺寸不同就沒得比，跳過）
-if out.size == (w, h):
-    sp = src.convert("RGB").load()
-    op = out.convert("RGB").load()
-    ap = out.convert("RGBA").getchannel("A").load() if has_alpha(out) else None
-    gp = src.convert("L").load()
-    bg = gp[5, 5]
-    use_luma = bg >= 60          # 背景太暗時 bg-60 會把全圖判成背景 → 那條判準失效
-    tot = worst = over = 0
-    for y in range(0, h, 2):
-        for x in range(0, w, 2):
-            if ap is not None:
-                if ap[x, y] == 0:        continue     # 輸出判定為背景
-            elif use_luma:
-                if gp[x, y] >= bg - 60:  continue     # 原圖判定為背景
-            d = max(abs(op[x, y][i] - sp[x, y][i]) for i in range(3))
-            tot += 1; worst = max(worst, d); over += (d > 10)
-    if tot == 0:
-        fail.append("主體取樣為 0：背景判準失效（底圖是暗背景、或整張已透明）。"
-                    "改用輸出的 alpha 當遮罩重跑，或請 user 目視比對")
-    else:
-        ratio = over / tot
-        print(f"主體取樣 {tot}px  最大色差 {worst}  色差>10 佔 {ratio:.1%}")
-        if worst > 9 or ratio > 0.01:
-            fail.append(f"主體被改動了（最大色差 {worst}、色差>10 佔 {ratio:.1%}）"
-                        "：它重新生成了一張像的，不是編輯")
-
-print("VERDICT:", "PASS" if not fail else "FAIL")
-for f in fail: print(" -", f)
-sys.exit(0 if not fail else 1)
-PY
+# 邏輯住在腳本裡，不要在這裡重打一份 —— 兩份會漂移，而漂移的那一份會靜默放行。
+"$SKILL_DIR/scripts/verify_edit.py" "$REF" "$OUT_PNG" "$EDIT_KIND"
 ```
 
-判讀（**已寫進程式，不必用眼睛判**）：
+`$SKILL_DIR` ＝ 這個 skill 目錄（`gpt-image-gen/`）。腳本的完整判準與退出碼寫在它自己的
+docstring 裡（`verify_edit.py --help` 等同直接讀檔頭），這裡只講它在驗什麼：
 
-| 最大色差 | 意思 | 結果 |
+| 項 | 驗什麼 | 兩種 kind 的差別 |
 |---|---|---|
-| **0** | 真的是遮罩／就地修改，一個位元都沒動 | ✅ PASS |
-| **1–9** | 有輕微重編碼 | ✅ PASS，但在 Step 5e 通知裡講明 |
-| **≥10**，或 `色差>10` 佔比 > 1% | **它重新生成了一張像的**，不是編輯 | ❌ FAIL |
+| ① 畫布尺寸 | 輸出與底圖同尺寸 | 相同 |
+| ② 透明度 | 真的有 alpha／透明佔比合理／**主體不是半透明的鬼影** | **只有 `bgremove` 驗** |
+| ③ 主體保真 | 主體像素有沒有被動到 | `bgremove` 要求逐像素不變；`local` 只擋「滿版都在變＝重生」，並印出改動區域的座標框 |
+
+🔴 **`EDIT_KIND` 必須明確給 `bgremove` 或 `local`，腳本不接受其他值也不預設。**
+預設會讓「忘了說這是去背」靜默跳過整個 ② —— 而背景被畫成白色的假去背，
+在 ③ 看起來是完美的「最大色差 0」。
+
+🔴 **`local` 的判準跟 `bgremove` 不一樣，不要互相套用。** 局部修改被要求改的那一塊
+**本來就會有極大色差**，拿「色差要小」去卡它，等於懲罰它有照做，而那道閘門會因此
+被學會忽略（本檔 anti-patterns 有這條）。腳本改成看「改動有沒有聚成一塊」，
+並把座標框印出來讓你跟 prompt 對照。
 
 **`VERDICT: FAIL` → 照 Step 6 的「編輯驗收未過」那列處理，不要自動重試、不要清檔。**
 
@@ -526,6 +497,7 @@ codex 吐 png（2MB 級）；交付走 **jpg q85**（實測畫質肉眼無感、
 sips -s format jpeg -s formatOptions 85 "$OUT_PNG" --out "$OUT_JPG" >/dev/null 2>&1
 rm -f "$OUT_PNG"                            # 刪 png 中繼，只留 jpg
 FINAL="$OUT_JPG"
+printf 'FINAL=%q\n' "$FINAL" >> "$STATE"   # Step 5d/5e 是不同的 shell，不回寫就讀到空字串
 ```
 
 - 最終交付 = `$FINAL`。**只有 user 明講「要留無損 png」才跳過 `rm -f "$OUT_PNG"`**。
@@ -537,6 +509,7 @@ FINAL="$OUT_JPG"
 
 ```bash
 FINAL="$OUT_PNG"        # 不轉檔、不刪檔，就這樣
+printf 'FINAL=%q\n' "$FINAL" >> "$STATE"   # Step 5d/5e 是不同的 shell，不回寫就讀到空字串
 ```
 
 **編輯模式一律交 png，無例外。** 不分有沒有 alpha，理由同上一條的「會被再利用」判準 ——
@@ -607,7 +580,7 @@ output_image: <$FINAL 絕對路徑>
 
 ```
 ✅ 改好了
-- 圖：<$FINAL 的相對 cwd 路徑>（png，帶透明度就不轉 jpg）
+- 圖：<$FINAL 的相對 cwd 路徑>（png；編輯模式一律 png，不轉檔）
 - 驗收：尺寸 <W>x<H> 未變／主體取樣 <N>px 最大色差 <D>
 - prompt log：<相對 cwd 路徑>.prompt.md
 ```
@@ -645,8 +618,12 @@ output_image: <$FINAL 絕對路徑>
 
 清掉中繼檔：
 ```bash
-rm -f "$LAST_MSG" "$LOG_FILE" "$START_MARKER"
+rm -f "$LAST_MSG" "$LOG_FILE" "$START_MARKER" "$STATE"
 ```
+
+⚠️ **`$STATE` 一定要清。** 撈它的方式是 `ls -t ... | head -1`，殘留的舊 state 檔
+會在某次沒建成新檔時被安靜地撈到，**把上一輪的圖當成這一輪的結果交出去**。
+成功路徑（Step 5e 通知完）也要做同一件清理。
 
 ---
 
@@ -711,9 +688,14 @@ rm -f "$LAST_MSG" "$LOG_FILE" "$START_MARKER"
 
 | 項目 | 現況 |
 |---|---|
-| 去背的遮罩精度 | 實測可到**髮絲級**，主體像素**逐位元不變**（最大色差 0）—— 它是遮罩不是重生 |
-| **抗鋸齒** | ⚠️ **alpha 是二值的（只有 0 與 255，零個半透明階）**。原尺寸看不出來，但**縮放時硬邊可能顯出鋸齒** |
-| 補救 | 要羽化就自己對 alpha 做一次 1px 模糊，**不必重生**（重生反而會失去像素保真） |
+| 去背的遮罩精度 | 實測**兩次**都到**髮絲級**，主體像素**逐位元不變**（最大色差 0）—— 它是遮罩不是重生 |
+| **抗鋸齒不穩定** | ⚠️ **兩次跑出不同結果**：一次是純二值 alpha（半透明階 **0.0%**），一次有邊緣羽化（**0.5%**）。同樣的 prompt 結構、同一個版本 |
+| 補救 | 拿到二值的那種、又要縮放時，自己對 alpha 做一次 1px 模糊即可，**不必重生**（重生會失去像素保真） |
 
-⚠️ 以上是單一版本的單次實測，**別當鐵則**（呼應 anti-patterns 那條「把單次觀察當鐵則」）。
-換 codex 版本後重驗一次 Step 5b 的三項，比讀這張表可靠。
+⚠️ **「抗鋸齒」那條就是「別把單次觀察當鐵則」的現成例子** —— 第一次實測後本表曾寫死
+「alpha 是二值的」，第二次就被推翻。要用就自己量，別讀這張表下結論。
+
+🔴 **關於量測本身的一個坑（實際踩過）**：不要在背景任務的完成通知抵達之前去讀輸出檔。
+codex 可能先寫一個中間版本再改寫成最終版，**提早讀會拿到寫到一半的圖**，
+量出來的數字全錯（那次量到「主體 18% 半透明」，最終檔其實是 0.5%）。
+等通知，或至少比對 mtime。
