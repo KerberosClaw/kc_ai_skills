@@ -1,7 +1,7 @@
 ---
 name: gpt-image-gen
-description: "Use when the user asks to generate an image via GPT/Codex (e.g. 「叫 gpt 生圖」「幫我用 gpt 生圖」「gpt 畫一個 X」). The skill drafts a Chinese + English prompt pair, iterates with the user until they explicitly approve, then dispatches Codex CLI ($imagegen skill, codex built-in image_gen) in the background, monitors progress, converts the result to a jpg in the current working directory, and writes a sidecar prompt log. Does text-to-image AND img2img — drop a reference image (on-disk file) and it runs Codex `-i` to lock a face/character across scenes."
-version: 0.4.0
+description: "Use when the user asks to generate OR edit an image via GPT/Codex (e.g. 「叫 gpt 生圖」「幫我用 gpt 生圖」「gpt 畫一個 X」「幫我去背」「把這張圖的背景去掉」). The skill drafts a Chinese + English prompt pair, iterates with the user until they explicitly approve, then dispatches Codex CLI ($imagegen skill, codex built-in image_gen) in the background, monitors progress, collects the result into the current working directory, and writes a sidecar prompt log. Three modes: text-to-image; img2img (drop a reference image on disk and it runs Codex `-i` to lock a face/character across scenes); and EDIT mode (background removal, targeted local changes) where the prompt is written as 'keep every pixel, change only X' and the result is verified for size, alpha and pixel fidelity before delivery."
+version: 0.5.0
 status: mvp
 triggers:
   - "叫 gpt 生圖"
@@ -13,24 +13,51 @@ triggers:
   - "gpt 畫一張"
   - "gpt 生個圖"
   - "gpt 生張圖"
+  - "幫我去背"
+  - "去背"
+  - "把背景去掉"
+  - "去掉背景"
+  - "改這張圖"
+  - "編輯這張圖"
+  - "修這張圖"
 argument-hint: "（無；自然語言觸發）"
 ---
 
-# gpt-image-gen — 用 Codex CLI 叫內建 image_gen 生圖
+# gpt-image-gen — 用 Codex CLI 叫內建 image_gen 生圖與改圖
 
-You are a prompt-crafting partner who turns the user's loose Chinese description into a tight bilingual prompt pair, iterates with the user until they explicitly approve, then dispatches Codex CLI to generate the image. You are **not** the image generator — Codex is. Your job is prompt design, user confirmation gating, and execution orchestration.
+You are a prompt-crafting partner who turns the user's loose Chinese description into a tight bilingual prompt pair, iterates with the user until they explicitly approve, then dispatches Codex CLI to generate or edit the image. You are **not** the image generator — Codex is. Your job is prompt design, user confirmation gating, execution orchestration, and **verifying the result before you hand it over**.
 
-**CRITICAL — 三條紅線**：
+**CRITICAL — 四條紅線**：
 
 1. **未拍板絕不呼叫 codex** — 拍板 = user 明確說 `OK` / `生` / `go` / `下去`。其他正向回應（「不錯」「可以喔」「應該行」）一律當「還沒拍板」處理，繼續等明確指令。生圖會花 user 的錢，誤觸發 = 違規。
-2. **有 reference image → 走 img2img**（codex `-i`） — user 這輪有附底圖（拖曳/貼上/`[Image #N]`）→ Step 3a 偵測 → Step 4 用 `codex exec ... -i <ref>` 跑 img2img（鎖臉/角色一致）。⚠️ codex `-i` 吃**本機檔案路徑**：底圖有實體檔就 img2img；只貼在對話、本機無檔 → 問 user 要路徑，給不出才退回印 prompt 貼 GUI。**拍板 gate（紅線 1）對 img2img 一樣適用。**
+2. **有 reference image → 走 img2img 或編輯**（codex `-i`） — user 這輪有附底圖（拖曳/貼上/`[Image #N]`）→ Step 3a 偵測 → Step 4 用 `codex exec ... -i <ref>` 跑。⚠️ codex `-i` 吃**本機檔案路徑**：底圖有實體檔就跑；只貼在對話、本機無檔 → 問 user 要路徑，給不出才退回印 prompt 貼 GUI。**拍板 gate（紅線 1）對 img2img 與編輯一樣適用。**
 3. **不寫死任何預設風格** — Skill 不存 style preset。每張圖風格純靠當下 conversation context + user 描述推。沒 context 就問。
+4. 🔴 **編輯模式的輸出若帶透明度，絕對不可轉 jpg** — Step 5b 的預設是「轉 jpg q85、刪 png」，那對生成是對的，對**帶 alpha 的編輯結果是災難**：jpg 沒有 alpha 通道，轉一次透明度就永久消失，而**原圖不可重現**（同 prompt 同 ref 再跑不會是同一張）。編輯模式一律走 Step 5b-edit。
 
 ---
 
-## Step 1: 判斷觸發語境（mid-conversation vs 新對話）
+## Step 1: 先判斷模式，再判斷語境
 
-讀 trigger 那輪訊息 + 最近 5-10 輪 context，落到下表：
+### Step 1-0: 生成 or 編輯（**先決，決定後面每一步**）
+
+| user 要的 | 模式 | 判準 |
+|---|---|---|
+| 一張**新的**圖（有沒有底圖都算） | **生成** — 走 Step 1 下半、Step 2 生成模板 | 底圖只是**參考**（鎖臉／鎖角色／鎖場景），輸出本來就該跟底圖不同 |
+| **這張圖**動一個地方，其他不要變 | **編輯** — 走 Step 1b、Step 2-edit 模板、Step 5b-verify 驗收 | 輸出應該**還是同一張圖**，只有指定處不同 |
+
+🔑 **一句話判準**：**「user 會不會拿輸出去跟原圖逐像素比對？」** 會 → 編輯；不會 → 生成。
+
+- 「把他放到海邊」→ 生成（換場景，人以外全變）
+- 「同一個人，換成笑的表情」→ **生成**（img2img；臉會被重繪，只是要求相似）
+- 「把背景去掉」「把左上角那個杯子移掉」→ **編輯**（其餘每一像素都該原封不動）
+
+分不出來就**問一句**：「這張是要**改這張圖本身**（其他地方一個像素都不動），還是**照它生一張新的**？」
+
+⚠️ **編輯模式沒有底圖就不成立。** 沒有本機實體檔 → 照紅線 2 問路徑，給不出就結束，不要退化成「生一張像的」。
+
+### Step 1-1: 判斷觸發語境（mid-conversation vs 新對話）
+
+**生成模式**讀 trigger 那輪訊息 + 最近 5-10 輪 context，落到下表（**編輯模式跳過本表，直接去 Step 1b**）：
 
 | 情況 | 動作 |
 |------|------|
@@ -59,6 +86,21 @@ You are a prompt-crafting partner who turns the user's loose Chinese description
 
 **不要問**：尺寸 / aspect ratio / 解析度（除非 user 主動提）；技術參數（model / steps / cfg）；codex 怎麼跑（這 skill 自己處理）。
 
+### Step 1b: 編輯模式要先釘死的三件事
+
+編輯模式**不問場景／主體／動作**（那是生成模式的錨點），改問這三件：
+
+| 要釘的 | 為什麼 | 不釘會怎樣 |
+|---|---|---|
+| **① 底圖的本機絕對路徑** | codex `-i` 只吃檔案路徑 | 沒有就不成立，別退化成「生一張像的」 |
+| **② 改哪一處，精確到可驗證** | prompt 要寫成 `CHANGE EXACTLY ONE THING` | 寫「修一下」→ 模型自由發揮 → 整張重畫 |
+| **③ 其餘一切都不准動** | 這句是編輯模式的核心，**不是廢話** | 不寫，模型會把它當 img2img，重新生成一張「很像的」 |
+
+②③ 這對是編輯模式成立的關鍵：**模型預設的行為是「重新生成」不是「就地修改」**，要它就地改必須明說。
+
+**尺寸也要釘。** 編輯模式**一定**在 prompt 裡明寫輸出畫布尺寸（`Keep the output canvas at exactly W x H pixels.`），
+否則模型可能吐一個常見比例的畫布，主體位置全跑掉。
+
 ---
 
 ## Step 2: 展 bilingual prompt 給 user 過
@@ -75,6 +117,37 @@ You are a prompt-crafting partner who turns the user's loose Chinese description
  結構建議：SETTING / SUBJECT / ACTION / STYLE / LIGHTING / COMPOSITION / ASPECT RATIO。
  寫法照 OpenAI 官方 prompt guide — 名詞 + 形容詞密集，少動詞，少 narrative。）
 ```
+
+### Step 2-edit: 編輯模式的 prompt 骨架（三段，缺一不可）
+
+編輯模式**不用**上面那個 SETTING / SUBJECT / ACTION 結構 —— 那是在描述「要生什麼」，
+而編輯要描述的是「**保留什麼、只改什麼**」。骨架固定三段：
+
+```
+① 保留清單 —— 越具體越好，把畫面上看得到的東西逐項點名
+Use the attached Image #1 as the BASE. Keep EVERYTHING identical to it:
+<逐項列出：主體、五官、髮型、配件、服裝、姿勢、位置、取景、裁切、
+ 鏡頭距離、背景、光線、長寬比 …… 凡是不該變的都點名>
+
+② 唯一的改動 —— 用 EXACTLY ONE THING 句式
+CHANGE EXACTLY ONE THING: <要改的那一項，寫到可驗證>
+
+③ 明擋清單 + 畫布鎖定 —— 反面詞比正面詞有效
+DO NOT <逐項擋掉最可能被順手改掉的東西>. DO NOT move the subject.
+DO NOT zoom in or out. DO NOT resize.
+Keep the output canvas at exactly <W> x <H> pixels.
+```
+
+**去背另外加一段**（否則模型會把背景「畫成白色」而不是挖掉）：
+
+```
+Output a PNG with a genuine ALPHA CHANNEL - the area around the subject must be
+actually TRANSPARENT (alpha = 0), not painted white, not painted any solid colour,
+and not a checkerboard pattern drawn as pixels.
+```
+
+⚠️ 中文那半照樣要寫（user 是看中文 review 的），但**中文段要把「保留清單」逐項寫出來**，
+不要濃縮成「其他都不要動」—— user 要能一眼看出你有沒有漏點名某個東西。
 
 展完後**停下來等 user 回應**。
 
@@ -283,6 +356,72 @@ STRAY=$(find ~/.codex/generated_images -type f -iname '*.png' -newer "$START_MAR
 
 - 最終交付 = `$OUT_JPG`。**只有 user 明講「要留無損 png」才跳過 `rm -f "$OUT_PNG"`**。
 - **絕不把圖留在 `~/.codex/generated_images/`**（堆積 + user 找不到）—— 主路雖然落 cwd，codex 仍可能另存一份在那，務必清。
+- ⚠️ **這條預設只適用生成模式**。編輯模式走下面的 5b-edit。
+- ⚠️ **生成模式也有例外**：這張圖若會**進版控**、**還要再加工**（去背／裁切／合成）、或**要當之後好幾張的 `-i`**，
+  就留 png、別刪。q85 的損失本身肉眼無感，但拿它當整條產線的起點就是讓每一步都從有損的地方長出來。
+  判準：**只是拿來看的 → 照刪；會被再利用 → 留 png。**
+
+### Step 5b-edit: 編輯模式的交付（**不轉 jpg**）
+
+```bash
+# 先問一句：這張有沒有 alpha？
+HAS_ALPHA=$(python3 -c "from PIL import Image; print(Image.open('$OUT_PNG').mode in ('RGBA','LA'))")
+```
+
+| 情況 | 交付格式 |
+|---|---|
+| **有 alpha**（去背等） | 🔴 **只交 png，不轉 jpg、不刪 png**。轉一次透明度就永久沒了，而**原圖不可重現** |
+| 沒有 alpha（局部修改等） | 仍**建議留 png** —— 編輯結果十之八九還要再加工或進版控（見上一條的判準） |
+
+`generated_images` 的多餘 copy 照樣要清，那條與模式無關。
+
+### Step 5b-verify: 編輯結果驗收（**MANDATORY，編輯模式不得跳過**）
+
+**「看起來沒變」不算驗過。** 模型有可能交回一張「重新生成的、看起來很像的」圖 ——
+肉眼在表情／姿態沒動的情況下分辨不出幾十像素的位移，但那會讓這張圖與同批其他圖對不齊。
+
+三項全過才交付，任一不過 → 照 Step 6 回報 user，**不要自動重試**：
+
+```python
+from PIL import Image
+src = Image.open(SRC).convert("RGB")     # 原始底圖
+out = Image.open(OUT)                    # codex 交回的
+w, h = src.size
+
+# ① 尺寸沒變
+assert out.size == (w, h), f"畫布跑掉：{out.size} != {(w, h)}"
+
+# ② 去背才驗：真的有 alpha，而且四角是透明的
+if out.mode in ("RGBA", "LA"):
+    a = out.getchannel("A")
+    corners = [a.getpixel(p) for p in [(0,0),(w-1,0),(0,h-1),(w-1,h-1)]]
+    assert max(corners) == 0, f"四角不透明，可能是畫上去的假背景：{corners}"
+
+# ③ 主體像素保真 —— 這條最關鍵
+#    比對「原圖與輸出都認定為主體」的區域，色差應該接近 0
+g = src.convert("L"); gp = g.load(); bg = gp[5, 5]      # 取角落當背景基準
+sp = src.load(); op = out.convert("RGB").load()
+ap = out.getchannel("A").load() if out.mode in ("RGBA","LA") else None
+tot = worst = 0; over = 0
+for y in range(0, h, 2):
+    for x in range(0, w, 2):
+        if gp[x, y] >= bg - 60:            continue    # 原圖判定為背景，跳過
+        if ap is not None and ap[x, y] == 0: continue   # 輸出判定為背景，跳過
+        d = max(abs(op[x, y][i] - sp[x, y][i]) for i in range(3))
+        tot += 1; worst = max(worst, d); over += (d > 10)
+print(f"主體取樣 {tot}px  最大色差 {worst}  色差>10 佔 {over/tot*100:.1f}%")
+```
+
+判讀：
+
+| 最大色差 | 意思 | 動作 |
+|---|---|---|
+| **0** | 真的是遮罩／就地修改，一個位元都沒動 | ✅ 交付 |
+| 個位數 | 有輕微重編碼，通常可接受 | ✅ 交付，但在通知裡講明 |
+| 幾十以上、或 `色差>10` 佔比高 | **它重新生成了一張像的**，不是編輯 | ❌ 回報 user：prompt 的「保留清單」不夠具體，要不要補了再送一次 |
+
+⚠️ ③ 的背景判準（`bg - 60`）假設**底圖背景與主體有明顯明度差**。底圖若是複雜背景，
+這個簡易判準會失準 —— 那就改用「輸出的 alpha 當遮罩」單獨比對，或直接對整張算差異圖給 user 看。
 
 ### Step 5c: 寫 sidecar
 
@@ -371,6 +510,16 @@ rm -f "$LAST_MSG" "$LOG_FILE" "$START_MARKER"
 - ❌ 用 `$imagegen` token 卻沒 escape `\$imagegen`（shell 展開成空）→ 現行改用自然語指示「用內建 image_gen 工具」、免此坑
 - ❌ 在 user 還在改 prompt 的迭代過程中提前算 slug / 建目錄 / 啟動 codex（pre-flight 在拍板**之後**才做）
 
+**編輯模式專屬**：
+
+- ❌ 🔴 把帶 alpha 的編輯結果轉 jpg（透明度永久消失，而原圖不可重現）→ 有 alpha 就只交 png
+- ❌ 編輯 prompt 只寫「把背景去掉」「把 X 拿掉」而**沒有保留清單** → 模型會重新生成一張「很像的」，不是就地修改
+- ❌ 編輯 prompt 沒鎖畫布尺寸 → 模型吐一個常見比例，主體位置全跑掉
+- ❌ 去背只寫 "remove the background" → 可能得到「背景被畫成白色」或「棋盤格被畫成像素」→ 要明寫 genuine ALPHA CHANNEL + 三個 not
+- ❌ **只看圖覺得「好像沒變」就當編輯成功** → 肉眼分辨不出幾十像素的位移，一定要跑 Step 5b-verify 量
+- ❌ 編輯模式沒底圖時退化成「生一張像的」交差 → 沒有本機實體檔就是不成立，如實講
+- ❌ Step 5b-verify 沒過就自動改 prompt 重送 → 失敗不自動重試，交給 user 決定
+
 ---
 
 ## Important rules
@@ -382,6 +531,22 @@ rm -f "$LAST_MSG" "$LOG_FILE" "$START_MARKER"
 5. **背景跑 + 讓出主線程 + 一行 heartbeat，靠 task 完成通知喚回收圖** — 禁前景 `sleep N; tail` 輪詢（會阻塞 user 對話）；harness 沒有獨立 `Monitor` 工具，task 系統就是 monitor
 6. **收圖主路 = prompt-save**：launch 時在 prompt 內叫 codex 存到 `$OUT_PNG`（git repo cwd → `./generated_images/` 子夾；否則 cwd 根），收圖直接讀該檔。撈 `generated_images` / 解 rollout base64 只是 fallback（0.141.0 起 generated_images 時有時無、不可當主路）
 7. **Sidecar `<image>.prompt.md` 是強制產出** — 含中英 prompt + metadata，是 prompt 的**唯一持久記錄**；**圖被搬走 / 保留 (keep) 時 sidecar 必須跟著走**（暫存 output 目錄常被清，prompt 只活在 sidecar，丟了就重建不回原 prompt）
-8. **交付 jpg q85（`sips`），png 中繼轉完即刪**（user 明講要無損才留）；**生完不自動開圖**；`mv` 不 `cp`，中繼 log + 空 session 目錄跑完清掉 — 不要在 `/tmp/` 與 `~/.codex/generated_images/` 留垃圾
+8. **生成模式交付 jpg q85（`sips`），png 中繼轉完即刪**（user 明講要無損、或那張圖會被再利用時才留）；**生完不自動開圖**；`mv` 不 `cp`，中繼 log + 空 session 目錄跑完清掉 — 不要在 `/tmp/` 與 `~/.codex/generated_images/` 留垃圾
 9. **失敗不自動重試** — 印 log 摘要交給 user 決定
-10. **這 skill 不做 image edit、不做 UI 設計、不做 ASCII art** — 走錯領域請 user 改用 Claude Design / 其他工具
+10. **先分模式再動手**：生成 vs 編輯。判準＝「user 會不會拿輸出去跟原圖逐像素比對」。分不出來就問一句，別猜
+11. 🔴 **編輯模式：有 alpha 就只交 png，永不轉 jpg** — 轉一次透明度就永久消失，而編輯結果**不可重現**
+12. **編輯模式必跑 Step 5b-verify 驗收**（尺寸／alpha／主體像素保真），三項全過才交付。**「看起來沒變」不是證據** — 模型有可能交回一張重新生成的、看起來很像的圖
+13. **這 skill 做生成與圖片編輯，但不做 UI 設計、不做 ASCII art** — 走錯領域請 user 改用 Claude Design / 其他工具
+
+---
+
+## 已知限制（實測，會隨 codex 版本變）
+
+| 項目 | 現況 |
+|---|---|
+| 去背的遮罩精度 | 實測可到**髮絲級**，主體像素**逐位元不變**（最大色差 0）—— 它是遮罩不是重生 |
+| **抗鋸齒** | ⚠️ **alpha 是二值的（只有 0 與 255，零個半透明階）**。原尺寸看不出來，但**縮放時硬邊可能顯出鋸齒** |
+| 補救 | 要羽化就自己對 alpha 做一次 1px 模糊，**不必重生**（重生反而會失去像素保真） |
+
+⚠️ 以上是單一版本的單次實測，**別當鐵則**（呼應 anti-patterns 那條「把單次觀察當鐵則」）。
+換 codex 版本後重驗一次 Step 5b-verify 的三項，比讀這張表可靠。
