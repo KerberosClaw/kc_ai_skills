@@ -12,7 +12,7 @@
 
 ## 剩餘工項（判斷後刻意不做的，接手者要動再評估）
 
-- **大單體是否拆 `references/`**：`gpt-image-gen`（25KB）、`conference-report`（23KB）、`spec`（21KB）、`md2ppt`（20KB）、`prd-create`（19KB）、`ctf-kit`（19KB）皆 > 5KB。但 checklist 的判準是「> 5KB **且有進階/少用段落**才拆、緊湊單體可豁免」——這幾顆多為前後相依的單一流程文件，硬拆會傷可讀性。**逐顆判斷、非無腦全拆**；ctf-kit 已把細節外放到 `docs/`（vmp-guide 等）、主檔留骨架，是可參考的折衷。
+- **大單體是否拆 `references/`**：`gpt-image-gen`（42KB）、`conference-report`（23KB）、`spec`（21KB）、`md2ppt`（20KB）、`prd-create`（19KB）、`ctf-kit`（19KB）皆 > 5KB。但 checklist 的判準是「> 5KB **且有進階/少用段落**才拆、緊湊單體可豁免」——這幾顆多為前後相依的單一流程文件，硬拆會傷可讀性。**逐顆判斷、非無腦全拆**；ctf-kit 已把細節外放到 `docs/`（vmp-guide 等）、主檔留骨架，是可參考的折衷。
 - **`md2ppt` 寫死絕對路徑**（`~/.venv_pptx`、`~/.claude/skills/md2ppt/...`）：public repo 可攜性差，但改動牽動同目錄多支 script 的 import，屬需要一起驗的重構、未在本輪動。對照 `skill-cron` 用 `${CLAUDE_SKILL_DIR}` 的寫法作為目標型態。
 - **description 深度一致性**：多數已帶 NOT-for 路由，少數（rewrite-tone 等薄工具）仍是一行——薄殼可接受，不強制拉長。
 

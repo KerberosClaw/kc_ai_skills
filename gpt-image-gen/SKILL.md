@@ -1,7 +1,7 @@
 ---
 name: gpt-image-gen
-description: "Use when the user asks to generate an image via GPT/Codex (e.g. 「叫 gpt 生圖」「幫我用 gpt 生圖」「gpt 畫一個 X」). The skill drafts a Chinese + English prompt pair, iterates with the user until they explicitly approve, then dispatches Codex CLI ($imagegen skill, codex built-in image_gen) in the background, monitors progress, converts the result to a jpg in the current working directory, and writes a sidecar prompt log. Does text-to-image AND img2img — drop a reference image (on-disk file) and it runs Codex `-i` to lock a face/character across scenes."
-version: 0.4.0
+description: "Use when the user asks to generate OR edit an image via GPT/Codex (e.g. 「叫 gpt 生圖」「幫我用 gpt 生圖」「gpt 畫一個 X」「幫我去背」「把這張圖的背景去掉」). The skill drafts a Chinese + English prompt pair, iterates with the user until they explicitly approve, then dispatches Codex CLI ($imagegen skill, codex built-in image_gen) in the background, monitors progress, collects the result into the current working directory, and writes a sidecar prompt log. Three modes: text-to-image; img2img (drop a reference image on disk and it runs Codex `-i` to lock a face/character across scenes); and EDIT mode (background removal, targeted local changes) where the prompt is written as 'keep every pixel, change only X' and the result is verified for size, alpha and pixel fidelity before delivery."
+version: 0.5.0
 status: mvp
 triggers:
   - "叫 gpt 生圖"
@@ -13,24 +13,59 @@ triggers:
   - "gpt 畫一張"
   - "gpt 生個圖"
   - "gpt 生張圖"
+  - "幫我去背"
+  - "去背"
+  - "把背景去掉"
+  - "去掉背景"
+  - "改這張圖"
+  - "編輯這張圖"
+  - "修這張圖"
 argument-hint: "（無；自然語言觸發）"
 ---
 
-# gpt-image-gen — 用 Codex CLI 叫內建 image_gen 生圖
+# gpt-image-gen — 用 Codex CLI 叫內建 image_gen 生圖與改圖
 
-You are a prompt-crafting partner who turns the user's loose Chinese description into a tight bilingual prompt pair, iterates with the user until they explicitly approve, then dispatches Codex CLI to generate the image. You are **not** the image generator — Codex is. Your job is prompt design, user confirmation gating, and execution orchestration.
+You are a prompt-crafting partner who turns the user's loose Chinese description into a tight bilingual prompt pair, iterates with the user until they explicitly approve, then dispatches Codex CLI to generate or edit the image. You are **not** the image generator — Codex is. Your job is prompt design, user confirmation gating, execution orchestration, and **verifying the result before you hand it over**.
 
-**CRITICAL — 三條紅線**：
+**CRITICAL — 四條紅線**：
 
 1. **未拍板絕不呼叫 codex** — 拍板 = user 明確說 `OK` / `生` / `go` / `下去`。其他正向回應（「不錯」「可以喔」「應該行」）一律當「還沒拍板」處理，繼續等明確指令。生圖會花 user 的錢，誤觸發 = 違規。
-2. **有 reference image → 走 img2img**（codex `-i`） — user 這輪有附底圖（拖曳/貼上/`[Image #N]`）→ Step 3a 偵測 → Step 4 用 `codex exec ... -i <ref>` 跑 img2img（鎖臉/角色一致）。⚠️ codex `-i` 吃**本機檔案路徑**：底圖有實體檔就 img2img；只貼在對話、本機無檔 → 問 user 要路徑，給不出才退回印 prompt 貼 GUI。**拍板 gate（紅線 1）對 img2img 一樣適用。**
+2. **有 reference image → 走 img2img 或編輯**（codex `-i`） — user 這輪有附底圖（拖曳/貼上/`[Image #N]`）→ Step 3a 偵測 → Step 4 用 `codex exec ... -i <ref>` 跑。⚠️ codex `-i` 吃**本機檔案路徑**：底圖有實體檔就跑；只貼在對話、本機無檔 → 問 user 要路徑，給不出才退回印 prompt 貼 GUI。**拍板 gate（紅線 1）對 img2img 與編輯一樣適用。**
 3. **不寫死任何預設風格** — Skill 不存 style preset。每張圖風格純靠當下 conversation context + user 描述推。沒 context 就問。
+4. 🔴 **編輯模式一律交 png，不轉 jpg，無例外** — Step 5c-1 的預設是「轉 jpg q85、刪 png」，那對生成是對的，對編輯是災難：jpg 沒有 alpha 通道，帶透明度的結果轉一次就永久消失，而**編輯結果不可重現**（同 prompt 同 ref 再跑不會是同一張）。**不要去猜它有沒有 alpha**（`mode P` 的透明 PNG 就會猜錯），一律走 Step 5c-2。
 
 ---
 
-## Step 1: 判斷觸發語境（mid-conversation vs 新對話）
+## Step 1: 先判斷模式，再判斷語境
 
-讀 trigger 那輪訊息 + 最近 5-10 輪 context，落到下表：
+### Step 1-0: 生成 or 編輯（**先決，決定後面每一步**）
+
+| user 要的 | 模式 | 判準 |
+|---|---|---|
+| 一張**新的**圖（有沒有底圖都算） | **生成** — 走 Step 1 下半、Step 2 生成模板 | 底圖只是**參考**（鎖臉／鎖角色／鎖場景），輸出本來就該跟底圖不同 |
+| **這張圖**動一個地方，其他不要變 | **編輯** — Step 1b → Step 2-edit 模板 → Step 3a-edit → Step 4b 編輯變體 → **Step 5b 驗收** → **Step 5c-2 只交 png** | 輸出應該**還是同一張圖**，只有指定處不同 |
+
+🔑 **一句話判準**：**「user 會不會拿輸出去跟原圖逐像素比對？」** 會 → 編輯；不會 → 生成。
+
+- 「把他放到海邊」→ 生成（換場景，人以外全變）
+- 「同一個人，換成笑的表情」→ **生成**（img2img；臉會被重繪，只是要求相似）
+- 「把背景去掉」「把左上角那個杯子移掉」→ **編輯**（其餘每一像素都該原封不動）
+
+分不出來就**問一句**：「這張是要**改這張圖本身**（其他地方一個像素都不動），還是**照它生一張新的**？」
+
+⚠️ **編輯模式沒有底圖就不成立。** 沒有本機實體檔 → 照紅線 2 問路徑，給不出就結束，不要退化成「生一張像的」。
+
+**不阻塞條款（user 不在場時）**：模式判斷、Step 1a、Step 1b 都是**資訊不足**型閘門，
+user 不在（背景 / 無人值守 / 被別的 skill 呼叫）時，**照最合理的解讀往下走**，
+並在交付訊息裡明標「假設：`MODE=<x>`，未經確認」。
+
+🔴 **但拍板閘（Step 2a）沒有不阻塞版本** —— 那是授權閘，花的是 user 的錢，沒有 fallback。
+被別的 skill 當子流程呼叫時，**批次授權要在上層取得**（上層對整批拿一次拍板），
+不是在這裡放行；本層仍然不得在沒有任何授權的情況下呼叫 codex。
+
+### Step 1-1: 判斷觸發語境（mid-conversation vs 新對話）
+
+**生成模式**讀 trigger 那輪訊息 + 最近 5-10 輪 context，落到下表（**編輯模式跳過本表，直接去 Step 1b**）：
 
 | 情況 | 動作 |
 |------|------|
@@ -59,6 +94,29 @@ You are a prompt-crafting partner who turns the user's loose Chinese description
 
 **不要問**：尺寸 / aspect ratio / 解析度（除非 user 主動提）；技術參數（model / steps / cfg）；codex 怎麼跑（這 skill 自己處理）。
 
+### Step 1b: 編輯模式要先釘死的五件事
+
+編輯模式**不問場景／主體／動作**（那是生成模式的錨點），改問這五件：
+
+| 要釘的 | 為什麼 | 不釘會怎樣 |
+|---|---|---|
+| **① 底圖的本機絕對路徑** | codex `-i` 只吃檔案路徑 | 沒有就不成立，別退化成「生一張像的」 |
+| **② 改哪一處，精確到可驗證** | prompt 要寫成 `CHANGE EXACTLY ONE THING` | 寫「修一下」→ 模型自由發揮 → 整張重畫 |
+| **③ 其餘一切都不准動** | 這句是編輯模式的核心，**不是廢話** | 不寫，模型會把它當 img2img，重新生成一張「很像的」 |
+| **④ 這是去背還是局部修改**（`EDIT_KIND=bgremove\|local`） | 驗收的第 ② 項只有 `bgremove` 會跑 | 漏設 → 假去背（背景被畫成白色）**驗收會放行** |
+| **⑤ 底圖尺寸 W×H** | Step 2-edit 的畫布鎖定要填實際數字 | 填佔位符 → 模型自己挑畫布 → 主體位置全跑掉 |
+
+④⑤ **要在拍板之前拿到**，因為它們要寫進給 user 過目的那份 prompt。
+量尺寸只是讀一個檔的中繼資料，不花錢也不啟動 codex，**不屬於「pre-flight 在拍板之後才做」那條規矩管的範圍**：
+
+```bash
+REF="<user 給的底圖絕對路徑>"
+EDIT_KIND=<bgremove|local>
+eval "$("$SKILL_DIR/scripts/preflight_edit.sh" "$REF")"   # 給出 SRC_W / SRC_H，缺 Pillow 會直接中止
+```
+
+②③ 這對是編輯模式成立的關鍵：**模型預設的行為是「重新生成」不是「就地修改」**，要它就地改必須明說。
+
 ---
 
 ## Step 2: 展 bilingual prompt 給 user 過
@@ -75,6 +133,39 @@ You are a prompt-crafting partner who turns the user's loose Chinese description
  結構建議：SETTING / SUBJECT / ACTION / STYLE / LIGHTING / COMPOSITION / ASPECT RATIO。
  寫法照 OpenAI 官方 prompt guide — 名詞 + 形容詞密集，少動詞，少 narrative。）
 ```
+
+**生成模式展完後就到這裡：停下來等 user 回應**（拍板字眼見 Step 2a）。編輯模式改用下面那套骨架。
+
+### Step 2-edit: 編輯模式的 prompt 骨架（三段，缺一不可）
+
+編輯模式**不用**上面那個 SETTING / SUBJECT / ACTION 結構 —— 那是在描述「要生什麼」，
+而編輯要描述的是「**保留什麼、只改什麼**」。骨架固定三段：
+
+```
+① 保留清單 —— 越具體越好，把畫面上看得到的東西逐項點名
+Use the attached Image #1 as the BASE. Keep EVERYTHING identical to it:
+<逐項列出：主體、五官、髮型、配件、服裝、姿勢、位置、取景、裁切、
+ 鏡頭距離、背景、光線、長寬比 …… 凡是不該變的都點名>
+
+② 唯一的改動 —— 用 EXACTLY ONE THING 句式
+CHANGE EXACTLY ONE THING: <要改的那一項，寫到可驗證>
+
+③ 明擋清單 + 畫布鎖定 —— 反面詞比正面詞有效
+DO NOT <逐項擋掉最可能被順手改掉的東西>. DO NOT move the subject.
+DO NOT zoom in or out. DO NOT resize.
+Keep the output canvas at exactly <W> x <H> pixels.
+```
+
+**去背另外加一段**（否則模型會把背景「畫成白色」而不是挖掉）：
+
+```
+Output a PNG with a genuine ALPHA CHANNEL - the area around the subject must be
+actually TRANSPARENT (alpha = 0), not painted white, not painted any solid colour,
+and not a checkerboard pattern drawn as pixels.
+```
+
+⚠️ 中文那半照樣要寫（user 是看中文 review 的），但**中文段要把「保留清單」逐項寫出來**，
+不要濃縮成「其他都不要動」—— user 要能一眼看出你有沒有漏點名某個東西。
 
 展完後**停下來等 user 回應**。
 
@@ -98,24 +189,50 @@ You are a prompt-crafting partner who turns the user's loose Chinese description
 掃這輪 trigger + 等待拍板期間 user 是否有附過任何 image：
 
 ```
-有附底圖：
+MODE=edit（Step 1-0 判定）：
+  • REF 已在 Step 1b ① 取得（編輯模式在拍板前就必須有底圖，否則寫不出保留清單）→ 直接進 Step 3b。
+  • 沒有 REF → 編輯模式不成立。照紅線 2 問路徑；給不出就如實告訴 user 做不到，
+    🔴 不要退化成 MODE=generate「生一張像的」交差。
+
+MODE=generate：
   • 本機有實體檔（user 給 path / 拖曳實體檔）→ 記 REF=該絕對路徑，走 img2img（Step 4 帶 -i "$REF"）。進 Step 3b。
   • 只貼在對話裡、本機無實體檔 → 問 user 要本機路徑（codex -i 吃 file path、不吃對話內嵌圖）。給了 → img2img；給不出 → 退而印「拍板的英文 prompt」一段給 user 自己貼 ChatGPT GUI，結束。
-無附 → REF 留空，text2img。進 Step 3b。
+  • 無附 → REF 留空，text2img。進 Step 3b。
 ```
+
+⚠️ **`REF` 是全篇唯一的底圖變數名**（Step 1b 的「底圖絕對路徑」＝ `REF`，Step 5b 驗收的來源也是它）。
+不要在不同 step 給同一張圖取不同名字。
+
+**Step 3a-edit: 編輯模式專屬 pre-flight（MANDATORY）**
+
+相依檢查與量尺寸**已經在 Step 1b 做過**（那時就要拿到 W×H 才寫得出 prompt）。
+這裡只再確認一次底圖還在、`EDIT_KIND` 有給：
+
+```bash
+eval "$("$SKILL_DIR/scripts/preflight_edit.sh" "$REF")"   # 缺 Pillow 或底圖不見會直接中止
+case "$EDIT_KIND" in
+  bgremove|local) ;;
+  *) echo "EDIT_KIND 沒指定（bgremove|local）——驗收的透明度檢查會被跳過" >&2; exit 1 ;;
+esac
+```
+
+⚠️ **畫布尺寸有一個未收斂的風險**：`verify_edit.py` 第 ① 項的尺寸比對是硬閘門，
+但 image_gen 不保證任意尺寸都吐得出來。實測**非標準比例（如 720×1080）有成功過**，
+但這不是保證。若這道閘門反覆失敗且尺寸只差一點，**那是管線限制不是 prompt 問題** ——
+告訴 user、讓他決定要不要接受「輸出後自己裁回原尺寸」，不要無限重試。
 
 **Step 3b: NSFW context 判斷**
 
 依當下 conversation context 判斷這張圖內容是否會踩到 OpenAI policy：
 
 - **不寫死硬規則** — 看上下文。例如：
-  - 純 fiction 寫作 + 角色穿衣 + 表情曖昧 → 應該過
-  - 明確露點 / 性器官名詞 / 性行為描寫 → 大概率被 reject
-  - 使用者明顯在做成人 / NSFW 創作脈絡 → 提高警覺度
+  - 一般角色插畫、無裸露 → 應該過
+  - 明確的性內容或裸露 → 大概率被 reject
+  - context 本身就落在敏感題材 → 提高警覺度
 
 - 判斷會 reject → 警告 + 問：
   ```
-  這張描述 codex 大概率會 reject（OpenAI policy）。要硬送看看，還是改走 ChatGPT GUI / local SD？
+  這張描述 codex 大概率會 reject（OpenAI policy）。要硬送看看，還是改走 ChatGPT GUI 或其他工具？
   - 硬送：回「送」
   - 改走別的工具：回「不要送」
   ```
@@ -148,20 +265,56 @@ fi
 mkdir -p "$OUT_DIR"
 
 OUT_PNG="$OUT_DIR/${TS}_${SLUG}.png"      # 🟢 主路：叫 codex 直接存這（prompt-save，見 Step 4b）
-OUT_JPG="$OUT_DIR/${TS}_${SLUG}.jpg"      # 最終交付（jpg q85）
+OUT_JPG="$OUT_DIR/${TS}_${SLUG}.jpg"      # 生成模式的最終交付（jpg q85）
 OUT_SIDECAR="$OUT_DIR/${TS}_${SLUG}.prompt.md"
 LAST_MSG="/tmp/codex_imagegen_${TS}.lastmsg"
 LOG_FILE="/tmp/codex_imagegen_${TS}.log"
 
+# 模式與底圖（Step 1-0 / Step 1b / Step 3a 已經決定，這裡只是落成變數）
+MODE=<generate|edit>          # 🔴 佔位符，照抄會讓編輯模式落進 5c-1 轉 jpg 刪 png
+EDIT_KIND=<bgremove|local>    # 只在 MODE=edit 時有意義；不要留預設值
+REF="<底圖絕對路徑>"           # text2img 留空，img2img 與 edit 必填
+
 touch "$START_MARKER"   # fallback 用：萬一 codex 沒照存，Step 5a 退而用 find -newer 撈
+
+# 🔴 落一份 state 檔：每次 Bash 工具呼叫都是「全新的 shell」，上面這些變數活不過這一格。
+#    Step 5 在背景等待之後才跑，屆時一律先 source 回來，不要憑記憶重打路徑。
+STATE="/tmp/codex_imagegen_${TS}.state"
+# 🔴 值一律 %q 跳脫。不跳脫的話，路徑帶空白（macOS 截圖檔名預設就帶）在 source
+#    回來時會被拆成「賦值 + 執行命令」，變數靜默變成空字串、整段還回報成功。
+{ printf 'TS=%q\n'           "$TS"
+  printf 'MODE=%q\n'         "$MODE"
+  printf 'EDIT_KIND=%q\n'    "$EDIT_KIND"
+  printf 'REF=%q\n'          "$REF"
+  printf 'OUT_PNG=%q\n'      "$OUT_PNG"
+  printf 'OUT_JPG=%q\n'      "$OUT_JPG"
+  printf 'OUT_SIDECAR=%q\n'  "$OUT_SIDECAR"
+  printf 'LAST_MSG=%q\n'     "$LAST_MSG"
+  printf 'LOG_FILE=%q\n'     "$LOG_FILE"
+  printf 'START_MARKER=%q\n' "$START_MARKER"
+  printf 'STATE=%q\n'        "$STATE"
+} > "$STATE"
 ```
+
+進 Step 5 的每一格 bash 開頭都先：
+
+```bash
+# 🔴 不能寫 . "/tmp/codex_imagegen_${TS}.state" —— TS 正是還沒撈回來的變數之一。
+STATE=$(ls -t /tmp/codex_imagegen_*.state 2>/dev/null | head -1)
+[ -n "$STATE" ] || { echo "找不到 state 檔"; exit 1; }
+. "$STATE"
+```
+
+⚠️ **多條並行跑 codex 時 `ls -t` 會撈到別人的 state**（並行做法見 Step 4b 的 flag 註解）。
+並行情境要把 `TS` 明寫進指令，不能靠 `ls -t`。殘留的舊 state 檔同理危險 —— 見 Step 6 的清理。
 
 ### Step 4b: 背景啟動 codex exec
 
 用 `Bash` 工具，`run_in_background: true`。**主路 = prompt-save**：在 prompt 裡直接叫 codex 用內建 image_gen、存到 `$OUT_PNG`、回報實際路徑（跨版本最穩，見下方 0.141.0 註）：
 
+**生成模式**（text2img：`REF` 留空；img2img：`REF` 有值時自動帶 `-i`）：
+
 ```bash
-# text2img：REF 留空。img2img：REF=底圖絕對路徑時自動帶 -i（prompt 仍當第一 positional、-i 擺後）
 codex exec --skip-git-repo-check \
   "用內建 image_gen 工具生圖，不要使用 scripts/image_gen.py，也不要使用 OPENAI_API_KEY。<英文 prompt 內容>。請把最終圖片存到 ${OUT_PNG}，完成後回報實際存檔的絕對路徑。" \
   ${REF:+-i "$REF"} \
@@ -169,7 +322,25 @@ codex exec --skip-git-repo-check \
   --output-last-message "$LAST_MSG" \
   < /dev/null > "$LOG_FILE" 2>&1
 ```
-> - **img2img** 時，prompt **開頭**再加一句身份鎖：「請參考附上的 Image #1 作為人物身份參考（同一個人，保持臉、鬍、體型一致）。」
+
+**編輯模式**（`REF` 必有值；注意**包裝動詞不同**）：
+
+```bash
+codex exec --skip-git-repo-check \
+  "用內建 image_gen 工具編輯附上的圖片，不要使用 scripts/image_gen.py，也不要使用 OPENAI_API_KEY。<英文 prompt 內容（Step 2-edit 的三段骨架）>。請把最終圖片存到 ${OUT_PNG}，完成後回報實際存檔的絕對路徑。" \
+  -i "$REF" \
+  --sandbox workspace-write \
+  --output-last-message "$LAST_MSG" \
+  < /dev/null > "$LOG_FILE" 2>&1
+```
+
+> - 🔴 **包裝動詞必須跟著模式換**。生成用「生圖」、編輯用「**編輯附上的圖片**」。
+>   編輯模式若沿用「生圖」，這個動詞會把 Step 2-edit 辛苦建立的
+>   `CHANGE EXACTLY ONE THING` 稀釋掉，模型會回去重新生成。
+> - **img2img 時**（**只有 img2img**），prompt 開頭再加一句身份鎖：
+>   「請參考附上的 Image #1 作為人物身份參考（同一個人，保持臉部特徵、髮型、體型一致）。」
+> - 🔴 **編輯模式禁止加身份鎖。** 「保持一致」＝「**重新生成一張像的**」，
+>   跟編輯模式的「一個像素都不要動」正面衝突 —— 那正是 Step 5b 驗收要抓的失敗態。
 > - `${REF:+-i "$REF"}` 只在 REF 有值時展開成 `-i "$REF"`；`< /dev/null` 防 codex 誤讀 stdin。
 
 **Flag 註解**（codex-cli 0.141.0 實測對齊；新版本前先 `codex exec --help` 確認）：
@@ -202,7 +373,7 @@ codex exec --skip-git-repo-check \
 > ⚠️ **0.141.0 版差異（實測 2026-06-24，本 skill v0.4.0 改版主因）**：
 > 1. `generated_images` **時有時無** —— 同一版本、同樣指令，有時圖落 `~/.codex/generated_images/<session>/ig_*.png`、有時**完全不落**（圖只剩 rollout JSONL 的 base64）。所以 `find -newer marker` 撈 generated_images 這條**主路不再可靠**（實測整批撈空、得退 base64 還原才救回）。
 > 2. **→ 收圖主路正式改為「prompt-save」**（上面 0.136 早記過的官方作法，現升為預設）：launch 時在 prompt 內叫 codex 存到 `$OUT_PNG`、回報路徑（見 Step 4b / 5a）。實測 0.141.0 圖**確實直接落指定路徑**、`--output-last-message` 也回報了絕對路徑。
-> 3. generated_images `find` 與 rollout base64 解碼**降為 fallback 1 / 2**。注意 0.141.0 有時 prompt-save 與 generated_images **兩邊都寫** → Step 5b 收完主路要順手清掉 generated_images 的多餘 copy。
+> 3. generated_images `find` 與 rollout base64 解碼**降為 fallback 1 / 2**。注意 0.141.0 有時 prompt-save 與 generated_images **兩邊都寫** → Step 5c-3 會清掉 generated_images 的多餘 copy。
 
 ### Step 4c: 非阻塞等待（讓出主線程，靠 task 完成通知喚回）
 
@@ -223,68 +394,117 @@ Codex 跑起來了，背景生圖中（這條 flow 一般 2-3 分鐘），跑完
 
 ---
 
-## Step 5: 收圖 + 寫 sidecar + 通知
+## Step 5: 收圖 → 驗收 → 交付 → sidecar → 通知
 
 ### Step 5a: 收圖（prompt-save 主路 + 兩層 fallback）
 
 ```bash
-# 🟢 主路（prompt-save）：codex 應已把圖存到你指定的 $OUT_PNG
-if [ -f "$OUT_PNG" ]; then
-  SRC_PNG="$OUT_PNG"          # 已在定位，直接用（最常走這條）
-else
-  # fallback 1：codex 沒照存 → 去 generated_images 用 -newer marker 撈，撈到搬來 $OUT_PNG
-  SRC_PNG=$(find ~/.codex/generated_images -type f -iname '*.png' -newer "$START_MARKER" 2>/dev/null | xargs ls -t 2>/dev/null | head -1)
-  [ -n "$SRC_PNG" ] && mv "$SRC_PNG" "$OUT_PNG" && SRC_PNG="$OUT_PNG"
-fi
-# fallback 2（最後手段）：兩邊都空 → 解 session rollout JSONL 的 base64 還原 png（見下方 python）
+OUT_PNG=$("$SKILL_DIR/scripts/collect.sh" "$OUT_PNG" "$START_MARKER") || {
+  echo "三層都拿不到圖 → 跳 Step 6 判失敗類型"; exit 1
+}
 ```
 
-fallback 2（rollout base64 還原，只在 fallback 1 也空才動）：
+腳本依序試三層，命中哪一層會印在 stderr：
 
-```bash
-# 從 log 抓 session id（無 ANSI 干擾的話），或直接抓 sessions 當天最新、含 PNG magic 的 rollout
-ROLLOUT=$(grep -rl 'iVBORw0KGgo' ~/.codex/sessions/$(date +%Y/%m/%d)/rollout-*.jsonl 2>/dev/null | xargs ls -t 2>/dev/null | head -1)
-python3 - "$ROLLOUT" "$OUT_PNG" <<'PY'
-import sys, json, base64
-rollout, out = sys.argv[1], sys.argv[2]; b64=None
-for line in open(rollout):
-    if 'iVBORw0KGgo' not in line: continue
-    try: obj=json.loads(line)
-    except: continue
-    st=[obj]
-    while st:
-        c=st.pop()
-        if isinstance(c,dict): st.extend(c.values())
-        elif isinstance(c,list): st.extend(c)
-        elif isinstance(c,str) and c.startswith('iVBORw0KGgo'): b64=c  # 留最後一張
-if b64: open(out,'wb').write(base64.b64decode(b64)); print("RESTORED", out)
-else: print("NO_BASE64")
-PY
-[ -f "$OUT_PNG" ] && SRC_PNG="$OUT_PNG"
-```
+| 層 | 做法 | 為什麼不是主路 |
+|---|---|---|
+| 🟢 主路 | 檔案已在 `$OUT_PNG`（launch 時就在 prompt 裡叫 codex 存過去） | — |
+| fallback 1 | 撈 `~/.codex/generated_images`，`-newer` marker | 0.141.0 起**時有時無**，同版本同指令有時整批不落 |
+| fallback 2 | 從 session rollout JSONL 解 base64 還原 | 未文件化、隨版本可能再變。**那是救援不是備份** |
+
+**腳本裡的幾個寫法是踩出來的，要改它之前先讀這幾條**（平常不必看）：
 
 - 🔴 **絕不用 `-newermt`（任何形式）**：macOS BSD find 對 `-newermt` 的 `@epoch` **與**相對時間都 **silently 假陰性**（誤判「沒 PNG」其實圖都在）。一律 **`-newer <實體 marker 檔>`**（BSD/GNU 皆穩）。
-- 🔴 fallback 1 **在 `~/.codex/generated_images` 找，別在 cwd / repo 內 `find .`**（主路已直接落 cwd 的 `$OUT_PNG`，不用 find；find 是給「codex 沒照存」的退路）。
+- 🔴 fallback 1 **在 `~/.codex/generated_images` 找，別在 cwd / repo 內 `find .`**（主路已直接落 cwd 的 `$OUT_PNG`，find 是給「codex 沒照存」的退路）。
 - **用 `find` 不用 glob**：巢狀目錄要遞迴，空 glob 在 zsh 會 `no matches found` 中止。
 - session id 走 grep log 的 `session id:` **不可靠**（ANSI 色碼夾在中間、regex 易撲空）→ fallback 2 改用「當天 rollout 抓含 PNG magic 的最新檔」。
-- 三層都拿不到 `SRC_PNG` → codex 大概率失敗，跳 Step 6。
 
-### Step 5b: 轉 jpg 交付（q85）+ 清中繼
+**三層都拿不到 → 腳本回 exit 1**，照上面那個 `||` 分支跳 Step 6 判失敗類型。
 
-codex 吐 png（2MB 級）；交付走 **jpg q85**（實測畫質肉眼無感、體積約 png 的 1/5）。`$SRC_PNG` 此時已 == `$OUT_PNG`（主路直接落定位、fallback 也已 mv 過來）：
+### Step 5b: 編輯模式驗收（**MANDATORY；生成模式跳過本段直接去 5c**）
+
+🔴 **驗收一定排在交付之前。** 交付會轉檔／刪檔，驗收需要原始的 `$OUT_PNG`，順序顛倒就沒得驗了。
+
+**「看起來沒變」不算驗過。** 模型有可能交回一張「重新生成的、看起來很像的」圖 ——
+肉眼在表情／姿態沒動的情況下分辨不出幾十像素的位移，但那會讓這張圖與同批其他圖對不齊。
 
 ```bash
+# 邏輯住在腳本裡，不要在這裡重打一份 —— 兩份會漂移，而漂移的那一份會靜默放行。
+"$SKILL_DIR/scripts/verify_edit.py" "$REF" "$OUT_PNG" "$EDIT_KIND"
+```
+
+`$SKILL_DIR` ＝ 這個 skill 目錄（`gpt-image-gen/`）。腳本的完整判準與退出碼寫在它自己的
+docstring 裡（`verify_edit.py --help` 等同直接讀檔頭），這裡只講它在驗什麼：
+
+| 項 | 驗什麼 | 兩種 kind 的差別 |
+|---|---|---|
+| ① 畫布尺寸 | 輸出與底圖同尺寸 | 相同 |
+| ② 透明度 | 真的有 alpha／透明佔比合理／**主體不是半透明的鬼影** | **只有 `bgremove` 驗** |
+| ③ 主體保真 | 主體像素有沒有被動到 | `bgremove` 要求逐像素不變；`local` 只擋「滿版都在變＝重生」，並印出改動區域的座標框 |
+
+🔴 **`EDIT_KIND` 必須明確給 `bgremove` 或 `local`，腳本不接受其他值也不預設。**
+預設會讓「忘了說這是去背」靜默跳過整個 ② —— 而背景被畫成白色的假去背，
+在 ③ 看起來是完美的「最大色差 0」。
+
+🔴 **`local` 的判準跟 `bgremove` 不一樣，不要互相套用。** 局部修改被要求改的那一塊
+**本來就會有極大色差**，拿「色差要小」去卡它，等於懲罰它有照做，而那道閘門會因此
+被學會忽略（本檔 anti-patterns 有這條）。腳本改成看「改動有沒有聚成一塊」，
+並把座標框印出來讓你跟 prompt 對照。
+
+**`VERDICT: FAIL` → 照 Step 6 的「編輯驗收未過」那列處理，不要自動重試、不要清檔。**
+
+⚠️ **③ 的兩個假設要講清楚**：無 alpha 時退回明度判準，那條假設的**不只是「有對比」，是「背景比主體亮」**
+（`>=` 是單向比較）。暗背景亮主體會讓取樣歸零，程式會明確報出來而不是靜默通過。
+有 alpha 時一律走 alpha 遮罩，沒有這個問題。
+
+### Step 5c: 交付
+
+🔴 **先看模式再往下**：
+
+| MODE | 走哪 |
+|---|---|
+| `generate` | 5c-1 轉 jpg |
+| `edit` | **5c-2，禁止執行 5c-1 的 bash** |
+
+#### Step 5c-1: 生成模式 — 轉 jpg 交付（q85）
+
+codex 吐 png（2MB 級）；交付走 **jpg q85**（實測畫質肉眼無感、體積約 png 的 1/5）：
+
+```bash
+[ "$MODE" = "edit" ] && { echo "編輯模式，跳過本段，走 5c-2"; exit 0; }
 sips -s format jpeg -s formatOptions 85 "$OUT_PNG" --out "$OUT_JPG" >/dev/null 2>&1
 rm -f "$OUT_PNG"                            # 刪 png 中繼，只留 jpg
+FINAL="$OUT_JPG"
+printf 'FINAL=%q\n' "$FINAL" >> "$STATE"   # Step 5d/5e 是不同的 shell，不回寫就讀到空字串
+```
+
+- 最終交付 = `$FINAL`。**只有 user 明講「要留無損 png」才跳過 `rm -f "$OUT_PNG"`**。
+- ⚠️ **例外**：這張圖若會**進版控**、**還要再加工**（去背／裁切／合成）、或**要當之後好幾張的 `-i`**，
+  就留 png、別刪。q85 的損失本身肉眼無感，但拿它當整條產線的起點就是讓每一步都從有損的地方長出來。
+  判準：**只是拿來看的 → 照刪；會被再利用 → 留 png。**
+
+#### Step 5c-2: 編輯模式 — 只交 png
+
+```bash
+FINAL="$OUT_PNG"        # 不轉檔、不刪檔，就這樣
+printf 'FINAL=%q\n' "$FINAL" >> "$STATE"   # Step 5d/5e 是不同的 shell，不回寫就讀到空字串
+```
+
+**編輯模式一律交 png，無例外。** 不分有沒有 alpha，理由同上一條的「會被再利用」判準 ——
+編輯結果十之八九還要再加工或進版控，而且**編輯結果不可重現**（同 prompt 同 ref 再跑不會是同一張）。
+不去猜它有沒有 alpha，就不會有猜錯的機會。
+
+#### Step 5c-3: 清 `generated_images` 的多餘 copy（**兩種模式都要做**）
+
+```bash
 # 0.141.0 有時 prompt-save 與 generated_images 兩邊都寫 → 清掉 codex 那份多餘 copy（避免堆積）
 STRAY=$(find ~/.codex/generated_images -type f -iname '*.png' -newer "$START_MARKER" 2>/dev/null | head -1)
 [ -n "$STRAY" ] && rm -f "$STRAY" && rmdir "$(dirname "$STRAY")" 2>/dev/null
 ```
 
-- 最終交付 = `$OUT_JPG`。**只有 user 明講「要留無損 png」才跳過 `rm -f "$OUT_PNG"`**。
-- **絕不把圖留在 `~/.codex/generated_images/`**（堆積 + user 找不到）—— 主路雖然落 cwd，codex 仍可能另存一份在那，務必清。
+**絕不把圖留在 `~/.codex/generated_images/`**（堆積 + user 找不到）—— 主路雖然落 cwd，codex 仍可能另存一份在那，務必清。
 
-### Step 5c: 寫 sidecar
+### Step 5d: 寫 sidecar
 
 先從 log 抓實際 model（別寫死 — 0.134 是 gpt-5.5 不是 gpt-image-2）：
 
@@ -296,12 +516,15 @@ MODEL=$(grep -aoE 'gpt-[0-9.]+' "$LOG_FILE" | head -1)
 
 ```yaml
 ---
-timestamp: 2026-05-03T20:45:00+08:00
+timestamp: <ISO8601，帶時區偏移>
 trigger: "<user 觸發那句原文>"
+mode: <generate | edit>
+edit_kind: <bgremove | local；MODE=generate 則 null>
 reference_image: <$REF 絕對路徑；text2img 則 null>
 codex_model: <$MODEL，如 gpt-5.5> (codex built-in image_gen flow)
 codex_exit: success
-output_image: <$OUT_JPG 絕對路徑>
+verify: <MODE=edit 才有：Step 5b 的 VERDICT 與那行量測數字；生成模式 null>
+output_image: <$FINAL 絕對路徑>
 ---
 
 # 中文 prompt
@@ -313,13 +536,30 @@ output_image: <$OUT_JPG 絕對路徑>
 <拍板版本的英文 prompt（實際送 codex 的）>
 ```
 
+- 🔴 `output_image` 一律填 **`$FINAL`**（生成＝`$OUT_JPG`、編輯＝`$OUT_PNG`）。
+  寫死 `.jpg` 會讓編輯模式的 sidecar 指向一個**從未存在過的檔**，
+  而 sidecar 是 prompt 的唯一持久記錄（見 Important rules）。
+- 檔名慣例：sidecar 與圖**同 basename**、副檔名換成 `.prompt.md`。編輯模式沿用 `${TS}_${SLUG}` 這組，
+  `SLUG` 改從「改了什麼」抽（例：`bg-removed`、`cup-removed`），不要沿用底圖檔名（會跟底圖的 sidecar 撞名）。
+
 寫進 `$OUT_SIDECAR`。**bg session 內若 `Write` 被 bg-isolation guard 擋（這 skill 常在 bg + git repo 跑），改用 Bash heredoc 寫**（`cat > "$OUT_SIDECAR" <<'EOF' ... EOF`）。
 
-### Step 5d: 通知 user（不自動開圖）
+### Step 5e: 通知 user（不自動開圖）
+
+生成模式：
 
 ```
 ✅ 生好了
-- 圖：<相對 cwd 路徑>.jpg
+- 圖：<$FINAL 的相對 cwd 路徑>
+- prompt log：<相對 cwd 路徑>.prompt.md
+```
+
+編輯模式（**要把驗收數字一起講出來**，那是「這真的是編輯不是重生」的唯一證據）：
+
+```
+✅ 改好了
+- 圖：<$FINAL 的相對 cwd 路徑>（png；編輯模式一律 png，不轉檔）
+- 驗收：尺寸 <W>x<H> 未變／主體取樣 <N>px 最大色差 <D>
 - prompt log：<相對 cwd 路徑>.prompt.md
 ```
 
@@ -336,13 +576,32 @@ output_image: <$OUT_JPG 絕對路徑>
 | Safety reject | `safety` / `policy` / `rejected` / `cannot generate` | 告訴 user「codex 拒了，policy 命中。要不要改 prompt 軟化 / 走別的工具？」 |
 | Rate limit | `rate limit` / `429` / `usage limit` | 告訴 user「Codex 額度滿了。要等 / 改用 ChatGPT GUI 自己生？」 |
 | 其他 error | exit code ≠ 0 + 沒以上字眼 | 印 log 最後 30 行給 user 看，問下一步 |
+| **編輯驗收未過** | **codex exit 0、log 乾淨**，但 Step 5b 回 `VERDICT: FAIL` | 見下方 |
 
-**不自動重試** — 失敗交給 user 決定。
+⚠️ **最後一列跟上面三列的性質不同**：codex 是**成功**的，log 裡什麼線索都沒有，
+所以「印 log 最後 30 行」對它毫無用處 —— 那 30 行跟失敗原因無關。
+
+**編輯驗收未過的處理**：
+
+1. **貼出 Step 5b 的三項量測值**（尺寸、透明度、主體色差），那是唯一有資訊量的東西
+2. **指出最可能的成因**，對照 `VERDICT` 底下那幾行：
+   - 主體色差大 → Step 2-edit ① 的**保留清單不夠具體**，或 Step 4b 誤加了身份鎖
+   - 畫布跑掉 → 沒鎖尺寸，或撞到 Step 3a-edit 講的管線限制
+   - 沒有透明度 → 去背那段沒寫，或寫了但沒寫三個 `not`
+3. **問 user 要不要補了再送一次**
+4. 🔴 **這條路徑不要清檔**（不執行 Step 5c-3 的清理）—— user 可能要看那張失敗的圖來判斷
+
+**不自動重試** — 失敗交給 user 決定。這條對「驗收未過」同樣適用：
+它看起來很像「再調一下 prompt 就好」，但那是在沒有 user 判斷的情況下連續燒額度。
 
 清掉中繼檔：
 ```bash
-rm -f "$LAST_MSG" "$LOG_FILE" "$START_MARKER"
+rm -f "$LAST_MSG" "$LOG_FILE" "$START_MARKER" "$STATE"
 ```
+
+⚠️ **`$STATE` 一定要清。** 撈它的方式是 `ls -t ... | head -1`，殘留的舊 state 檔
+會在某次沒建成新檔時被安靜地撈到，**把上一輪的圖當成這一輪的結果交出去**。
+成功路徑（Step 5e 通知完）也要做同一件清理。
 
 ---
 
@@ -351,7 +610,7 @@ rm -f "$LAST_MSG" "$LOG_FILE" "$START_MARKER"
 - ❌ 用模糊正向回應（「不錯」「可以」）當拍板信號，誤呼叫 codex
 - ❌ img2img 時把 `-i` 放 prompt 前面（prompt 被當第二張圖 → codex 失敗）；prompt 一定當第一 positional、`-i` 擺後
 - ❌ 對話內嵌圖（本機無檔）硬塞 codex `-i`（吃 file path、抓不到）→ 先問本機路徑
-- ❌ 預設「畫四隻熊 / kemono / 某固定角色群像」這種寫死 style — 沒 context 就問
+- ❌ 預設某組固定角色 / 某個固定畫風這種寫死 style — 沒 context 就問
 - ❌ Skill 內部偷偷加 NSFW filter 替 user 做決策（只警告 + 給選項）
 - ❌ 把收圖**主路**放在「翻 `generated_images` / 解 rollout base64」（0.141.0 撈空率高、time-bomb）→ 主路用 prompt-save 叫 codex 存指定 `$OUT_PNG`，find / base64 只當 fallback
 - ❌ 把生圖結果留在 `~/.codex/generated_images/` 不搬走/不清（堆積 + user 找不到）；0.141 兩邊都寫時要清掉那份多餘 copy
@@ -371,17 +630,55 @@ rm -f "$LAST_MSG" "$LOG_FILE" "$START_MARKER"
 - ❌ 用 `$imagegen` token 卻沒 escape `\$imagegen`（shell 展開成空）→ 現行改用自然語指示「用內建 image_gen 工具」、免此坑
 - ❌ 在 user 還在改 prompt 的迭代過程中提前算 slug / 建目錄 / 啟動 codex（pre-flight 在拍板**之後**才做）
 
+**編輯模式專屬**：
+
+- ❌ 🔴 把編輯結果轉 jpg（帶透明度就永久消失，而編輯結果不可重現）→ 編輯模式一律交 png
+- ❌ 用 `mode in ("RGBA","LA")` 判有沒有透明度 → **漏掉 `mode P` 的透明 PNG**，會判成「沒 alpha」然後一路轉成 jpg。要判就用 `mode in ("RGBA","LA","PA") or "transparency" in im.info`；但更好的作法是**根本不要判**（見上一條）
+- ❌ 驗收拿「四角必須全透明」當去背的判準 → 主體貼齊邊緣的構圖（半身像、滿版）本來就有不透明的角，會**假失敗**；一個 MANDATORY 閘門只要常假失敗，agent 就學會忽略它
+- ❌ 編輯模式沿用生成模式的包裝動詞「生圖」→ 那個動詞會稀釋 `CHANGE EXACTLY ONE THING`
+- ❌ 編輯模式加 img2img 的身份鎖（「保持臉部特徵…一致」）→ 「保持一致」＝「重新生成一張像的」，正是驗收要抓的失敗態
+- ❌ 編輯 prompt 只寫「把背景去掉」「把 X 拿掉」而**沒有保留清單** → 模型會重新生成一張「很像的」，不是就地修改
+- ❌ 編輯 prompt 沒鎖畫布尺寸 → 模型吐一個常見比例，主體位置全跑掉
+- ❌ 去背只寫 "remove the background" → 可能得到「背景被畫成白色」或「棋盤格被畫成像素」→ 要明寫 genuine ALPHA CHANNEL + 三個 not
+- ❌ **只看圖覺得「好像沒變」就當編輯成功** → 肉眼分辨不出幾十像素的位移，一定要跑 Step 5b 量
+- ❌ 編輯模式沒底圖時退化成「生一張像的」交差 → 沒有本機實體檔就是不成立，如實講
+- ❌ Step 5b 沒過就自動改 prompt 重送 → 失敗不自動重試，交給 user 決定
+
 ---
 
 ## Important rules
 
-1. **拍板 = 明確 keyword（OK / 生 / go / 下去），不准語意推測** — 違規即破壞 user 信任
-2. **Reference image → img2img（codex `-i`）** — 底圖有本機檔就 `-i "$REF"` 跑 img2img；只有「對話內嵌圖、無本機檔」才問路徑 / 退 manual
-3. **不寫死預設風格** — 風格 100% 來自當下 context 與 user 描述
-4. **NSFW 判斷依 context，警告而非阻擋** — 不替 user 做安全決策
+1. **拍板 = 明確 keyword（OK / 生 / go / 下去），不准語意推測** — 違規即破壞 user 信任（＝紅線 1）
+2. **先分模式再動手**：生成 vs 編輯。判準＝「user 會不會拿輸出去跟原圖逐像素比對」。分不出來就問一句，別猜
+3. **有 reference image → 走 img2img 或編輯（codex `-i`）** — 底圖有本機檔就跑；只有「對話內嵌圖、無本機檔」才問路徑 / 退 manual（＝紅線 2）
+4. **不寫死預設風格** — 風格 100% 來自當下 context 與 user 描述（＝紅線 3）。**NSFW 判斷依 context，警告而非阻擋**，不替 user 做安全決策
 5. **背景跑 + 讓出主線程 + 一行 heartbeat，靠 task 完成通知喚回收圖** — 禁前景 `sleep N; tail` 輪詢（會阻塞 user 對話）；harness 沒有獨立 `Monitor` 工具，task 系統就是 monitor
-6. **收圖主路 = prompt-save**：launch 時在 prompt 內叫 codex 存到 `$OUT_PNG`（git repo cwd → `./generated_images/` 子夾；否則 cwd 根），收圖直接讀該檔。撈 `generated_images` / 解 rollout base64 只是 fallback（0.141.0 起 generated_images 時有時無、不可當主路）
-7. **Sidecar `<image>.prompt.md` 是強制產出** — 含中英 prompt + metadata，是 prompt 的**唯一持久記錄**；**圖被搬走 / 保留 (keep) 時 sidecar 必須跟著走**（暫存 output 目錄常被清，prompt 只活在 sidecar，丟了就重建不回原 prompt）
-8. **交付 jpg q85（`sips`），png 中繼轉完即刪**（user 明講要無損才留）；**生完不自動開圖**；`mv` 不 `cp`，中繼 log + 空 session 目錄跑完清掉 — 不要在 `/tmp/` 與 `~/.codex/generated_images/` 留垃圾
-9. **失敗不自動重試** — 印 log 摘要交給 user 決定
-10. **這 skill 不做 image edit、不做 UI 設計、不做 ASCII art** — 走錯領域請 user 改用 Claude Design / 其他工具
+6. **收圖主路 = prompt-save**：launch 時在 prompt 內叫 codex 存到 `$OUT_PNG`，收圖直接讀該檔。撈 `generated_images` / 解 rollout base64 只是 fallback（0.141.0 起 generated_images 時有時無、不可當主路）
+7. **Sidecar `<image>.prompt.md` 是強制產出** — 含中英 prompt + metadata，是 prompt 的**唯一持久記錄**；`output_image` 填 `$FINAL` 不是寫死 `.jpg`；**圖被搬走 / 保留 (keep) 時 sidecar 必須跟著走**
+8. **生成模式交付 jpg q85，png 中繼轉完即刪**（user 明講要無損、或那張圖會被再利用時才留）；🔴 **編輯模式一律交 png，不轉 jpg，無例外**（＝紅線 4）；**兩種模式都不自動開圖**，中繼與 `~/.codex/generated_images/` 的殘留跑完清掉
+9. **編輯模式必跑 Step 5b 驗收**（尺寸／透明度／主體像素保真），`VERDICT: PASS` 才交付。**「看起來沒變」不是證據** — 模型有可能交回一張重新生成的、看起來很像的圖
+10. **失敗不自動重試**（含「驗收未過」）— 貼量測值與可能成因，交給 user 決定
+11. **這 skill 做生成與圖片編輯，但不做 UI 設計、不做 ASCII art** — 走錯領域請 user 改用 Claude Design / 其他工具
+
+---
+
+## 已知限制（實測，會隨 codex 版本變）
+
+| 項目 | 現況 |
+|---|---|
+| 去背的遮罩精度 | 實測**兩次**都到**髮絲級**，主體像素**逐位元不變**（最大色差 0）—— 它是遮罩不是重生 |
+| **抗鋸齒不穩定** | ⚠️ **兩次跑出不同結果**：一次是純二值 alpha（半透明階 **0.0%**），一次有邊緣羽化（**0.5%**）。同樣的 prompt 結構、同一個版本 |
+| 補救 | 拿到二值的那種、又要縮放時，自己對 alpha 做一次 1px 模糊即可，**不必重生**（重生會失去像素保真） |
+
+| **局部修改的實際行為** | ⚠️ 實測「拿掉眼鏡」：**要求的改動有做到，但整個主體被連帶重算了一遍**（每處差異細微、身分與姿勢都保住，背景完全沒動）。改動的座標框橫跨畫面八成，密度卻只有 7.5%＝散布式重生 |
+| 這樣算不算過 | **由 user 判**。實測那次 user 判定可接受。程式只報數字與座標框，**刻意不硬擋** —— 「換掉整件衣服」跟「散布式重生」在指標上分不開，硬擋會誤殺前者 |
+
+⚠️ 所以 `local` **不要當成「逐像素就地改」來承諾**。要逐像素不變只有 `bgremove` 那條做得到（實測三次皆最大色差 0）。
+
+⚠️ **「抗鋸齒」那條就是「別把單次觀察當鐵則」的現成例子** —— 第一次實測後本表曾寫死
+「alpha 是二值的」，第二次就被推翻。要用就自己量，別讀這張表下結論。
+
+🔴 **關於量測本身的一個坑（實際踩過）**：不要在背景任務的完成通知抵達之前去讀輸出檔。
+codex 可能先寫一個中間版本再改寫成最終版，**提早讀會拿到寫到一半的圖**，
+量出來的數字全錯（那次量到「主體 18% 半透明」，最終檔其實是 0.5%）。
+等通知，或至少比對 mtime。
