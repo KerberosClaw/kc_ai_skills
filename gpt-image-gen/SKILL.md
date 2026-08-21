@@ -1,7 +1,7 @@
 ---
 name: gpt-image-gen
-description: "Use when the user asks to generate OR edit an image via GPT/Codex (e.g. 「叫 gpt 生圖」「幫我用 gpt 生圖」「gpt 畫一個 X」「幫我去背」「把這張圖的背景去掉」). The skill drafts a Chinese + English prompt pair, iterates with the user until they explicitly approve, then dispatches Codex CLI ($imagegen skill, codex built-in image_gen) in the background, monitors progress, collects the result into the current working directory, and writes a sidecar prompt log. Three modes: text-to-image; img2img (drop a reference image on disk and it runs Codex `-i` to lock a face/character across scenes); and EDIT mode (background removal, targeted local changes) where the prompt is written as 'keep every pixel, change only X' and the result is verified for size, alpha and pixel fidelity before delivery."
-version: 0.5.0
+description: "Use when the user asks to generate OR edit an image via GPT/Codex (e.g. 「叫 gpt 生圖」「幫我用 gpt 生圖」「gpt 畫一個 X」「幫我去背」「把這張圖的背景去掉」). The skill drafts a Chinese + English prompt pair, iterates with the user until they explicitly approve, then dispatches Codex CLI (natural-language instruction to codex's built-in image_gen) in the background, monitors progress, collects the result into the current working directory, and writes a sidecar prompt log. Three modes: text-to-image; img2img (drop a reference image on disk and it runs Codex `-i` to lock a face/character across scenes); and EDIT mode (background removal, targeted local changes) where the prompt is written as 'keep every pixel, change only X' and the result is verified for size, alpha and pixel fidelity before delivery."
+version: 0.5.1
 status: mvp
 triggers:
   - "叫 gpt 生圖"
