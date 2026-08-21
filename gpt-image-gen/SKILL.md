@@ -402,46 +402,27 @@ Codex 跑起來了，背景生圖中（這條 flow 一般 2-3 分鐘），跑完
 ### Step 5a: 收圖（prompt-save 主路 + 兩層 fallback）
 
 ```bash
-# 🟢 主路（prompt-save）：codex 應已把圖存到你指定的 $OUT_PNG
-if [ -f "$OUT_PNG" ]; then
-  SRC_PNG="$OUT_PNG"          # 已在定位，直接用（最常走這條）
-else
-  # fallback 1：codex 沒照存 → 去 generated_images 用 -newer marker 撈，撈到搬來 $OUT_PNG
-  SRC_PNG=$(find ~/.codex/generated_images -type f -iname '*.png' -newer "$START_MARKER" 2>/dev/null | xargs ls -t 2>/dev/null | head -1)
-  [ -n "$SRC_PNG" ] && mv "$SRC_PNG" "$OUT_PNG" && SRC_PNG="$OUT_PNG"
-fi
-# fallback 2（最後手段）：兩邊都空 → 解 session rollout JSONL 的 base64 還原 png（見下方 python）
+OUT_PNG=$("$SKILL_DIR/scripts/collect.sh" "$OUT_PNG" "$START_MARKER") || {
+  echo "三層都拿不到圖 → 跳 Step 6 判失敗類型"; exit 1
+}
 ```
 
-fallback 2（rollout base64 還原，只在 fallback 1 也空才動）：
+腳本依序試三層，命中哪一層會印在 stderr：
 
-```bash
-# 從 log 抓 session id（無 ANSI 干擾的話），或直接抓 sessions 當天最新、含 PNG magic 的 rollout
-ROLLOUT=$(grep -rl 'iVBORw0KGgo' ~/.codex/sessions/$(date +%Y/%m/%d)/rollout-*.jsonl 2>/dev/null | xargs ls -t 2>/dev/null | head -1)
-python3 - "$ROLLOUT" "$OUT_PNG" <<'PY'
-import sys, json, base64
-rollout, out = sys.argv[1], sys.argv[2]; b64=None
-for line in open(rollout):
-    if 'iVBORw0KGgo' not in line: continue
-    try: obj=json.loads(line)
-    except: continue
-    st=[obj]
-    while st:
-        c=st.pop()
-        if isinstance(c,dict): st.extend(c.values())
-        elif isinstance(c,list): st.extend(c)
-        elif isinstance(c,str) and c.startswith('iVBORw0KGgo'): b64=c  # 留最後一張
-if b64: open(out,'wb').write(base64.b64decode(b64)); print("RESTORED", out)
-else: print("NO_BASE64")
-PY
-[ -f "$OUT_PNG" ] && SRC_PNG="$OUT_PNG"
-```
+| 層 | 做法 | 為什麼不是主路 |
+|---|---|---|
+| 🟢 主路 | 檔案已在 `$OUT_PNG`（launch 時就在 prompt 裡叫 codex 存過去） | — |
+| fallback 1 | 撈 `~/.codex/generated_images`，`-newer` marker | 0.141.0 起**時有時無**，同版本同指令有時整批不落 |
+| fallback 2 | 從 session rollout JSONL 解 base64 還原 | 未文件化、隨版本可能再變。**那是救援不是備份** |
+
+**腳本裡的幾個寫法是踩出來的，要改它之前先讀這幾條**（平常不必看）：
 
 - 🔴 **絕不用 `-newermt`（任何形式）**：macOS BSD find 對 `-newermt` 的 `@epoch` **與**相對時間都 **silently 假陰性**（誤判「沒 PNG」其實圖都在）。一律 **`-newer <實體 marker 檔>`**（BSD/GNU 皆穩）。
-- 🔴 fallback 1 **在 `~/.codex/generated_images` 找，別在 cwd / repo 內 `find .`**（主路已直接落 cwd 的 `$OUT_PNG`，不用 find；find 是給「codex 沒照存」的退路）。
+- 🔴 fallback 1 **在 `~/.codex/generated_images` 找，別在 cwd / repo 內 `find .`**（主路已直接落 cwd 的 `$OUT_PNG`，find 是給「codex 沒照存」的退路）。
 - **用 `find` 不用 glob**：巢狀目錄要遞迴，空 glob 在 zsh 會 `no matches found` 中止。
 - session id 走 grep log 的 `session id:` **不可靠**（ANSI 色碼夾在中間、regex 易撲空）→ fallback 2 改用「當天 rollout 抓含 PNG magic 的最新檔」。
-- 三層都拿不到 `SRC_PNG` → codex 大概率失敗，跳 Step 6。
+
+**三層都拿不到 → 腳本回 exit 1**，照上面那個 `||` 分支跳 Step 6 判失敗類型。
 
 ### Step 5b: 編輯模式驗收（**MANDATORY；生成模式跳過本段直接去 5c**）
 

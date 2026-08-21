@@ -31,6 +31,22 @@ if [ -f "$OUT_PNG" ]; then
   exit 0
 fi
 
+# ── 用 fallback 之前先檢查 marker 的時效 ───────────────────────────
+# 🔴 兩個 fallback 的判準都是「比 marker 新」。marker 一旦是舊的（撿到殘留的
+#    state 檔就會這樣），「比它新」等於「幾乎所有東西」，於是撈到**別次執行**
+#    的圖，回報成功，而結果看起來完全合理。實測踩過。
+MARKER_MAX_AGE=3600     # 秒。單張圖大約三分鐘，一小時已經很寬鬆
+if [ -f "$MARKER" ]; then
+  NOW=$(date +%s)
+  MTIME=$(stat -f %m "$MARKER" 2>/dev/null || stat -c %Y "$MARKER" 2>/dev/null || echo 0)
+  AGE=$((NOW - MTIME))
+  if [ "$AGE" -gt "$MARKER_MAX_AGE" ]; then
+    echo "marker 已經 ${AGE} 秒沒更新（上限 ${MARKER_MAX_AGE}），不能安全地用 fallback" >&2
+    echo "這通常表示撿到了殘留的 state 檔 —— 硬跑下去會把別次執行的圖當成這次的結果" >&2
+    exit 1
+  fi
+fi
+
 # ── fallback 1：撈 generated_images ────────────────────────────────
 if [ -f "$MARKER" ]; then
   SRC=$(find "$HOME/.codex/generated_images" -type f -iname '*.png' -newer "$MARKER" 2>/dev/null \
@@ -47,8 +63,17 @@ else
 fi
 
 # ── fallback 2：從 rollout JSONL 解 base64 ─────────────────────────
+# 🔴 一定要受 marker 約束。實測踩過：不約束的話會撈到「今天稍早別次 codex 生圖」
+#    的 session，把別人的圖當成這次的結果交出來，而且回報成功 —— 安靜、而且
+#    結果看起來完全合理。一個什麼都沒產出的呼叫因此拿到一張成品。
+if [ ! -f "$MARKER" ]; then
+  echo "沒有 marker，不能安全地動用 fallback 2（會撈到別次 session 的圖）" >&2
+  exit 1
+fi
+
 echo "# 前兩層都空，動用 fallback 2（rollout base64）" >&2
-ROLLOUT=$(grep -rl 'iVBORw0KGgo' "$HOME/.codex/sessions/$(date +%Y/%m/%d)"/rollout-*.jsonl 2>/dev/null \
+ROLLOUT=$(find "$HOME/.codex/sessions" -name 'rollout-*.jsonl' -newer "$MARKER" 2>/dev/null \
+          | xargs grep -l 'iVBORw0KGgo' 2>/dev/null \
           | xargs ls -t 2>/dev/null | head -1)
 if [ -z "${ROLLOUT:-}" ]; then
   echo "三層都拿不到圖，codex 大概率失敗 —— 去讀 log 判斷失敗類型" >&2
