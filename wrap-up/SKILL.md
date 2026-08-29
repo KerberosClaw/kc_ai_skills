@@ -1,23 +1,30 @@
 ---
 name: wrap-up
-description: "Use when the user is ending a session, about to compact, or asks to tidy up project docs after a long multi-turn working session (收尾 / 收工 / 落檔 / 我要關 session / 要 compact 了 / 整理一下專案文件). Harvests everything the session produced into the project following that project's own rules — moves stray media in, wires two-way refs, updates indexes, merges drafts into SSOT — then dispatches a context-free sub-agent to blind-test the docs from the project's entry file. Fails loudly and explains in plain language rather than looping forever. NOT a documentation linter (that is llm-wiki-lint / memory-lint) and NOT for tidying a project you did not just work on."
-version: 0.1.0
+description: "Use ONLY when the user's latest message explicitly contains the `/wrap-up` command. Harvests everything a long session produced into the project following that project's own rules — moves stray media in, wires two-way refs, updates indexes, merges drafts into SSOT — then dispatches a context-free sub-agent to blind-test the docs from the project's entry file. NEVER load on inferred intent. Explicitly NOT for: save / checkpoint / persona-continuity requests, memory or journal updates, compact lifecycle hooks (PreCompact, PostCompact, SessionStart(source=compact)), automatic or manual compaction, or any guess that the session is ending — those all mean 'save state and keep going', while this skill has heavy side effects (moves files, rewrites indexes, edits SSOT, spawns sub-agents). If the user seems to want the full flow, ask them to type `/wrap-up` instead of assuming. NOT a documentation linter (that is llm-wiki-lint / memory-lint) and NOT for tidying a project you did not just work on."
+version: 0.2.0
 status: experimental
 triggers:
   - "/wrap-up"
-  - "收尾"
-  - "收工"
-  - "落檔"
-  - "我要關 session"
-  - "準備關了"
-  - "要 compact 了"
-  - "compact 前"
-  - "整理一下專案文件"
-  - "wrap up"
 argument-hint: "[repo path]"
 ---
 
 # wrap-up — 把這次 session 的產出收進專案，然後盲測驗收
+
+## 🔴 Entry gate：沒有明確的 `/wrap-up` 就不准動
+
+**只有使用者最新一則訊息裡明確出現 `/wrap-up` 指令時才能往下執行。** 語意相近的說法、你自己推論出來的意圖，都不算數。
+
+以下訊號**一律不是**啟動條件。它們的意思都是「保存狀態後繼續」，不是「session 要結束了」：
+
+- 存檔、保存、記住、落盤、落檔、收工、收尾、整理一下專案文件
+- checkpoint、persona checkpoint、寫 journal、更新 continuity
+- `PreCompact` / `PostCompact` / `SessionStart(source=compact)` 這類 compact 生命週期 hook
+- 自動或手動 compact、compact 前保存未落盤的狀態、compact 後重載人格基線
+- 使用者說「等一下還要繼續」，或你自己推測他大概要離開了
+
+**沒看到指令就 fail closed**：不讀檔、不盤點、不搬檔、不改檔、不派 sub-agent，直接回去做使用者原本要求的事。判斷他可能真的想要完整流程時，請他自己輸入 `/wrap-up`，不要代他決定。
+
+> **為什麼正文還要再擋一次**：路由器是看 frontmatter 的 `description` 與 `triggers` 決定載入哪顆 skill，收窄那兩個欄位只能降低被錯選的機率，不能歸零。而這顆 skill 一跑就會盤點整個 repo、搬檔、改索引、動 SSOT、派 agent，副作用重到不該由「存個 checkpoint」這種弱訊號啟動，所以正文必須能自己把它擋下來。
 
 You are a session harvester. 一次長對話會產出散在各處的東西：改到一半的檔、只活在對話裡的判定、丟在桌面的媒體、寫了沒併回 SSOT 的草稿。**你的工作是把它們收進專案，接好互相引用，然後證明下一個人接得住。**
 
@@ -260,6 +267,7 @@ Prompt 骨架與「過」的判準見 [`references/quiz_bank.md`](references/qui
 
 ## Anti-patterns
 
+- ❌ **沒有明確 `/wrap-up` 就自己啟動** — 「存檔」「收工」「要 compact 了」「PreCompact hook 提醒你」都不是授權，這是本 skill 最貴的違規（見 Entry gate）
 - ❌ **自己發明目錄規範** — 專案有 `SCHEMA.md` 就照它的，這個 skill 不帶自己的
 - ❌ **呼叫 `llm-wiki-lint` 當閘門** — 它是報告型、判準是結構性的；照它做完仍可能過不了盲測
 - ❌ **搬檔案用普通 `cp`** — mtime 是證據，抹掉就救不回時間序
@@ -273,17 +281,18 @@ Prompt 骨架與「過」的判準見 [`references/quiz_bank.md`](references/qui
 
 ## Important rules
 
-1. **判準是行為性的**：盲測 agent 接得住才算完成，不是文件看起來整齊
-2. **一律照專案自己的規矩**（Step 1b 是 MANDATORY）
-3. **分級授權**：可逆的直接做，刪除／改寫語意／判斷不明必問
-4. **草稿沒併進 SSOT ＝ 沒寫**
-5. **搬媒體保 mtime**
-6. **盲測 agent 必須無脈絡**，且「過」要含得出出處
-7. **改完文件必須重測**，不重測不准宣稱完成
-8. **沒過最多修三輪**，之後停下來白話討論
-9. **不在沒邀請你的 repo 留痕跡**
-10. **術語第一次出現要定義** —— 寫文件時順手檢查，讀者不該去猜
-11. **寫進 repo 前先找既有慣例** —— 格式、位置、命名都先查一個現成例子，不要憑推論定
+1. 🔴 **只有明確的 `/wrap-up` 能啟動**（Entry gate），推論出來的意圖一律不算
+2. **判準是行為性的**：盲測 agent 接得住才算完成，不是文件看起來整齊
+3. **一律照專案自己的規矩**（Step 1b 是 MANDATORY）
+4. **分級授權**：可逆的直接做，刪除／改寫語意／判斷不明必問
+5. **草稿沒併進 SSOT ＝ 沒寫**
+6. **搬媒體保 mtime**
+7. **盲測 agent 必須無脈絡**，且「過」要含得出出處
+8. **改完文件必須重測**，不重測不准宣稱完成
+9. **沒過最多修三輪**，之後停下來白話討論
+10. **不在沒邀請你的 repo 留痕跡**
+11. **術語第一次出現要定義** —— 寫文件時順手檢查，讀者不該去猜
+12. **寫進 repo 前先找既有慣例** —— 格式、位置、命名都先查一個現成例子，不要憑推論定
 
 ## 配套 hook（選配）
 
@@ -292,3 +301,6 @@ Prompt 骨架與「過」的判準見 [`references/quiz_bank.md`](references/qui
 JSON 欄位依 event 而異 —— PreToolUse 用 `permissionDecision`、Stop 用 `decision`，
 ⚠️ **PreCompact 用哪個我沒實測過，要改成阻塞版之前先查官方 hook 文件**）。
 但 context 滿了卻擋住壓縮會把使用者困住，所以**預設不擋**。
+
+🔴 **那則提醒是要轉述給使用者的，不是給你的授權。** 收到它之後只能把情況告訴使用者，
+由他決定要先收尾還是直接壓縮；他沒有明確輸入 `/wrap-up`，就不准啟動本 skill（見 Entry gate）。
