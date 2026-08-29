@@ -1,6 +1,6 @@
 # wrap-up 使用說明
 
-> **English summary:** Harvests a long working session's output into the repository before you close or compact — moving stray media in under the project's own conventions, wiring two-way references, merging drafts into the source of truth — then dispatches a context-free sub-agent to blind-test the result from the project's entry file. The bar is behavioural, not structural: not "the links resolve" but "a stranger can pick this up", and an answer only counts if the agent can name the file it came from.
+> **English summary:** Explicitly invoked only: it runs on `/wrap-up` and never on inferred intent such as a save/checkpoint request or a compact lifecycle hook. Harvests a long working session's output into the repository before you close or compact — moving stray media in under the project's own conventions, wiring two-way references, merging drafts into the source of truth — then dispatches a context-free sub-agent to blind-test the result from the project's entry file. The bar is behavioural, not structural: not "the links resolve" but "a stranger can pick this up", and an answer only counts if the agent can name the file it came from.
 
 ## 為什麼有這個 skill
 
@@ -37,15 +37,9 @@
 
 ## 怎麼用
 
-在你想收工的時候說一句就好：
+**只認明確指令，沒有自然語觸發**：
 
 ```
-收尾
-收工
-落檔
-我要關 session 了
-要 compact 了
-整理一下專案文件
 /wrap-up
 ```
 
@@ -54,6 +48,11 @@
 ```
 /wrap-up ~/dev/my-project
 ```
+
+> **為什麼不能講「收工」就啟動？** 早期版本吃「收尾／落檔／要 compact 了」這類說法，結果 AI 把
+> 「幫我存個檔，等下繼續」跟「我要結束了，順便整理整個專案」混為一談：使用者只是想做一次
+> checkpoint，它卻跑掉整套流程，搬檔、改索引、動正式文件、派 agent 全來一遍。這顆 skill 副作用太重，
+> 不適合靠猜的，所以現在改成只認指令。你想要，就自己打。
 
 ## 它會問你什麼、不會問你什麼
 
