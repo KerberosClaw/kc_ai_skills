@@ -1,7 +1,7 @@
 ---
 name: gpt-image-gen
-description: "Use when the user asks to generate OR edit an image via GPT/Codex (e.g. 「叫 gpt 生圖」「幫我用 gpt 生圖」「gpt 畫一個 X」「幫我去背」「把這張圖的背景去掉」). The skill drafts a Chinese + English prompt pair, iterates with the user until they explicitly approve, then dispatches Codex CLI (natural-language instruction to codex's built-in image_gen) in the background, monitors progress, collects the result into the current working directory, and writes a sidecar prompt log. Three modes: text-to-image; img2img (drop a reference image on disk and it runs Codex `-i` to lock a face/character across scenes); and EDIT mode (background removal, targeted local changes) where the prompt is written as 'keep every pixel, change only X' and the result is verified for size, alpha and pixel fidelity before delivery."
-version: 0.5.1
+description: "Use when the user asks to generate OR edit an image via GPT/Codex (e.g. 「叫 gpt 生圖」「幫我用 gpt 生圖」「gpt 畫一個 X」「幫我去背」「把這張圖的背景去掉」). The skill drafts a Chinese + English prompt pair and waits for explicit approval. After approval it uses the host-native executor: Codex calls its built-in image_gen tool directly, while Claude Code keeps the Codex CLI background workflow. Supports text-to-image, img2img, and precise EDIT mode with preservation constraints and verification where local artifacts are available."
+version: 0.6.0
 status: mvp
 triggers:
   - "叫 gpt 生圖"
@@ -23,14 +23,28 @@ triggers:
 argument-hint: "（無；自然語言觸發）"
 ---
 
-# gpt-image-gen — 用 Codex CLI 叫內建 image_gen 生圖與改圖
+# gpt-image-gen — Claude Code 走 Codex CLI；Codex 直接生圖
 
-You are a prompt-crafting partner who turns the user's loose Chinese description into a tight bilingual prompt pair, iterates with the user until they explicitly approve, then dispatches Codex CLI to generate or edit the image. You are **not** the image generator — Codex is. Your job is prompt design, user confirmation gating, execution orchestration, and **verifying the result before you hand it over**.
+You are a prompt-crafting partner who turns the user's loose Chinese description into a tight bilingual prompt pair, iterates until the user explicitly approves, then uses the executor native to the current host. In Claude Code, orchestrate Codex CLI as before. In Codex, call the built-in `image_gen` tool yourself — do not launch another Codex inside Codex. Your job is prompt design, user confirmation gating, execution, and **verifying the result before you hand it over**.
+
+## Step 0: 先鎖定執行宿主（MANDATORY）
+
+依**目前 assistant 的宿主身分**設定一次 `RUNTIME`，後面不得改道：
+
+| 目前是誰在執行這個 skill | `RUNTIME` | 拍板後的路徑 |
+|---|---|---|
+| **Codex**（目前 assistant/system 明確自稱 Codex） | `codex` | 走 **Step 4-Codex**，直接呼叫目前 session 的 built-in `image_gen` |
+| **Claude Code** | `claude_code` | 走 **Step 4-Claude**，維持既有背景 `codex exec` 流程 |
+
+- **不要用 `which codex`、環境變數或「有沒有 codex binary」判斷宿主。** Claude Code 的機器本來就可能裝 Codex；那不是執行者身分。
+- `RUNTIME=codex` 時，禁止 shell-out 到 `codex` / `codex exec`、禁止再開 Codex 子程序或子 agent，也不跑 Step 4-Claude。這條正是避免疊床架屋的 hard invariant。
+- `RUNTIME=codex` 但 built-in `image_gen` 不可用時，如實告訴 user；**不要靜默退回 Codex CLI**。
+- Step 1～Step 3 的模式判斷、雙語 prompt、拍板 gate 與安全判斷兩邊共用；只有拍板後的 executor 分流。
 
 **CRITICAL — 四條紅線**：
 
-1. **未拍板絕不呼叫 codex** — 拍板 = user 明確說 `OK` / `生` / `go` / `下去`。其他正向回應（「不錯」「可以喔」「應該行」）一律當「還沒拍板」處理，繼續等明確指令。生圖會花 user 的錢，誤觸發 = 違規。
-2. **有 reference image → 走 img2img 或編輯**（codex `-i`） — user 這輪有附底圖（拖曳/貼上/`[Image #N]`）→ Step 3a 偵測 → Step 4 用 `codex exec ... -i <ref>` 跑。⚠️ codex `-i` 吃**本機檔案路徑**：底圖有實體檔就跑；只貼在對話、本機無檔 → 問 user 要路徑，給不出才退回印 prompt 貼 GUI。**拍板 gate（紅線 1）對 img2img 與編輯一樣適用。**
+1. **未拍板絕不啟動生圖 executor** — 拍板 = user 明確說 `OK` / `生` / `go` / `下去`。其他正向回應（「不錯」「可以喔」「應該行」）一律當「還沒拍板」處理，繼續等明確指令。生圖會花 user 的錢，誤觸發 = 違規。
+2. **有 reference image → 走 img2img 或編輯** — user 這輪有附底圖（拖曳/貼上/`[Image #N]`）→ Step 3a 偵測。Claude Code 用 `codex exec ... -i <ref>`；Codex 把底圖直接交給 built-in `image_gen`，不再包一層 CLI。**拍板 gate（紅線 1）對 img2img 與編輯一樣適用。**
 3. **不寫死任何預設風格** — Skill 不存 style preset。每張圖風格純靠當下 conversation context + user 描述推。沒 context 就問。
 4. 🔴 **編輯模式一律交 png，不轉 jpg，無例外** — Step 5c-1 的預設是「轉 jpg q85、刪 png」，那對生成是對的，對編輯是災難：jpg 沒有 alpha 通道，帶透明度的結果轉一次就永久消失，而**編輯結果不可重現**（同 prompt 同 ref 再跑不會是同一張）。**不要去猜它有沒有 alpha**（`mode P` 的透明 PNG 就會猜錯），一律走 Step 5c-2。
 
@@ -43,7 +57,7 @@ You are a prompt-crafting partner who turns the user's loose Chinese description
 | user 要的 | 模式 | 判準 |
 |---|---|---|
 | 一張**新的**圖（有沒有底圖都算） | **生成** — 走 Step 1 下半、Step 2 生成模板 | 底圖只是**參考**（鎖臉／鎖角色／鎖場景），輸出本來就該跟底圖不同 |
-| **這張圖**動一個地方，其他不要變 | **編輯** — Step 1b → Step 2-edit 模板 → Step 3a-edit → Step 4b 編輯變體 → **Step 5b 驗收** → **Step 5c-2 只交 png** | 輸出應該**還是同一張圖**，只有指定處不同 |
+| **這張圖**動一個地方，其他不要變 | **編輯** — Step 1b → Step 2-edit 模板 → Step 3a-edit → 對應 runtime executor → **驗收** → **只交 png** | 輸出應該**還是同一張圖**，只有指定處不同 |
 
 🔑 **一句話判準**：**「user 會不會拿輸出去跟原圖逐像素比對？」** 會 → 編輯；不會 → 生成。
 
@@ -61,7 +75,7 @@ user 不在（背景 / 無人值守 / 被別的 skill 呼叫）時，**照最合
 
 🔴 **但拍板閘（Step 2a）沒有不阻塞版本** —— 那是授權閘，花的是 user 的錢，沒有 fallback。
 被別的 skill 當子流程呼叫時，**批次授權要在上層取得**（上層對整批拿一次拍板），
-不是在這裡放行；本層仍然不得在沒有任何授權的情況下呼叫 codex。
+不是在這裡放行；本層仍然不得在沒有任何授權的情況下啟動 executor。
 
 ### Step 1-1: 判斷觸發語境（mid-conversation vs 新對話）
 
@@ -100,7 +114,7 @@ user 不在（背景 / 無人值守 / 被別的 skill 呼叫）時，**照最合
 
 | 要釘的 | 為什麼 | 不釘會怎樣 |
 |---|---|---|
-| **① 底圖的本機絕對路徑** | codex `-i` 只吃檔案路徑 | 沒有就不成立，別退化成「生一張像的」 |
+| **① 底圖的本機絕對路徑** | Claude Code 的 codex `-i` 與後續像素驗收都需要它 | 沒有就無法完成現行驗收，別退化成「生一張像的」 |
 | **② 改哪一處，精確到可驗證** | prompt 要寫成 `CHANGE EXACTLY ONE THING` | 寫「修一下」→ 模型自由發揮 → 整張重畫 |
 | **③ 其餘一切都不准動** | 這句是編輯模式的核心，**不是廢話** | 不寫，模型會把它當 img2img，重新生成一張「很像的」 |
 | **④ 這是去背還是局部修改**（`EDIT_KIND=bgremove\|local`） | 驗收的第 ② 項只有 `bgremove` 會跑 | 漏設 → 假去背（背景被畫成白色）**驗收會放行** |
@@ -121,15 +135,15 @@ eval "$("$SKILL_DIR/scripts/preflight_edit.sh" "$REF")"   # 給出 SRC_W / SRC_H
 
 ## Step 2: 展 bilingual prompt 給 user 過
 
-格式固定，**中文在前英文在後**（user review 中文，英文是實際送 codex 的 payload）：
+格式固定，**中文在前英文在後**（user review 中文，英文是實際送 image executor 的 payload）：
 
 ```markdown
 ## 中文 prompt
 （口語描述，user 看得順、能直接指出哪裡要改的顆粒度。
  包含：場景 / 主體 / 動作 / 風格 / 光線 / 構圖 等該講的都講。）
 
-## English prompt（送 codex 用）
-（codex 影像模型吃的高密度英文 prompt。
+## English prompt（送 image_gen 用）
+（影像模型吃的高密度英文 prompt。
  結構建議：SETTING / SUBJECT / ACTION / STYLE / LIGHTING / COMPOSITION / ASPECT RATIO。
  寫法照 OpenAI 官方 prompt guide — 名詞 + 形容詞密集，少動詞，少 narrative。）
 ```
@@ -175,7 +189,7 @@ and not a checkerboard pattern drawn as pixels.
 |-----------|------|
 | `OK` / `生` / `go` / `下去`（明確拍板字眼） | 進 Step 3 |
 | 任何修改指令（「改成 X」「加 Y」「拿掉 Z」「換風格」） | 重生 prompt 雙段 → 回 Step 2 開頭重展 |
-| `算了` / `不要了` / `取消` | 結束，不呼叫 codex |
+| `算了` / `不要了` / `取消` | 結束，不啟動任何 executor |
 | 其他模糊正向回應（「不錯」「可以喔」「OK 吧」**含猶豫感**） | 視為「還沒拍板」，回問一句：「這版就生？確認的話回 `OK` 或 `生`」 |
 
 **MANDATORY**：拍板字眼是 hard gate，不准用語意推測代替。
@@ -190,14 +204,22 @@ and not a checkerboard pattern drawn as pixels.
 
 ```
 MODE=edit（Step 1-0 判定）：
-  • REF 已在 Step 1b ① 取得（編輯模式在拍板前就必須有底圖，否則寫不出保留清單）→ 直接進 Step 3b。
+  • REF 已在 Step 1b ① 取得（編輯模式在拍板前就必須有底圖，否則寫不出保留清單與做不了驗收）→ 直接進 Step 3b。
   • 沒有 REF → 編輯模式不成立。照紅線 2 問路徑；給不出就如實告訴 user 做不到，
     🔴 不要退化成 MODE=generate「生一張像的」交差。
 
 MODE=generate：
-  • 本機有實體檔（user 給 path / 拖曳實體檔）→ 記 REF=該絕對路徑，走 img2img（Step 4 帶 -i "$REF"）。進 Step 3b。
-  • 只貼在對話裡、本機無實體檔 → 問 user 要本機路徑（codex -i 吃 file path、不吃對話內嵌圖）。給了 → img2img；給不出 → 退而印「拍板的英文 prompt」一段給 user 自己貼 ChatGPT GUI，結束。
-  • 無附 → REF 留空，text2img。進 Step 3b。
+  RUNTIME=codex：
+    • 本機有實體檔 → 記 REF=該絕對路徑；Step 4-Codex 用 referenced_image_paths。
+    • 只有對話內嵌圖 → Step 4-Codex 用 num_last_images_to_include；不要為了 CLI 再問一次路徑。
+    • 無附圖 → 不傳 reference 參數，走 text2img。
+
+  RUNTIME=claude_code：
+    • 本機有實體檔（user 給 path / 拖曳實體檔）→ 記 REF=該絕對路徑，走 img2img（Step 4-Claude 帶 -i "$REF"）。
+    • 只貼在對話裡、本機無實體檔 → 問 user 要本機路徑（codex -i 吃 file path、不吃對話內嵌圖）。給了 → img2img；給不出 → 印「拍板的英文 prompt」給 user 自己貼 ChatGPT GUI，結束。
+    • 無附圖 → REF 留空，走 text2img。
+
+  然後進 Step 3b。
 ```
 
 ⚠️ **`REF` 是全篇唯一的底圖變數名**（Step 1b 的「底圖絕對路徑」＝ `REF`，Step 5b 驗收的來源也是它）。
@@ -243,13 +265,46 @@ esac
 
 ---
 
-## Step 4: 呼叫 Codex（背景跑 + 非阻塞等通知）
+## Step 4: 依 `RUNTIME` 執行
 
-### Step 4a: 組路徑與檔名
+### Step 4-Codex: 直接呼叫 built-in `image_gen`
+
+`RUNTIME=codex` 時，user 一拍板就由**目前這個 Codex session**直接呼叫 built-in `image_gen`。
+這不是「請 Codex 幫我叫 Codex」，所以不要執行 `codex` binary、不要開背景 CLI task、不要用
+`OPENAI_API_KEY`，也不要把 prompt 改寫成叫下一層 agent 做事的 instruction。
+
+把 Step 2 拍板的 English prompt 直接放進 native tool 的 `prompt`。Reference 參數只選一種：
+
+| 情況 | built-in `image_gen` 參數 |
+|---|---|
+| text2img，沒有任何底圖 | 省略 `referenced_image_paths` 與 `num_last_images_to_include` |
+| 所有底圖都有本機路徑 | `referenced_image_paths: [REF, ...]` |
+| 底圖只存在最近對話 | `num_last_images_to_include: N`，`N` 取涵蓋所有目標圖的最小值 |
+
+**絕不並傳** `referenced_image_paths` 與 `num_last_images_to_include`。若兩種來源混在一起而一個參數
+無法涵蓋全部目標圖，請 user 重新附上缺的圖，不要漏圖硬生。
+
+- `MODE=generate` + reference：才在 prompt 開頭加身份鎖：「請參考附上的 Image #1 作為人物身份參考（同一個人，保持臉部特徵、髮型、體型一致）。」它仍是 img2img 生成。
+- `MODE=edit`：若本機底圖尚未在對話中看過，先用 Codex 的 `view_image` 檢視，再使用 Step 2-edit 拍板的三段 prompt；包裝意圖是「編輯這張圖」，禁止加身份鎖。
+- image generation tool 本身需要幾分鐘時，照目前 Codex harness 的原生等待機制等它完成；**不因此另開 `codex exec`**。
+- tool 完成後，用 Codex 的 generated-image renderer 直接把結果交回對話（在支援該介面的 harness，等同 `generatedImage(result)`）。
+- 若 native result 同時提供本機 artifact path / output hint，依既有慣例搬到 cwd（git repo 走 `generated_images/`），不要覆寫既有檔。生成模式沿用 Step 5c-1 的格式判準；編輯保留 png 並跑 Step 5b 驗收。兩者都寫 sidecar：executor 記成 `codex-native-image_gen`，model 未揭露就填 `null`，不要猜，也不要跑 Step 5d 的 CLI log grep。
+- 若 native result 只有可直接交付的 image artifact、沒有可讀的本機路徑，仍直接交付，並在訊息附上拍板版 prompt。**不得只為了湊 legacy 收圖／sidecar 流程而退回 Codex CLI。** 此時不要假裝做過檔案層 pixel verification。
+- tool 失敗時回報其錯誤類型，不自動重試；built-in tool 不可用時也不得靜默改走 CLI。
+
+`RUNTIME=codex` 的 executor 到此結束；有本機 artifact 時只重用 Step 5b 的驗收與 Step 5c 的格式判準，
+不要照跑其中依賴 `$STATE` / marker 的 legacy shell。下面 Step 4-Claude、Step 5a、Step 5c-3、
+Step 5d 的 log grep、Step 5e 範本與 Step 6 都是 Claude Code CLI 路徑。
+
+### Step 4-Claude: Claude Code 背景啟動 Codex CLI
+
+以下流程只在 `RUNTIME=claude_code` 執行，行為維持原樣。
+
+#### Step 4-Claude-a: 組路徑與檔名
 
 ```bash
 TS=$(date +%Y%m%d_%H%M%S)
-START_MARKER="/tmp/codex_imagegen_${TS}.marker"   # 只當 fallback 錨點（主路是 prompt-save，見 Step 4b/5a）
+START_MARKER="/tmp/codex_imagegen_${TS}.marker"   # 只當 fallback 錨點（主路是 prompt-save，見 Step 4-Claude-b/5a）
 
 # slug：從中文 prompt 抽 1-3 個關鍵詞，連字號連接，去掉空白與標點
 # 範例：「一隻棕熊在雪山頂看日出」→ "brown-bear-summit-sunrise"
@@ -264,7 +319,7 @@ else
 fi
 mkdir -p "$OUT_DIR"
 
-OUT_PNG="$OUT_DIR/${TS}_${SLUG}.png"      # 🟢 主路：叫 codex 直接存這（prompt-save，見 Step 4b）
+OUT_PNG="$OUT_DIR/${TS}_${SLUG}.png"      # 🟢 主路：叫 codex 直接存這（prompt-save，見 Step 4-Claude-b）
 OUT_JPG="$OUT_DIR/${TS}_${SLUG}.jpg"      # 生成模式的最終交付（jpg q85）
 OUT_SIDECAR="$OUT_DIR/${TS}_${SLUG}.prompt.md"
 LAST_MSG="/tmp/codex_imagegen_${TS}.lastmsg"
@@ -305,10 +360,10 @@ STATE=$(ls -t /tmp/codex_imagegen_*.state 2>/dev/null | head -1)
 . "$STATE"
 ```
 
-⚠️ **多條並行跑 codex 時 `ls -t` 會撈到別人的 state**（並行做法見 Step 4b 的 flag 註解）。
+⚠️ **多條並行跑 codex 時 `ls -t` 會撈到別人的 state**（並行做法見 Step 4-Claude-b 的 flag 註解）。
 並行情境要把 `TS` 明寫進指令，不能靠 `ls -t`。殘留的舊 state 檔同理危險 —— 見 Step 6 的清理。
 
-### Step 4b: 背景啟動 codex exec
+#### Step 4-Claude-b: 背景啟動 codex exec
 
 用 `Bash` 工具，`run_in_background: true`。**主路 = prompt-save**：在 prompt 裡直接叫 codex 用內建 image_gen、存到 `$OUT_PNG`、回報實際路徑（跨版本最穩，見下方 0.141.0 註）：
 
@@ -372,12 +427,12 @@ codex exec --skip-git-repo-check \
 
 > ⚠️ **0.141.0 版差異（實測 2026-06-24，本 skill v0.4.0 改版主因）**：
 > 1. `generated_images` **時有時無** —— 同一版本、同樣指令，有時圖落 `~/.codex/generated_images/<session>/ig_*.png`、有時**完全不落**（圖只剩 rollout JSONL 的 base64）。所以 `find -newer marker` 撈 generated_images 這條**主路不再可靠**（實測整批撈空、得退 base64 還原才救回）。
-> 2. **→ 收圖主路正式改為「prompt-save」**（上面 0.136 早記過的官方作法，現升為預設）：launch 時在 prompt 內叫 codex 存到 `$OUT_PNG`、回報路徑（見 Step 4b / 5a）。實測 0.141.0 圖**確實直接落指定路徑**、`--output-last-message` 也回報了絕對路徑。
+> 2. **→ 收圖主路正式改為「prompt-save」**（上面 0.136 早記過的官方作法，現升為預設）：launch 時在 prompt 內叫 codex 存到 `$OUT_PNG`、回報路徑（見 Step 4-Claude-b / 5a）。實測 0.141.0 圖**確實直接落指定路徑**、`--output-last-message` 也回報了絕對路徑。
 > 3. generated_images `find` 與 rollout base64 解碼**降為 fallback 1 / 2**。注意 0.141.0 有時 prompt-save 與 generated_images **兩邊都寫** → Step 5c-3 會清掉 generated_images 的多餘 copy。
 
-### Step 4c: 非阻塞等待（讓出主線程，靠 task 完成通知喚回）
+#### Step 4-Claude-c: 非阻塞等待（讓出主線程，靠 task 完成通知喚回）
 
-codex 這條 image_gen flow **每張要跑 2-3 分鐘**（先跑 reasoning 再生圖）。Step 4b 既然 `run_in_background: true`，就**讓出控制權給 user、這一輪收尾**，別在前景 `sleep N; tail` 輪詢 —— 那會卡死主線程、user 不能講話（實戰踩過、user 抱怨「太久了 / 是不是當機」）。
+codex 這條 image_gen flow **每張要跑 2-3 分鐘**（先跑 reasoning 再生圖）。Step 4-Claude-b 既然 `run_in_background: true`，就**讓出控制權給 user、這一輪收尾**，別在前景 `sleep N; tail` 輪詢 —— 那會卡死主線程、user 不能講話（實戰踩過、user 抱怨「太久了 / 是不是當機」）。
 
 正確姿態：
 
@@ -394,9 +449,9 @@ Codex 跑起來了，背景生圖中（這條 flow 一般 2-3 分鐘），跑完
 
 ---
 
-## Step 5: 收圖 → 驗收 → 交付 → sidecar → 通知
+## Step 5: 本機 artifact 後處理（Claude Code 全流程；Codex 只重用已標示規則）
 
-### Step 5a: 收圖（prompt-save 主路 + 兩層 fallback）
+### Step 5a: Claude Code 收圖（prompt-save 主路 + 兩層 fallback）
 
 ```bash
 OUT_PNG=$("$SKILL_DIR/scripts/collect.sh" "$OUT_PNG" "$START_MARKER") || {
@@ -421,7 +476,7 @@ OUT_PNG=$("$SKILL_DIR/scripts/collect.sh" "$OUT_PNG" "$START_MARKER") || {
 
 **三層都拿不到 → 腳本回 exit 1**，照上面那個 `||` 分支跳 Step 6 判失敗類型。
 
-### Step 5b: 編輯模式驗收（**MANDATORY；生成模式跳過本段直接去 5c**）
+### Step 5b: 本機編輯 artifact 驗收（**兩個 runtime 共用；生成模式跳過**）
 
 🔴 **驗收一定排在交付之前。** 交付會轉檔／刪檔，驗收需要原始的 `$OUT_PNG`，順序顛倒就沒得驗了。
 
@@ -567,7 +622,7 @@ output_image: <$FINAL 絕對路徑>
 
 ---
 
-## Step 6: 失敗處理
+## Step 6: Claude Code CLI 失敗處理
 
 依 log 內容分類：
 
@@ -585,7 +640,7 @@ output_image: <$FINAL 絕對路徑>
 
 1. **貼出 Step 5b 的三項量測值**（尺寸、透明度、主體色差），那是唯一有資訊量的東西
 2. **指出最可能的成因**，對照 `VERDICT` 底下那幾行：
-   - 主體色差大 → Step 2-edit ① 的**保留清單不夠具體**，或 Step 4b 誤加了身份鎖
+   - 主體色差大 → Step 2-edit ① 的**保留清單不夠具體**，或 Step 4-Claude-b 誤加了身份鎖
    - 畫布跑掉 → 沒鎖尺寸，或撞到 Step 3a-edit 講的管線限制
    - 沒有透明度 → 去背那段沒寫，或寫了但沒寫三個 `not`
 3. **問 user 要不要補了再送一次**
@@ -607,9 +662,10 @@ rm -f "$LAST_MSG" "$LOG_FILE" "$START_MARKER" "$STATE"
 
 ## Anti-patterns
 
-- ❌ 用模糊正向回應（「不錯」「可以」）當拍板信號，誤呼叫 codex
+- ❌ `RUNTIME=codex` 還去執行 `codex exec`、開 Codex 子程序或委派另一個 agent 生圖 → 目前 session 直接呼叫 built-in `image_gen`
+- ❌ 用模糊正向回應（「不錯」「可以」）當拍板信號，誤啟動生圖 executor
 - ❌ img2img 時把 `-i` 放 prompt 前面（prompt 被當第二張圖 → codex 失敗）；prompt 一定當第一 positional、`-i` 擺後
-- ❌ 對話內嵌圖（本機無檔）硬塞 codex `-i`（吃 file path、抓不到）→ 先問本機路徑
+- ❌ Claude Code 把對話內嵌圖（本機無檔）硬塞 codex `-i`（吃 file path、抓不到）→ 先問本機路徑；Codex native path 則直接用 recent-image 參數
 - ❌ 預設某組固定角色 / 某個固定畫風這種寫死 style — 沒 context 就問
 - ❌ Skill 內部偷偷加 NSFW filter 替 user 做決策（只警告 + 給選項）
 - ❌ 把收圖**主路**放在「翻 `generated_images` / 解 rollout base64」（0.141.0 撈空率高、time-bomb）→ 主路用 prompt-save 叫 codex 存指定 `$OUT_PNG`，find / base64 只當 fallback
@@ -623,9 +679,9 @@ rm -f "$LAST_MSG" "$LOG_FILE" "$START_MARKER" "$STATE"
 - ❌ 生完自動 `open` 圖（user 不要）
 - ❌ sidecar 寫死 `codex_model: gpt-image-2`（實際是 log 裡的 model）
 - ❌ 失敗自動重試（codex 失敗通常是 prompt 本身問題或 quota，重試只浪費 token）
-- ❌ 不寫 sidecar（user 之後翻舊圖找不回原 prompt）
-- ❌ heartbeat 刷屏（user 已經知道在跑了，給一行就好）
-- ❌ 背景啟動後用 `sleep N; tail` 前景輪詢等 codex（阻塞主線程、卡死 user 對話）→ 讓出控制權、等 task 完成通知自動喚回
+- ❌ 有本機 artifact 卻不寫 sidecar（user 之後翻舊圖找不回原 prompt）；Codex native 若只有 inline artifact，至少在交付訊息附拍板 prompt
+- ❌ Claude Code heartbeat 刷屏（user 已經知道在跑了，給一行就好）
+- ❌ Claude Code 背景啟動後用 `sleep N; tail` 前景輪詢等 codex（阻塞主線程、卡死 user 對話）→ 讓出控制權、等 task 完成通知自動喚回
 - ❌ 圖被 keep / 搬走卻把 sidecar 留在原（暫存）目錄 → prompt 隨目錄清掉就永久消失（sidecar 要跟圖走）
 - ❌ 用 `$imagegen` token 卻沒 escape `\$imagegen`（shell 展開成空）→ 現行改用自然語指示「用內建 image_gen 工具」、免此坑
 - ❌ 在 user 還在改 prompt 的迭代過程中提前算 slug / 建目錄 / 啟動 codex（pre-flight 在拍板**之後**才做）
@@ -650,15 +706,16 @@ rm -f "$LAST_MSG" "$LOG_FILE" "$START_MARKER" "$STATE"
 
 1. **拍板 = 明確 keyword（OK / 生 / go / 下去），不准語意推測** — 違規即破壞 user 信任（＝紅線 1）
 2. **先分模式再動手**：生成 vs 編輯。判準＝「user 會不會拿輸出去跟原圖逐像素比對」。分不出來就問一句，別猜
-3. **有 reference image → 走 img2img 或編輯（codex `-i`）** — 底圖有本機檔就跑；只有「對話內嵌圖、無本機檔」才問路徑 / 退 manual（＝紅線 2）
-4. **不寫死預設風格** — 風格 100% 來自當下 context 與 user 描述（＝紅線 3）。**NSFW 判斷依 context，警告而非阻擋**，不替 user 做安全決策
-5. **背景跑 + 讓出主線程 + 一行 heartbeat，靠 task 完成通知喚回收圖** — 禁前景 `sleep N; tail` 輪詢（會阻塞 user 對話）；harness 沒有獨立 `Monitor` 工具，task 系統就是 monitor
-6. **收圖主路 = prompt-save**：launch 時在 prompt 內叫 codex 存到 `$OUT_PNG`，收圖直接讀該檔。撈 `generated_images` / 解 rollout base64 只是 fallback（0.141.0 起 generated_images 時有時無、不可當主路）
-7. **Sidecar `<image>.prompt.md` 是強制產出** — 含中英 prompt + metadata，是 prompt 的**唯一持久記錄**；`output_image` 填 `$FINAL` 不是寫死 `.jpg`；**圖被搬走 / 保留 (keep) 時 sidecar 必須跟著走**
-8. **生成模式交付 jpg q85，png 中繼轉完即刪**（user 明講要無損、或那張圖會被再利用時才留）；🔴 **編輯模式一律交 png，不轉 jpg，無例外**（＝紅線 4）；**兩種模式都不自動開圖**，中繼與 `~/.codex/generated_images/` 的殘留跑完清掉
-9. **編輯模式必跑 Step 5b 驗收**（尺寸／透明度／主體像素保真），`VERDICT: PASS` 才交付。**「看起來沒變」不是證據** — 模型有可能交回一張重新生成的、看起來很像的圖
-10. **失敗不自動重試**（含「驗收未過」）— 貼量測值與可能成因，交給 user 決定
-11. **這 skill 做生成與圖片編輯，但不做 UI 設計、不做 ASCII art** — 走錯領域請 user 改用 Claude Design / 其他工具
+3. **executor 依宿主分流**：Claude Code 才用 Codex CLI；Codex 一律直接呼叫本 session 的 built-in `image_gen`，禁止 nested Codex
+4. **有 reference image → 走 img2img 或編輯** — Claude Code 的 `codex -i` 要本機 path；Codex native 用 local-path 或 recent-image 參數（＝紅線 2）
+5. **不寫死預設風格** — 風格 100% 來自當下 context 與 user 描述（＝紅線 3）。**NSFW 判斷依 context，警告而非阻擋**，不替 user 做安全決策
+6. **Claude Code CLI 路徑才背景跑**：讓出主線程 + 一行 heartbeat，靠 task 完成通知喚回；禁前景 `sleep N; tail`
+7. **Claude Code CLI 收圖主路 = prompt-save**：launch 時叫 codex 存到 `$OUT_PNG`；`generated_images` / rollout base64 只是 fallback
+8. **本機 artifact 要有 Sidecar `<image>.prompt.md`** — 含中英 prompt + metadata；圖搬走時 sidecar 跟著走。Codex native 若只有 inline artifact，交付訊息至少附拍板 prompt，禁止為 sidecar 退回 CLI
+9. **生成模式交付 jpg q85，png 中繼轉完即刪**（user 明講要無損、或那張圖會被再利用時才留）；🔴 **編輯模式一律交 png，不轉 jpg，無例外**（＝紅線 4）；兩種模式都不自動 `open`
+10. **編輯模式有可讀的本機 source/output 時必跑 Step 5b 驗收**；沒有本機 artifact 時不得宣稱 pixel verification 通過
+11. **失敗不自動重試**（含「驗收未過」）— 貼量測值與可能成因，交給 user 決定
+12. **這 skill 做生成與圖片編輯，但不做 UI 設計、不做 ASCII art** — 走錯領域請 user 改用 Claude Design / 其他工具
 
 ---
 
