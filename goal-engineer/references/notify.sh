@@ -36,6 +36,13 @@ if [ -n "${NOTIFY_CONFIG:-}" ]; then
   source "$NOTIFY_CONFIG"; set +a
 fi
 
+# A registered producer can own routing, receipts and durable retries. Treat its
+# exit code as the pre-flight result; never fall back to a second channel.
+if [ -n "${NOTIFY_COMMAND:-}" ]; then
+  [ -x "$NOTIFY_COMMAND" ] || { echo "[notify] NOTIFY_COMMAND is not executable" >&2; exit 1; }
+  exec "$NOTIFY_COMMAND" "$@"
+fi
+
 die(){ echo "[notify] $*" >&2; exit 1; }
 TMP=""   # cleaned on exit
 cleanup(){ [ -n "$TMP" ] && rm -f "$TMP"; }

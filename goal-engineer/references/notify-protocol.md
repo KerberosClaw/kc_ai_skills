@@ -40,6 +40,14 @@ The loop reports to the human over a **push channel**. The *format* (traffic-lig
 
 無人值守 job 會**靜默失敗、沒人知道**——常見模式：deadlock 卡死、`exit 0` 但輸出全空、執行環境中途中斷。若在意，在一個**常駐的、獨立於 loop 的**輕量 session 掛心跳：每 N 分鐘檢查「loop 還活著嗎」（輸出有沒有增長 / log 有沒有更新 / state 時間戳），偵測到停滯就發 🔴。**關鍵：watchdog 要獨立**（loop 自己死了就發不出自己的告警）。
 
+## 已安裝的通知服務
+
+若執行主機已有登記來源的通知服務，優先設定 `NOTIFY_COMMAND` 為其**絕對可執行路徑**，讓來源、project、目的地、待送匣與回執由該服務管理。`notify.sh` 會直接轉交原參數並保留退出碼；失敗時不再發第二個管道。
+
+使用 kc_notify v2 時，在任務設定中明確提供已登記的 `KC_NOTIFY_SOURCE`／`KC_NOTIFY_PROJECT`；agent 來源另給 `KC_NOTIFY_AGENT`。依任務選個人或公司 project，pre-flight 與後續回報使用同一設定。不要從 repo 名稱、目前目錄或預設 Telegram 憑證猜測分類。只有取得送達回執的同步介面可通過 pre-flight，單純 `queued` 不能當作測通。
+
+公開範本只描述環境變數契約；source/project 的實值與私人設定留在執行環境。
+
 ## `notify.sh` 用法
 
 ```bash
