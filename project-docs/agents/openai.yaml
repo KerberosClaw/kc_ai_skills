@@ -1,0 +1,4 @@
+interface:
+  display_name: "Project Docs"
+  short_description: "Audit and maintain linked project documentation"
+  default_prompt: "Use $project-docs to inspect this project and update its technical documentation from code and evidence."

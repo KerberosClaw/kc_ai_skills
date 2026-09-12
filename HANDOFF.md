@@ -3,7 +3,9 @@
 > 給接手繼續整理這個 repo 的 agent。讀這份就知道現況＋剩餘工項＋紅線。
 > 建立：2026-07-15；更新：2026-07-30（frontmatter 一致性 + 第二輪 pattern lint 已收）。
 
-## 現況
+## 2026-07-30 歷史快照
+
+以下 24 顆與全數一致性是當日盤點，不是現行數量；新增 skill 後請以各根目錄 SKILL.md 與雙語 README 索引核對。
 
 - 24 顆 skill、public、MIT、雙語 README（`README.md` + `README_zh.md`）。
 - **Frontmatter 已全數一致**（原 handoff 的三個待辦已於 #23 收）：24 顆全有 `version` / `status` / `triggers`；triggers 全為 YAML block list；status↔version 語意對齊（`stable` = 1.0+、`mvp` = 0.x）。
@@ -27,3 +29,7 @@
 - 🔴 **PR-driven**：branch + PR、不直接 push main（此 repo commit 尾帶 `(#N)`）。
 - 🔴 **雙語同步**：改 `README.md` 必同步 `README_zh.md`。
 - 改任何 SKILL.md 內容 → bump version（doc 澄清走 patch、新增段落走 minor、breaking 走 major）。
+
+## 2026-09-12 文件工作流程更新
+
+新增 [project-docs](project-docs/SKILL.md)：盤點既有專案並補齊有證據的 Markdown／Mermaid 文件，沿用組織模板、增量維護。參考目錄與驗證方法保留在 skill 的 references/；搬移／安裝需整個資料夾。[workflow-router](workflow-router/SKILL.md) 0.2.0 已加入現況文件分流，已核准文件工作可直接續跑。新 feature 設計與公開發布整備仍分別走 spec／prep-repo。

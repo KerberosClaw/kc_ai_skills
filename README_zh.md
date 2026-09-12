@@ -19,6 +19,7 @@
 | Skill | 它到底幹嘛 |
 |-------|----------|
 | [workflow-router](workflow-router/) | 給最容易混的中間地帶當入口：PRD、SD、FR、AC、ADR、拆票、實作、release、無人值守。它最多問一個澄清問題，告訴你該用哪顆 specialist skill，用白話說原因，然後交棒。它刻意不自己寫 PRD/spec/ADR |
+| [project-docs](project-docs/) | 把既有專案補成下一位接得下去的技術文件：掃描全專案、對照證據與缺口，更新有交叉連結的 Markdown、Mermaid 圖、介面／資料／維運與發布交接。沿用公司模板，未知就明說，增量更新而不順手改產品程式 |
 
 ### 生成與創作
 
@@ -46,7 +47,7 @@
 | [spec](spec/) | Spec-driven 開發流程 — 從模糊想法到驗收結案。一個指令，自動判斷專案狀態，引導你走完：需求釐清 → 審查 → 實作 → 驗收 → 結案報告。因為「先寫再說」就是你之後要全部重寫的原因 |
 | [goal-engineer](goal-engineer/) | 給那種「想丟給 agent 自己磨一整晚、又不想全程盯著」的場景。它用訪談式問答幫你把一條目標驅動的 evaluator-optimizer loop（generate-and-select 型:產候選 → 依 rubric 評 → 依原因碼迭代 → 你挑最終那個）釘死，吐一份新 session 能 blind 執行的 dispatch 文件，你只要看著紅黃綠燈通知滾進來就好。它是**寫規格的上游、不是引擎** — dispatch 丟給 Claude Code 內建的 `/goal`、headless `claude -p`、或任何無人值守 agent 去跑。不是 `/goal` 本身、不是 build-to-spec 的 PRD 作者（那是 prd-create）、也不是 cron 定時器。唯一窄例外：build spec **已經凍結**（核可的 ADR / 鎖定的設計 / 可機器檢核的 AC）、只差無人值守執行的包裝 → 它直接出一份 lean build dispatch，不會逼你為一個已經拍板的決策回頭寫整份 PRD。通知通道隨你換（Telegram/Discord/Slack/iMessage），而且內建一道「ship 前要不要先對抗審查?」的閘 — 因為我們自己每次都忘記問 |
 
-> 不確定用哪顆時，先用 `workflow-router`。最短判斷法：產品需求走 `prd-create`；repo 內的 SD / 工程 AC / 實作走 `spec`；單一重要技術決策走 `adr`；核可 PRD 拆票走 `prd-breakdown`；凍結目標要無人值守跑走 `goal-engineer`。
+> 不確定用哪顆時，先用 `workflow-router`。最短判斷法：產品需求走 `prd-create`；repo 內的 SD / 工程 AC / 實作走 `spec`；現有專案技術文件走 `project-docs`；單一重要技術決策走 `adr`；核可 PRD 拆票走 `prd-breakdown`；凍結目標要另包無人值守 dispatch 走 `goal-engineer`；已核准的文件工作直接續跑 `project-docs`，不用重問需求。
 
 ### 工程紀律
 
@@ -99,7 +100,7 @@ cp -r kc_ai_skills/searxng ~/.openclaw/workspace/skills/
 
 > **命名提示：** 複製時可自行加上前綴重新命名（如 `my_prep-repo`）。不會壞掉的。大概。
 
-> **其他客戶端：** 每個 SKILL.md 都是獨立的 markdown 指令文件。直接複製貼上到任何 AI 對話、system prompt 或自訂指令欄位就能用。不用裝 SDK，不用 API key — 就是複製貼上。
+> **其他客戶端：** 從 SKILL.md 開始，並讓模型能按需讀取它引用的檔案。skill 資料夾可能還包含 references、scripts 或 assets，只貼 SKILL.md 會漏掉必要指引或工具；客戶端也需要支援該 skill 用到的能力。
 
 ## Skill 結構
 

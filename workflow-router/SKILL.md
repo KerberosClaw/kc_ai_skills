@@ -1,7 +1,7 @@
 ---
 name: workflow-router
-description: "Use when the user is unsure which kc_ai_skills workflow skill to use, or describes work involving PRD, SD/software design, FR, AC/acceptance criteria, ADR, tickets, implementation, debugging, release checks, or unattended agent execution. Triage the request with at most one clarifying question when needed, explain the route in plain language, then hand off to the right specialist skill. This is an entry router only: it does not write PRDs, specs, ADRs, tickets, or dispatches itself."
-version: 0.1.0
+description: "Use when the user is unsure which kc_ai_skills workflow skill to use, or describes work involving PRD, SD/software design, FR, AC/acceptance criteria, ADR, tickets, implementation, debugging, existing-project documentation, release checks, or unattended agent execution. Triage the request with at most one clarifying question when needed, explain the route in plain language, then hand off to the right specialist skill. This is an entry router only: it does not write PRDs, specs, ADRs, tickets, or dispatches itself."
+version: 0.2.0
 status: mvp
 triggers:
   - "/workflow-router"
@@ -10,6 +10,7 @@ triggers:
   - "要用哪個 skill"
   - "PRD SD FR AC ADR"
   - "流程怎麼走"
+  - "補齊專案技術文件"
   - "幫我判斷用哪顆"
 ---
 
@@ -30,6 +31,7 @@ First decide what the user is holding right now:
 | Software design / SD, engineering AC, implementation plan, tasks, code verification | `spec` | Turn requirements into repo-local design, plan, tasks, implementation, check, report |
 | One hard-to-reverse technical decision and the reason why | `adr` | Record the decision if it passes the ADR gates |
 | Frozen spec/goal with machine-checkable AC that should run unattended | `goal-engineer` | Package a blind-runnable agent dispatch; do not invent requirements |
+| Existing codebase needs a documentation audit, missing technical docs, or an updated handoff | `project-docs` | Map the actual project and maintain evidence-backed Markdown docs with Mermaid diagrams |
 | Finished repo/docs before public release or GitHub push | `prep-repo` | Release-readiness and leak/link/docs hygiene |
 
 ## Step 2: Ask at most one clarifying question
@@ -46,6 +48,10 @@ If ambiguous, ask exactly one multiple-choice-style question in prose, with your
 ```
 
 Common ambiguity rules:
+
+- Existing system + document what it does / fill documentation gaps → `project-docs`; new behavior or engineering design → `spec`.
+- Internal documentation before eventual OSS → `project-docs` first; public-release readiness and sanitization → `prep-repo` when that stage is requested. Private documentation does not imply publishing approval.
+- Already approved documentation work + "execute unattended" → continue `project-docs`; do not reopen requirements or create a dispatch unless requested.
 
 - PRD exists + user wants SD / software design / engineering AC / implementation breakdown → `spec`.
 - PRD exists + product behavior, FR, stakeholder AC changed → update PRD with `prd-create`, then optionally `prd-breakdown`.
@@ -81,5 +87,5 @@ If the environment supports invoking the target skill directly, proceed with tha
 1. **Route, don't do.** 本 skill 是入口，不是下游工作者。
 2. **One question max.** 不清楚才問，而且只問最能分流的一題。
 3. **PRD / SD / FR / AC 用白話翻譯。** FR = 功能需求；AC = 驗收條件；SD = 軟體/系統設計。
-4. **產品層走 PRD，工程層走 spec，決策紀錄走 ADR，無人值守走 goal-engineer。**
+4. **產品層走 PRD，新工程設計走 spec，現有專案文件走 project-docs，決策紀錄走 ADR；需要包無人值守 dispatch 才走 goal-engineer。**
 5. **Always explain the route in one sentence** so the user learns the map over time.

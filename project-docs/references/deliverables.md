@@ -1,0 +1,45 @@
+# 文件適用性目錄
+
+回 [project-docs](../SKILL.md)。在決定要補哪些資訊時讀本頁；每列是讀者問題，不是必須新增的檔名。組織／契約要求優先，同一頁可以回答多列。
+
+| 資訊類型 | 何時適用 | 最少回答／查證來源 |
+|---|---|---|
+| 概觀、術語、文件索引 | 所有需交接專案 | 系統做什麼、不做什麼、誰讀哪頁、版本與入口；README／現行設計 |
+| 需求與驗收追溯 | 有使用者／交付行為 | 已批准需求、實作、測試如何對應；沒有批准原件時只列觀察行為與待確認 |
+| 架構、外部與信任邊界 | 多元件或有外部依賴 | 元件責任、呼叫／資料方向、執行與部署拓樸；modules／entrypoints／deploy config |
+| 流程、時序、狀態圖 | 非同步、跨程序、多步驟工作 | 觸發、完成、超時、重試、取消、並行；handlers／transactions／故障測試 |
+| 資料字典、ER、演進 | DB 或持久化檔案 | schema、key／index／FK、JSON／file formats、migration／回填、保留與刪除；沒有關聯 DB 可只寫檔案模型 |
+| 介面契約 | API、CLI、SDK、事件、hook、檔案交換 | 輸入輸出、預設、錯誤、副作用、身份、冪等與版本；parser／routes／schema／adapter |
+| 環境、設定、相容性 | 需安裝或執行 | 支援平台／runtime、依賴版本、設定來源及優先序、憑證取得與輪替入口；lockfile／launcher |
+| 品質屬性與容量 | 有品質目標或操作限制 | 已訂目標、量測方式、限制；實測延遲不是 SLA、沒有指標就列待決 |
+| 快速開始、日常任務 | 有操作使用者 | 最小成功路徑、預期結果、常見錯誤；以實際入口驗證，不執行正式副作用 |
+| 開發、建置、測試 | 有維護者 | 依賴、命令、fixtures、CI、擴充點；檢查可執行檔／測試路徑存在 |
+| 驗證／交接證據 | 所有補文件任務 | 版本、環境、命令、結果、測試層級、未驗項目；記錄不能冒充簽核 |
+| 維運、監控、故障恢復 | 服務、排程或重要持久資料 | health／告警、值班入口、備份還原、停啟、解除安裝；未演練的恢復標待驗 |
+| 安全與隱私設計 | 憑證、外部輸入或個人／機敏資料 | 身份／授權、資料去向、工具界線、留存、撤回與剩餘風險；不把技術檢查冒充全面合規 |
+| 升級、遷移與退版 | 已有使用者與資料 | breaking change、版本前置條件、步驟、前後核對、不能回退的資料；migration／相容測試 |
+| 發布說明與交付清單 | 某版本將交付 | 來源 revision、產物／雜湊、範圍、已知問題、安裝升級與驗收狀態；文件化不等於批准發布 |
+| 依賴、授權、來源 | 使用第三方元件 | lockfile／授權／來源版本；需要時附正式 SBOM／provenance，不能把 lockfile 改名當完整 SBOM |
+| 維護／支援／安全回報 | 團隊交接或 OSS | 維護責任、回報入口、支援版本／淘汰流程；從組織現有紀錄查，不能自己承諾 SLA 或杜撰聯絡人 |
+| 技術債／未知事項 | 發現不一致或能力缺口 | 影響、來源、是否阻擋文件／交付、可執行下一步；分開追程式修復 |
+| 領域特殊文件 | 由專案／契約觸發 | 前端可及性、SDK 版本矩陣、資料 lineage、ML 評估／資料授權、硬體接線、法規文件；確認適用性，別只因有類似字眼就整套套用 |
+
+## 某次 release 要凍結什麼
+
+選擇與該交付物相關的資訊：來源 revision／產物識別、變更與限制、相容性、安裝／升級／退回、實際測試與未驗項目、第三方來源／授權、已有批准紀錄、維護入口。這些可在一份 release handoff 中連回持續維護的技術文件，不複製整套手冊。
+
+沒有 release 時，不製造空白 release notes、簽章、認證或虛構批准者。若只有 source 交付就如實說明；有正式 artifact 才記實際 artifact 雜湊。
+
+## 方法來源
+
+此目錄綜合下列第一手框架作裁剪參考，不宣稱等同標準符合性清單，亦不複製完整模板或付費標準全文：
+
+- [ISO/IEC/IEEE 15289:2019 公開摘要](https://www.iso.org/standard/74909.html)：生命週期文件資訊可組合／裁剪，這裡只引用公開摘要。
+- [arc42 overview](https://arc42.org/overview/)：架構、限制、執行、部署與風險的檢視面向。
+- [Diátaxis](https://diataxis.fr/start-here/)：使用任務、教學、參考與原理解說的讀者需求。
+- [Google SRE launch checklist](https://sre.google/sre-book/launch-checklist/)：上線／維運與恢復問題，按專案規模裁剪。
+- [NIST SSDF 1.1](https://csrc.nist.gov/pubs/sp/800/218/final)：安全準則、證據、元件來源與安全設定資訊；不推定適用法規或認證。
+- [SLSA v1.2 provenance](https://slsa.dev/spec/v1.2/provenance)：產物與來源／建置的追溯。
+- [GitHub community profiles](https://docs.github.com/en/communities/setting-up-your-project-for-healthy-contributions/about-community-profiles-for-public-repositories)：OSS 使用者／貢獻者入口。
+
+使用特定標準版本或政策作合規聲明前，重新核對官方現行要求與適用範圍；上述方法來源本身不構成合規證明。

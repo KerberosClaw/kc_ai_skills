@@ -19,6 +19,7 @@ Grouped by what you're trying to get done — every skill is still a self-contai
 | Skill | What It Actually Does |
 |-------|----------------------|
 | [workflow-router](workflow-router/) | The front door for the confusing middle: PRD, SD, FR, AC, ADR, tickets, implementation, release, or unattended runs. It asks at most one clarifying question, tells you which specialist skill to use, explains why in plain language, then hands off. It deliberately does not write the PRD/spec/ADR itself |
+| [project-docs](project-docs/) | Turn an existing codebase into documentation someone can actually use: project-wide evidence and gap mapping, linked Markdown pages, Mermaid diagrams, contracts, data models, operations and release handoff. Reuses existing templates, records unknowns, and updates incrementally without changing product code |
 
 ### Generate & create
 
@@ -46,7 +47,7 @@ Grouped by what you're trying to get done — every skill is still a self-contai
 | [spec](spec/) | Spec-driven development workflow — from fuzzy idea to verified deliverable. One command, auto-detects project state, walks you through: requirements → review → implement → verify → report. Because "just start coding" is how you end up rewriting everything |
 | [goal-engineer](goal-engineer/) | For when you want an agent to grind on something overnight without you hovering over it. Interview-style, it pins down a goal-driven evaluator-optimizer loop of the generate-and-select kind (generate candidates -> grade against a rubric -> iterate by reason-code -> you pick the winner), then emits a self-contained dispatch doc a fresh session runs blind while you just watch the green/yellow/red pings roll in. It is the upstream *spec author*, not the engine -- hand the dispatch to Claude Code's built-in `/goal`, a headless `claude -p`, or any unattended agent. NOT `/goal` itself, NOT a build-to-spec PRD writer (that's prd-create), NOT a cron timer. One narrow exception: if your build spec is *already frozen* (approved ADR, locked design, machine-checkable AC) and all you're missing is the unattended-run wrapper, it packages a lean build dispatch instead of making you write a full PRD for a decision you already made. Channel-agnostic notifications (Telegram/Discord/Slack/iMessage), and it bakes in a "want an adversarial review before we ship?" gate -- because we got tired of remembering to ask ourselves |
 
-> Not sure which one fits? Start with `workflow-router`. The shortest rule of thumb: product requirements go to `prd-create`; repo-local software design / engineering AC / implementation goes to `spec`; one durable technical decision goes to `adr`; approved PRD tickets go to `prd-breakdown`; frozen unattended execution goes to `goal-engineer`.
+> Not sure which one fits? Start with `workflow-router`. The shortest rule of thumb: product requirements go to `prd-create`; repo-local software design / engineering AC / implementation goes to `spec`; existing-project documentation goes to `project-docs`; one durable technical decision goes to `adr`; approved PRD tickets go to `prd-breakdown`; a new unattended dispatch for frozen work goes to `goal-engineer`. Already approved documentation work continues with `project-docs` without another requirements interview.
 
 ### Engineering discipline
 
@@ -99,7 +100,7 @@ cp -r kc_ai_skills/searxng ~/.openclaw/workspace/skills/
 
 > **Naming tip:** Feel free to rename the skill folder with your own prefix when copying (e.g. `my_prep-repo`). It won't break anything. Probably.
 
-> **Other clients:** Each SKILL.md is a self-contained markdown instruction file. You can paste its content into any AI chat, system prompt, or custom instruction field. No SDK required, no API key needed — just copy and paste.
+> **Other clients:** Start with SKILL.md and make its referenced files available as needed. A skill folder may also contain references, scripts or assets; copying only SKILL.md can omit required guidance or tools. The client must support the capabilities needed by the selected skill.
 
 ## Skill Structure
 
