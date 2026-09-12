@@ -1,7 +1,7 @@
 ---
 name: prep-repo
 description: "Prepare an existing project for GitHub or public release with scope-appropriate checks for sensitive data, documentation, installation, tests and release artifacts. Separate release blockers from polish, preserve existing authorization, and verify the published result only when publishing is requested. Not for designing new features or publishing private operational material."
-version: 2.3.0
+version: 2.3.1
 status: stable
 triggers:
   - "/prep-repo"
@@ -12,7 +12,9 @@ triggers:
 
 # Prep Repo
 
-先判斷這次要交付什麼，再檢查它能否安全、正確地公開。真正的機敏外洩、不可執行的安裝指引、錯誤的功能宣稱需要修；格式偏好不應讓已可交付的工作無限延長。
+> **English summary:** Prepare releases with scope-appropriate checks. Technical documents default to Traditional Chinese with an English summary for GitHub; explicit language requirements are acceptance criteria, while separate bilingual READMEs retain their languages.
+
+先判斷這次要交付什麼，再檢查它能否安全、正確地公開。真正的機敏外洩、不可執行的安裝指引、錯誤的功能宣稱需要修；未約定的格式偏好不應讓已可交付的工作無限延長；使用者明確指定的語系／摘要格式屬於驗收要求，不能降級成可略過的修飾。
 
 ## 範圍與分工
 
@@ -37,7 +39,7 @@ triggers:
 | 檢查面 | 要確認的事 | 不要機械套用的要求 |
 | --- | --- | --- |
 | README | 用途、成熟度、必要依賴、可重現的 quick start、限制與文件入口符合現況；重要目錄樹與實際檔案相符 | 標題可以是專案名稱；趣味標題、固定位置 badge 不是必要條件 |
-| 語言與導覽 | 依使用者／repo 語言約定；已有雙語文件要同步內容與互連。本 repo 慣例是 `README.md`／`README_zh.md`，連結用 `正體中文`／`English` | 不為小幅連結修正強制翻譯整庫；其他 repo 的語言、檔名與 summary 慣例優先 |
+| 語言與導覽 | 技術文件預設正體中文（臺灣用語）；發布到 GitHub 的文件開頭放簡短英文摘要，正文用正體中文。私庫去敏匯出也沿用此規則。雙語 README 維持英文版／中文版內容同步與互連，本 repo 使用 `README.md`／`README_zh.md` 與 `正體中文`／`English` 連結 | 獨立英文 README、程式碼、指令、API／schema 識別字與授權原文保留原樣。使用者／組織明確指定其他語系才覆蓋預設；現有文件是英文不算例外。核對本次交付，不為小修翻譯未授權的歷史檔案 |
 | 安全說明 | 有外部服務、憑證或私人資料的程式，要說清楚資料去向、保存方式與回報管道；可連到既有 SECURITY／privacy 文件 | 靜態首頁不需要虛構 runtime 安全章節；不得宣稱完美去敏 |
 | 授權與追蹤檔 | 檢查 LICENSE、依賴／素材授權、實際 tracked／staged／打包內容；缺授權選擇不可擅自選 MIT。ignore 規則涵蓋此專案產物與私人 runtime | `.gitignore` 不會移除已 tracked 檔案，也不能取代掃描 |
 | 結構與 metadata | 保留有用途的入口／設定；檢查 manifest、skill frontmatter、references 和實際被使用的 scripts。若 lock 檔影響語言統計，可用 `.gitattributes` 標記 generated | 根目錄 AGENTS、CONTRIBUTING、SECURITY、CHANGELOG 都可能合理；純 Mermaid 不需建立空 images 目錄 |
@@ -48,6 +50,7 @@ triggers:
 
 ## 文件與圖表要實際驗
 
+- 逐頁確認本次交付的正文語系及英文摘要符合約定，摘要準確反映正文；不可只把標題翻成中文就視為完成。翻譯後重驗 anchors，程式範例與識別字不可因翻譯改變。
 - 驗證 Markdown 的相對路徑、fragment anchors、大小寫、圖片／附件與重要外連。尊重合法的跨 repo／Wiki 導覽；依發布位置判斷是否能解析，不能只檢查本機「檔案存在」。外連抽查即可，遇認證／網路錯誤要區分未驗證與真壞鏈。
 - 用 parser 或實際 renderer 判斷效果。`---` 可是 frontmatter 或分隔線，`===` 可以是 Setext 標題；不能單憑出現就刪除。檢查 fence 是否正確閉合、範例是否誤吞正文。
 - 有 Mermaid 等圖表時，用可用的相容 renderer 實際渲染受影響圖表，檢查語法及可讀性；例如本機 `mmdc`，或已配置的預覽／CI。不要為了「通過」默默刪掉圖。

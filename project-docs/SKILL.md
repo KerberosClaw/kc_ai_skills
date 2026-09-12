@@ -1,7 +1,7 @@
 ---
 name: project-docs
 description: "Use when an existing software project needs a documentation audit, missing technical documents, or an updated handoff based on its actual code and operations. Scan the project, assess applicable deliverables, and maintain linked Markdown documentation with Mermaid diagrams. Not for designing a new feature, changing product code, or publishing a release."
-version: 0.1.0
+version: 0.1.1
 status: mvp
 triggers:
   - "/project-docs"
@@ -13,6 +13,8 @@ triggers:
 ---
 
 # project-docs — 把現有專案整理成接得下去的文件
+
+> **English summary:** Audit existing code and maintain linked Markdown/Mermaid documentation. Use Traditional Chinese prose by default and add an English summary for GitHub publication, while preserving explicitly agreed bilingual README editions.
 
 從程式、設定、測試與既有決策查證現況，補齊下一位維護者需要的資訊。文件完整度看「關鍵問題能否找到有證據的答案」，不看產出幾份檔案。
 
@@ -53,6 +55,8 @@ triggers:
 
 **產出以 Markdown 為準；架構、流程、時序、狀態、ER 等圖表以 `mermaid` fenced code blocks 呈現，對照表用 Markdown table。** 圖是可維護的原始碼；渲染圖放既有產物位置或暫存，不拿截圖取代 Mermaid 來源。若使用者明確指定其他格式，先遵循該要求並保留可追溯來源。
 
+**技術文件預設使用正體中文（臺灣用語）；要發布到 GitHub 的文件，開頭放簡短英文摘要，正文用正體中文。** 私有文件也沿用中文正文，不因去敏／OSS 匯出而改成全英文。已約定的雙語 README 保留獨立英文版與中文版，內容同步並互連；英文版不套中文正文規則。程式碼、指令、API／schema 識別字與授權原文保留原樣。使用者或組織明確指定其他語系時才依該要求；既有檔案碰巧是英文不構成例外。這是本 skill 的預設交付慣例，驗收時核對本次產出，不藉此翻譯未授權的歷史檔案。
+
 依實作與風險深度補內容，而非套固定長度。特別注意：
 
 - 跨程序／非同步：觸發、完成邊界、持久狀態、重試／去重、取消、競態和未知結果。區分寫入成功、外部送達、使用者驗收與備份成功。
@@ -65,7 +69,7 @@ triggers:
 
 ## 5. 驗證並交接
 
-讀 [驗證方法](references/verification.md)，按變更的風險執行。最少核對：連結／anchors 與入口可達性、Mermaid 真正渲染、關鍵命令／schema 對照、歷史與現況一致、缺口與證據範圍。測試結果要有命令、環境、時間、來源版本與實際結果；未執行或 skip 不填通過。
+讀 [驗證方法](references/verification.md)，按變更的風險執行。最少核對：正文語系與 GitHub 文件的英文摘要、連結／anchors 與入口可達性、Mermaid 真正渲染、關鍵命令／schema 對照、歷史與現況一致、缺口與證據範圍。測試結果要有命令、環境、時間、來源版本與實際結果；未執行或 skip 不填通過。
 
 發現程式／CI 問題時記獨立工程待辦、影響與證據；除非使用者同時授權，文件工作不修程式或改服務。舊 CI 失敗與文件檢查成功分開回報。只改低風險文字不用重跑所有昂貴測試；新的契約問題或失敗才擴大驗證。
 

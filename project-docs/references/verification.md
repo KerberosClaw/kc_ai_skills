@@ -1,8 +1,12 @@
 # 文件驗證與交接
 
+> **English summary:** Verify documentation language, navigation, rendered diagrams, and evidence against the actual implementation. Scale validation to the change and distinguish offline checks from live acceptance.
+
 回 [project-docs](../SKILL.md)。文件初稿完成後用本頁挑驗證方式；按實際風險，不用把每個專案變成全量測試工程。
 
 ## 導覽與格式
+
+- 依 [skill 的語系規則](../SKILL.md#4-寫成單一現況來源) 逐頁核對本次正文與 GitHub 文件的英文摘要；雙語 README 核對內容一致。中文標題搭配全英文正文不算完成。翻譯不得改變指令、API／schema 識別字或授權原文。
 
 - 檢查新增／修改的相對連結、章節 anchors、圖片來源、reference-style links。標題改名／檔案搬動要追入站引用；用 repo 真正的 Markdown/wiki 解析方式。git ls-files 有非 ASCII 路徑時用 `-z`，不能把 Git 顯示用的引號／八進位 escape 當檔名。
 - 從 README／AGENTS／既有索引走到現行頁；有歷史頁也要能找到現行替代文件。連結圖可達只證明可找到，不代表分類或敘述易懂。
