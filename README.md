@@ -19,7 +19,7 @@ Grouped by what you're trying to get done — every skill is still a self-contai
 | Skill | What It Actually Does |
 |-------|----------------------|
 | [workflow-router](workflow-router/) | The front door for the confusing middle: PRD, SD, FR, AC, ADR, tickets, implementation, release, or unattended runs. It asks at most one clarifying question, tells you which specialist skill to use, explains why in plain language, then hands off. It deliberately does not write the PRD/spec/ADR itself |
-| [project-docs](project-docs/) | Turn an existing codebase into documentation someone can actually use: project-wide evidence and gap mapping, linked Markdown pages, Mermaid diagrams, contracts, data models, operations and release handoff. Reuses existing templates, records unknowns, and updates incrementally without changing product code |
+| [project-docs](project-docs/) | Turn an existing codebase into documentation someone can actually use: project-wide evidence and gap mapping, linked Markdown pages, Mermaid diagrams, contracts, data models, operations and release handoff. Reuses templates and updates incrementally without changing product code. Defaults to Traditional Chinese technical prose with English summaries for GitHub |
 
 ### Generate & create
 
@@ -58,7 +58,7 @@ Grouped by what you're trying to get done — every skill is still a self-contai
 | [grill](grill/) | "Let's discuss first," institutionalized. You drop a fuzzy idea, it refuses to touch code, asks you one question at a time — each with a suggested answer — until shared understanding is confirmed. Its sharpest rule: anything answerable by grep may not be asked. It interrogates the filesystem before it interrogates you. When vocabulary drifts, it also grows a CONTEXT.md glossary for the repo |
 | [diagnose](diagnose/) | Build the lie detector before the interrogation. Until there's one command that reproduces the symptom, no root-cause theory is allowed; and even then you list 3-5 ranked hypotheses with falsifiable predictions before testing the first one. Cures the age-old habit — in AIs and humans — of reading code for two minutes and declaring "found it" |
 | [adr](adr/) | Records architecture decisions, but its first job is talking you out of it. Three gates (hard to reverse / confusing without context / real trade-off) must all pass before it writes anything, and the default format is a title plus three sentences — an ADR's value is in recording *why*, not in filling out a template. It watches for two things especially: deliberate departures from the obvious path, and explicit no's |
-| [prep-repo](prep-repo/) | Release checks matched to what you actually ship: secrets, usable setup, docs and rendered diagrams, relevant tests and CI. Separates blockers from polish and checks the reviewed files through commit, push and publication — without rewriting history over an ordinary byline |
+| [prep-repo](prep-repo/) | Release checks matched to what you actually ship: secrets, usable setup, docs and rendered diagrams, relevant tests and CI. Separates blockers from polish and checks the reviewed files through commit, push and publication — without rewriting history over an ordinary byline. Checks the agreed language format, including English summaries with Traditional Chinese technical prose |
 
 ### Research & security
 
