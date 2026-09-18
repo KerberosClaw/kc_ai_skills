@@ -1,7 +1,7 @@
 ---
 name: project-docs
-description: "Use when an existing software project needs a documentation audit, missing technical documents, or an updated handoff based on its actual code and operations. Scan the project, assess applicable deliverables, and maintain linked Markdown documentation with Mermaid diagrams. Not for designing a new feature, changing product code, or publishing a release."
-version: 0.1.1
+description: "Use when an existing software project needs a documentation audit, missing technical documents, an end-user or administrator manual, or an updated handoff based on its actual code and operations. Scan the project, assess applicable deliverables, and maintain linked Markdown documentation with Mermaid diagrams. Not for designing a new feature, changing product code, or publishing a release."
+version: 0.2.0
 status: mvp
 triggers:
   - "/project-docs"
@@ -10,13 +10,26 @@ triggers:
   - "更新技術文件"
   - "文件化現有系統"
   - "文件交接"
+  - "寫使用者手冊"
+  - "使用者手冊"
+  - "操作手冊"
+  - "管理者手冊"
 ---
 
 # project-docs — 把現有專案整理成接得下去的文件
 
 > **English summary:** Audit existing code and maintain linked Markdown/Mermaid documentation. Use Traditional Chinese prose by default and add an English summary for GitHub publication, while preserving explicitly agreed bilingual README editions.
 
-從程式、設定、測試與既有決策查證現況，補齊下一位維護者需要的資訊。文件完整度看「關鍵問題能否找到有證據的答案」，不看產出幾份檔案。
+從程式、設定、測試與既有決策查證現況，補齊讀者需要的資訊。文件完整度看「關鍵問題能否找到有證據的答案」，不看產出幾份檔案。
+
+**兩種讀者，兩套寫法，別混在一份裡。**
+
+| 讀者 | 要回答什麼 | 交付物 |
+|---|---|---|
+| 下一位維護者 | 架構、契約、資料模型、部署、如何改 | 技術文件，圖用 Mermaid |
+| 終端使用者與管理者 | 要先具備什麼、怎麼操作、卡住怎麼辦 | 操作手冊，圖用實機截圖 |
+
+[文件適用性目錄](references/deliverables.md)「快速開始、日常任務」那列就是後者，適用條件是「有操作使用者」。判斷適用性時不要因為預設在寫技術文件就跳過它。
 
 ## 1. 確認範圍，承接已有授權
 
@@ -51,9 +64,28 @@ triggers:
 
 使用既有 docs／wiki／組織模板，保留正式章節、術語及權責；不強制把產品 repo 改成另一種知識庫型態。組織模板要求的欄位即使未知也保留並說明缺口。技術文件可引用需求原件，不取代 PRD／簽核紀錄。
 
+## 3.1 承接實測素材（有的話）
+
+寫操作手冊最缺的是「使用者實際會卡在哪」，那從程式碼讀不出來。專案若剛跑過一輪實機 QA，素材可以直接接：
+
+| 素材 | 接到手冊哪一節 |
+|---|---|
+| 系統隱含要求但沒寫出來的前提 | 「使用前提」 |
+| 行為正確但使用者看不懂的卡關點 | 「常見問題」 |
+| 成功路徑的逐步截圖 | 操作步驟 |
+| 缺陷清單 | **不進手冊**，那是工程待辦 |
+
+🔴 **接素材有一條紀律：QA 挖到的是「系統實際這樣做」，不等於「本來就該這樣」。**
+
+標成待判定、還沒有人拍板的項目，**不可以直接寫進手冊當成正式規格**。寫進去就等於替它蓋章，之後沒人會再質疑它合不合理。沒拍板的先留在待決清單，或在手冊裡明確標成「目前行為，尚待確認」。
+
+沒有實測素材照樣寫得出手冊，只是每條使用前提都要自己回去查證，並標明證據狀態。
+
 ## 4. 寫成單一現況來源
 
 **產出以 Markdown 為準；架構、流程、時序、狀態、ER 等圖表以 `mermaid` fenced code blocks 呈現，對照表用 Markdown table。** 圖是可維護的原始碼；渲染圖放既有產物位置或暫存，不拿截圖取代 Mermaid 來源。若使用者明確指定其他格式，先遵循該要求並保留可追溯來源。
+
+⚠️ **上句「不拿截圖取代 Mermaid 來源」只管架構、流程、時序、狀態、ER 這類結構圖** —— 它們的正本必須是可維護的原始碼。**操作手冊的實機截圖不在此限**：使用者要對著畫面找按鈕，Mermaid 畫不出那個。手冊截圖要標註它證明了什麼、取自哪個版本與環境；版本改了畫面就過期，重截並更新標註，不要留著舊圖。
 
 **技術文件預設使用正體中文（臺灣用語）；要發布到 GitHub 的文件，開頭放簡短英文摘要，正文用正體中文。** 私有文件也沿用中文正文，不因去敏／OSS 匯出而改成全英文。已約定的雙語 README 保留獨立英文版與中文版，內容同步並互連；英文版不套中文正文規則。程式碼、指令、API／schema 識別字與授權原文保留原樣。使用者或組織明確指定其他語系時才依該要求；既有檔案碰巧是英文不構成例外。這是本 skill 的預設交付慣例，驗收時核對本次產出，不藉此翻譯未授權的歷史檔案。
 
@@ -80,3 +112,5 @@ triggers:
 需要新功能設計走 `spec`，需求不明確才走 `grill`；要查 bug 根因走 `diagnose`；明確要求公開發布整備可接 `prep-repo`。可用 `workflow-router` 選擇，但缺少其他 skill 也能完成本文的文件任務，不以安裝它們作前置條件。
 
 本 skill 不自行 commit／push／部署／發布，也不決定敏感資料公開；依該次使用者的既有授權和 repo 流程執行。不要把只補文件變成重構、稽核認證或一整套新專案。
+
+**本 skill 不執行測試、不驅動瀏覽器、不做實機驗證。** 寫操作手冊時若發現「使用者到底會卡在哪」只有實跑才知道，先跑一輪實機 QA 再回來接素材（見 §3.1），不要憑程式碼想像使用者的體驗。
