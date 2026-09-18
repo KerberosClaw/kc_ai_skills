@@ -19,7 +19,7 @@ Grouped by what you're trying to get done — every skill is still a self-contai
 | Skill | What It Actually Does |
 |-------|----------------------|
 | [workflow-router](workflow-router/) | The front door for the confusing middle: PRD, SD, FR, AC, ADR, tickets, implementation, release, or unattended runs. It asks at most one clarifying question, tells you which specialist skill to use, explains why in plain language, then hands off. It deliberately does not write the PRD/spec/ADR itself |
-| [project-docs](project-docs/) | Turn an existing codebase into documentation someone can actually use: project-wide evidence and gap mapping, linked Markdown pages, Mermaid diagrams, contracts, data models, operations and release handoff. Reuses templates and updates incrementally without changing product code. Defaults to Traditional Chinese technical prose with English summaries for GitHub |
+| [project-docs](project-docs/) | Turn an existing codebase into documentation someone can actually use — for two different readers. Maintainers get evidence-mapped technical docs: architecture, contracts, data models, operations, release handoff, diagrams as Mermaid source. End users and administrators get an operations manual instead: what you must have before you start, step-by-step screens, and what to do when you get stuck. Reuses templates and updates incrementally without changing product code. Defaults to Traditional Chinese technical prose with English summaries for GitHub |
 
 ### Generate & create
 
