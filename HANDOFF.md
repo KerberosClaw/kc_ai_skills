@@ -32,4 +32,9 @@
 
 ## 2026-09-12 文件工作流程更新
 
-新增 [project-docs](project-docs/SKILL.md)：盤點既有專案並補齊有證據的 Markdown／Mermaid 文件，沿用組織模板、增量維護。參考目錄與驗證方法保留在 skill 的 references/；搬移／安裝需整個資料夾。[workflow-router](workflow-router/SKILL.md) 0.2.0 已加入現況文件分流，已核准文件工作可直接續跑。新 feature 設計與公開發布整備仍分別走 spec／prep-repo。
+新增 [project-docs](https://github.com/KerberosClaw/kc_ai_plugins/tree/main/plugins/doc-qa/skills/project-docs)（2026-09-23 已移至 doc-qa plugin）：盤點既有專案並補齊有證據的 Markdown／Mermaid 文件，沿用組織模板、增量維護。參考目錄與驗證方法保留在 skill 的 references/；搬移／安裝需整個資料夾。[workflow-router](workflow-router/SKILL.md) 0.2.0 已加入現況文件分流，已核准文件工作可直接續跑。新 feature 設計與公開發布整備仍分別走 spec／prep-repo。
+
+## 2026-09-23 搬遷到 plugin
+
+`project-docs` 與 `md2pdf` 移到 [kc_ai_plugins](https://github.com/KerberosClaw/kc_ai_plugins) 的 `doc-qa` plugin（連同新公開的 `qa` 與 Playwright MCP），本 repo 刪除這兩個資料夾，正本以 kc_ai_plugins 為準。README 保留兩列並標 📦 指向新位置；workflow-router 0.2.1、prep-repo 2.3.2 補上 plugin 內的呼叫方式。之後若再把 skill 包成 plugin，照同樣做法：搬過去、這邊留 📦 列、README 的 Plugins 表加一列。
+
