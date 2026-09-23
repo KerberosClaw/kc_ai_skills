@@ -1,7 +1,7 @@
 ---
 name: workflow-router
 description: "Use when the user is unsure which kc_ai_skills workflow skill to use, or describes work involving PRD, SD/software design, FR, AC/acceptance criteria, ADR, tickets, implementation, debugging, existing-project documentation, release checks, or unattended agent execution. Triage the request with at most one clarifying question when needed, explain the route in plain language, then hand off to the right specialist skill. This is an entry router only: it does not write PRDs, specs, ADRs, tickets, or dispatches itself."
-version: 0.2.0
+version: 0.2.1
 status: mvp
 triggers:
   - "/workflow-router"
@@ -33,6 +33,8 @@ First decide what the user is holding right now:
 | Frozen spec/goal with machine-checkable AC that should run unattended | `goal-engineer` | Package a blind-runnable agent dispatch; do not invent requirements |
 | Existing codebase needs a documentation audit, missing technical docs, or an updated handoff | `project-docs` | Map the actual project and maintain evidence-backed Markdown docs with Mermaid diagrams |
 | Finished repo/docs before public release or GitHub push | `prep-repo` | Release-readiness and leak/link/docs hygiene |
+
+`project-docs` ships in the `doc-qa` plugin (https://github.com/KerberosClaw/kc_ai_plugins). When installed as a plugin it is invoked as `doc-qa:project-docs`; if it is not installed, point the user to that repo.
 
 ## Step 2: Ask at most one clarifying question
 

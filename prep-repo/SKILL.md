@@ -1,7 +1,7 @@
 ---
 name: prep-repo
 description: "Prepare an existing project for GitHub or public release with scope-appropriate checks for sensitive data, documentation, installation, tests and release artifacts. Separate release blockers from polish, preserve existing authorization, and verify the published result only when publishing is requested. Not for designing new features or publishing private operational material."
-version: 2.3.1
+version: 2.3.2
 status: stable
 triggers:
   - "/prep-repo"
@@ -21,7 +21,7 @@ triggers:
 - 從使用者要求、repo 規範與實際檔案確認目標、visibility、交付物及已有授權。已講清楚的決定不重問；資訊確實不足才釐清。
 - 先查 working tree、branch、remote、現行 README／安裝方式與發布流程，保留無關的 dirty changes。只修改此次授權的 repo／檔案；多 repo 任務各自核對範圍。
 - 私庫與公開匯出分開處理；不要因為準備 OSS 就把私庫改 public、複製整條 private history，或把私人操作手冊當公開文件。
-- 既有系統缺技術文件可用 `project-docs`；新功能設計走 `spec`，根因不明的 bug 走 `diagnose`。不要把簡單文件修正升級成整套工程流程。
+- 既有系統缺技術文件可用 `project-docs`（`doc-qa` plugin）；新功能設計走 `spec`，根因不明的 bug 走 `diagnose`。不要把簡單文件修正升級成整套工程流程。
 
 ## 先分類，再修正
 

@@ -10,6 +10,16 @@
 
 > **安全聲明：** 這些 skills 設計用於本地開發和受信任的內網環境。與外部服務互動的 skill（如 `searxng`）預設採用安全設定（TLS 驗證啟用），但不包含額外的認證機制。部署到敏感環境前請先檢閱各 skill 的設定。
 
+## Plugins
+
+部分 skill 已改成 **plugin** 發佈，放在 [kc_ai_plugins](https://github.com/KerberosClaw/kc_ai_plugins)。一個 plugin 把同一件工作用得到的 skill 和它們需要的 MCP 包在一起，Claude Code 和 Codex 都能一次裝好。
+
+| Plugin | 包含的 skill | 安裝 |
+|---|---|---|
+| [doc-qa](https://github.com/KerberosClaw/kc_ai_plugins/tree/main/plugins/doc-qa) | `project-docs`、`qa`、`md2pdf` | `/plugin marketplace add KerberosClaw/kc_ai_plugins`，再 `/plugin install doc-qa@kc-ai-plugins` |
+
+已經搬進 plugin 的 skill 仍列在下面，標 📦 並連到新位置。只想要單一 skill，一樣可以到那邊複製整個資料夾。
+
 ## Skills
 
 依「你想完成什麼」分組 — 每個 skill 仍是獨立的根目錄資料夾，分組只是張地圖。
@@ -19,7 +29,7 @@
 | Skill | 它到底幹嘛 |
 |-------|----------|
 | [workflow-router](workflow-router/) | 給最容易混的中間地帶當入口：PRD、SD、FR、AC、ADR、拆票、實作、release、無人值守。它最多問一個澄清問題，告訴你該用哪顆 specialist skill，用白話說原因，然後交棒。它刻意不自己寫 PRD/spec/ADR |
-| [project-docs](project-docs/) | 把既有專案補成有人看得懂的文件，而且分兩種讀者。給維護者的是技術文件：掃描全專案、對照證據與缺口，更新有交叉連結的 Markdown、Mermaid 圖、介面／資料／維運與發布交接。給終端使用者與管理者的是操作手冊：動手前要先具備什麼、逐步操作與畫面、卡住時怎麼判斷。沿用公司模板，未知就明說，增量更新；技術文件預設正體中文，GitHub 文件加英文摘要 |
+| 📦 [project-docs](https://github.com/KerberosClaw/kc_ai_plugins/tree/main/plugins/doc-qa/skills/project-docs) | *已移至 `doc-qa` plugin。* 把既有專案補成有人看得懂的文件，而且分兩種讀者。給維護者的是技術文件：掃描全專案、對照證據與缺口，更新有交叉連結的 Markdown、Mermaid 圖、介面／資料／維運與發布交接。給終端使用者與管理者的是操作手冊：動手前要先具備什麼、逐步操作與畫面、卡住時怎麼判斷。沿用公司模板，未知就明說，增量更新；技術文件預設正體中文，GitHub 文件加英文摘要 |
 
 ### 生成與創作
 
@@ -34,7 +44,7 @@
 
 | Skill | 它到底幹嘛 |
 |-------|----------|
-| [md2pdf](md2pdf/) | 把你的 Markdown 轉成不像 2003 年電腦產出的 PDF。自動處理 Mermaid 圖表、CJK 字型、ASCII art 轉換 — 因為我們已經幫你把所有詭異的 edge case 都踩完了 |
+| 📦 [md2pdf](https://github.com/KerberosClaw/kc_ai_plugins/tree/main/plugins/doc-qa/skills/md2pdf) | *已移至 `doc-qa` plugin。* 把你的 Markdown 轉成不像 2003 年電腦產出的 PDF。自動處理 Mermaid 圖表、CJK 字型、ASCII art 轉換 — 因為我們已經幫你把所有詭異的 edge case 都踩完了 |
 | [md2ppt](md2ppt/) | md2pdf 的吵鬧弟弟。把你的 Markdown 報告變成簡報品質 .pptx，透過互動式設計對話 + 可重用的 Python build script。Generic markdown→pptx 工具（Marp、pandoc）產出來的 slide 技術上對但視覺上爛 — md2ppt 跟你一張一張對話討論 layout，然後吐一份 hand-coded script，內容改動 re-run 5 秒重產。可選 LibreOffice self-check。Brand template 整合走 ad-hoc helpers — 試過 prescribed workflow，5 輪「等等這不是 cover layout」後退掉 |
 | [conference-report](conference-report/) | 你去了場研討會，錄了演講、拍了投影片，回家抱著一堆音檔加糊掉的照片，外帶一句「改天再來整理」的空頭支票。這個 skill 幫你重建忠實的逐場筆記（投影片畫面 + 講者逐字稿，還會標出 Whisper 的幻覺，免得你引用到機器的白日夢），然後在動筆前先問清楚你到底要哪種報告 — 單場、整天、還是跨天綜合 |
 
@@ -47,7 +57,7 @@
 | [spec](spec/) | Spec-driven 開發流程 — 從模糊想法到驗收結案。一個指令，自動判斷專案狀態，引導你走完：需求釐清 → 審查 → 實作 → 驗收 → 結案報告。因為「先寫再說」就是你之後要全部重寫的原因 |
 | [goal-engineer](goal-engineer/) | 給那種「想丟給 agent 自己磨一整晚、又不想全程盯著」的場景。它用訪談式問答幫你把一條目標驅動的 evaluator-optimizer loop（generate-and-select 型:產候選 → 依 rubric 評 → 依原因碼迭代 → 你挑最終那個）釘死，吐一份新 session 能 blind 執行的 dispatch 文件，你只要看著紅黃綠燈通知滾進來就好。它是**寫規格的上游、不是引擎** — dispatch 丟給 Claude Code 內建的 `/goal`、headless `claude -p`、或任何無人值守 agent 去跑。不是 `/goal` 本身、不是 build-to-spec 的 PRD 作者（那是 prd-create）、也不是 cron 定時器。唯一窄例外：build spec **已經凍結**（核可的 ADR / 鎖定的設計 / 可機器檢核的 AC）、只差無人值守執行的包裝 → 它直接出一份 lean build dispatch，不會逼你為一個已經拍板的決策回頭寫整份 PRD。通知通道隨你換（Telegram/Discord/Slack/iMessage），而且內建一道「ship 前要不要先對抗審查?」的閘 — 因為我們自己每次都忘記問 |
 
-> 不確定用哪顆時，先用 `workflow-router`。最短判斷法：產品需求走 `prd-create`；repo 內的 SD / 工程 AC / 實作走 `spec`；現有專案技術文件走 `project-docs`；單一重要技術決策走 `adr`；核可 PRD 拆票走 `prd-breakdown`；凍結目標要另包無人值守 dispatch 走 `goal-engineer`；已核准的文件工作直接續跑 `project-docs`，不用重問需求。
+> 不確定用哪顆時，先用 `workflow-router`。最短判斷法：產品需求走 `prd-create`；repo 內的 SD / 工程 AC / 實作走 `spec`；現有專案技術文件走 `project-docs`（在 `doc-qa` plugin）；單一重要技術決策走 `adr`；核可 PRD 拆票走 `prd-breakdown`；凍結目標要另包無人值守 dispatch 走 `goal-engineer`；已核准的文件工作直接續跑 `project-docs`，不用重問需求。
 
 ### 工程紀律
 
