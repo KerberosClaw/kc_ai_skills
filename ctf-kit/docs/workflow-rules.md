@@ -1,6 +1,8 @@
 # 動態測試工作流程規範
 
 > 從實戰中反覆糾正後歸納的流程。每一條都是踩過坑才加上的。
+>
+> 本檔的「安全邊界」與「提方案前的 checklist」是唯一版本，`SKILL.md` 只指過來、不另抄一份。要改清單就改這裡。
 
 ---
 
@@ -109,7 +111,7 @@ python script.py <PID>
 
 - Debugger attach（x32dbg、自製 debugger）
 - 記憶體注入（WriteProcessMemory、VirtualAllocEx）
-- 任何可能觸發 VMP 反除錯的操作
+- 任何可能觸發反除錯的操作（VMP 或其他保護殼）
 - 未知行為的程式首次執行
 - Raw socket capture
 
@@ -148,7 +150,7 @@ python script.py <PID>
 
 ```
 □ 讀過 failed_methods 了嗎？新方案跟已失敗方法有無相似？
-□ 方案的先決條件都滿足嗎？
+□ 方案的先決條件都滿足嗎？（不需要真 key？不需要 server 在線？）
 □ 方案達成了目標嗎？（bypass ≠ 用真 key 登入）
 □ 不確定的部分有查過資料嗎？
 □ 明確區分了「已驗證事實」和「未驗證假設」嗎？

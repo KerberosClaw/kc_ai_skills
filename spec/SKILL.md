@@ -1,7 +1,7 @@
 ---
 name: spec
 description: "Use when the user wants a spec-driven development workflow for implementing a feature in the current codebase, from fuzzy idea or existing active spec through requirements, technical plan, tasks, implementation, verification, and closure report. Auto-detects project/spec state, writes persistent files under specs/, asks one grounded question at a time when requirements are ambiguous, and stops at stage gates. NOT for stakeholder PRDs (prd-create), ADO ticket breakdown (prd-breakdown), single architecture-decision records (adr), or already-frozen tasks that should simply be implemented."
-version: 1.4.0
+version: 1.5.0
 status: stable
 triggers:
   - "spec"
@@ -43,6 +43,7 @@ You are a spec-driven development lead. You turn a user feature request into per
 3. 用 `git rev-parse --show-toplevel` 找專案根目錄。如果不在 git repo 裡，用當前工作目錄。
 4. 不主動執行 user 沒要求的事。每個階段完成後，說明產出了什麼，問 user 下一步。
 5. 與 user 的互動用正體中文。spec/plan/tasks/report 文件摘要為英文（English summary），內容為正體中文。
+6. **判準不在本檔。** 「怎樣才算過」寫在 `references/`，文件格式寫在 `templates/`。下面各階段寫到「先讀」的地方，一定要真的讀那份檔再做，不要憑印象。每個階段結束都用 [references/review.md](references/review.md)「完成狀態」的用字回報。
 
 ---
 
@@ -168,124 +169,17 @@ You are a spec-driven development lead. You turn a user feature request into per
    - feature-name 為 kebab-case，從需求描述摘要
    - 如果 `specs/active/` 不存在，先建好再用
 
-4. **產出 `spec.md`**
-
-```markdown
-# 功能名稱
-
-> **English summary:** One-line summary of what this feature does and why.
-
-## 六要素摘要（Task Prompt Schema）
-
-這個區塊是結構化欄位，給 pm-sync 這類外部工具 parse 用。填得模糊就代表還沒想清楚，回去修。
-
-- **目標（Goal）：** [一句話：這個 feature 要達成什麼]
-- **範圍（Scope）：** [精確路徑清單，如 `src/api/users.ts`, `tests/users.test.ts`]
-- **輸入（Inputs）：** [上游依賴：schema、API spec、前置 spec、環境變數]
-- **輸出（Outputs）：** [交付物：新檔案 / 新 API endpoint / 新測試 / schema migration]
-- **驗收（Acceptance）：** [指向下方 AC 列表，或直接摘要「見 AC-1〜AC-3」]
-- **邊界（Boundaries）：** [指向下方「不做的事」，或直接摘要]
-
-## 背景
-
-為什麼需要這個功能。如果有 DESIGN.md，標註對應的章節。
-
-## 驗收條件
-
-- [ ] AC-1: [具體、可測試的條件]
-- [ ] AC-2: [具體、可測試的條件]
-- [ ] AC-3: ...
-
-## 不做的事
-
-- [明確排除的項目]
-- [另一個排除項目]
-
-## 依賴
-
-- [外部服務、套件、或必須先完成的其他 spec]
-```
+4. **產出 `spec.md`**：照 [templates/spec.md](templates/spec.md) 的格式寫。
 
 5. **Self-Review（自己審自己）**
 
-   產完 spec.md 後，逐項檢查：
-
-   | 檢查項目 | 不通過怎麼辦 |
-   |---------|------------|
-   | 六要素都填了，沒有「待補」「TBD」？ | 回去補。模糊 = 沒想清楚 |
-   | 六要素之間一致？（範圍 vs 輸出、驗收 vs AC、邊界 vs 不做的事） | 對齊，有衝突就問 user |
-   | 每個 AC 都可測試？（不是「要好用」這種） | 改寫成可測試的條件 |
-   | 邊界條件有定義？（空輸入、超大檔、錯誤格式） | 補到 AC 或 Out of Scope |
-   | 範圍明確？（不做的事有列出來） | 補 Out of Scope |
-   | 外部依賴有交代？ | 補 Dependencies |
-   | 跟已有的 spec 衝突嗎？ | 標出衝突，問 user |
-
-   **Anti-Sycophancy（審查時禁止的行為）：**
-   - 不要說「這個 spec 看起來不錯」— 說具體哪裡通過、哪裡有問題
-   - 不要說「可以考慮加上 X」— 說「X 沒定義，這會在 Y 情況下炸掉」
-   - 不要自己腦補答案 — 不確定就問 user
-   - 如果 spec 有明顯漏洞，直接說「這個 spec 有問題」，不要包裝成建議
-
-   如果有不通過的項目，**當場問 user 釐清，不要自己猜**。
+   **先讀 [references/review.md](references/review.md) 的「Spec Self-Review」**，逐項檢查並遵守其中的 Anti-Sycophancy 規定。
+   有不通過的項目，當場問 user 釐清，不要自己猜。
    全部通過後，告訴 user：「spec 審查通過，接下來產 plan。」
 
-6. **產出 `plan.md`**
+6. **產出 `plan.md`**：照 [templates/plan.md](templates/plan.md) 的格式寫。
 
-```markdown
-# 實作計畫
-
-> **English summary:** Brief description of the implementation approach.
-
-## 做法
-
-[1-2 段：怎麼做這個功能]
-
-## 關鍵決策
-
-| 決策 | 選擇 | 理由 |
-|------|------|------|
-| ... | ... | ... |
-
-## 風險
-
-| 風險 | 對策 |
-|------|------|
-| ... | ... |
-
-## 實作順序
-
-1. [先做什麼 — 為什麼先做]
-2. [再做什麼 — 因為依賴 #1]
-3. ...
-```
-
-7. **產出 `tasks.md`**
-
-```markdown
-# 任務清單
-
-> **English summary:** Task checklist for [feature-name].
-
-**Spec:** [feature-name]
-**Status:** NOT_STARTED | IN_PROGRESS | DONE | BLOCKED | VERIFIED
-
-## Checklist
-
-- [ ] Task 1: [交付物描述 — 完成時可以怎麼驗證]
-- [ ] Task 2: ...
-- [ ] Task 3: ...
-
-## 備註
-
-[實作筆記、踩坑紀錄、或交接給其他人時需要知道的事]
-```
-
-   **Task 粒度原則：**
-   - 一個 task = 一個可以跟別人說「這個做完了」的交付物
-   - 通常對應 1-3 個檔案的改動
-   - 5-10 個 tasks 為一個 spec 的合理範圍
-   - 太細（「寫一個 function」）→ 合併
-   - 太粗（「完成整個模組」）→ 拆開
+7. **產出 `tasks.md`**：照 [templates/tasks.md](templates/tasks.md) 的格式寫，task 怎麼切以 [references/review.md](references/review.md) 的「Task 粒度」為準。
 
 8. **呈現給 user**
    - 列出三份檔案的摘要（不用全文印出來，user 可以自己開檔案看）
@@ -301,28 +195,7 @@ You are a spec-driven development lead. You turn a user feature request into per
 
 ### 實作守則（每個 task 都要遵守）
 
-參考 [Karpathy 對 LLM coding pitfalls 的觀察](https://github.com/forrestchang/andrej-karpathy-skills)：
-
-**1. Surgical Changes — 只動必要的**
-- 不「順便改善」鄰近 code、comment、formatting
-- 不重構沒壞的東西
-- 保持現有 style，即使你覺得寫法可以更好
-- 發現無關的 dead code → 提一下，**不要自己刪**
-- 檢驗：每一行 diff 都要能追回到當前 task 的需求
-
-**2. Simplicity First — 最少的 code 解決問題**
-- 不加超出需求的功能
-- 不為「未來可能」做抽象
-- 不做 user 沒要求的錯誤處理
-- 200 行能做完的事不要寫 500 行
-
-**3. Orphan Cleanup — 只清自己造成的孤兒**
-- 你的改動讓某個 import / variable / function 用不到 → 你清掉
-- **不要順手清「預先存在」的 dead code**，除非 user 明確要求
-
-**4. 如果實作中發現 spec 有問題**
-- 停下來，不要自己解讀
-- 回到 Spec Stage 跟 user 確認，或至少在 tasks.md 的 Notes 記下歧異
+**開始第一個 task 前，先讀 [references/implement.md](references/implement.md)。** 只動必要的、最少的 code、只清自己造成的孤兒、spec 有問題就停、三次失敗就停，細節都在那份。
 
 ### 流程
 
@@ -343,7 +216,7 @@ You are a spec-driven development lead. You turn a user feature request into per
    - 更新 tasks.md 的 Status 為 `BLOCKED`
    - 在 Notes 區記錄：卡在什麼、試過什麼、建議怎麼解
    - 告訴 user 狀況，不要自己硬撐
-   - **三振原則：** 同一個問題試了 3 次不同方法都失敗 → 停下來，跟 user 說清楚狀況，不要繼續猜
+   - 同一個問題試了 3 次不同方法都失敗就停（守則第 5 條）
 
 5. **全部完成時**
    - 更新 tasks.md 的 Status 為 `DONE`
@@ -359,23 +232,11 @@ You are a spec-driven development lead. You turn a user feature request into per
 
 ### 流程
 
-1. **讀 `spec.md` 的 Acceptance Criteria**
+1. **先讀 [references/review.md](references/review.md) 的「AC 驗收」**，再讀 `spec.md` 的 Acceptance Criteria
 
-2. **逐條驗證**
-   - 讀相關的 source code
-   - 如果 AC 可以用測試驗證，跑測試
-   - 如果 AC 是行為描述，讀 code 判斷
+2. **逐條驗證**，每條附證據
 
-3. **產出驗收結果**（印在對話中，不另存檔）
-
-```
-## Acceptance Criteria Check
-
-| AC | Status | Evidence |
-|----|--------|----------|
-| AC-1: ... | PASS | [file:line or test result] |
-| AC-2: ... | FAIL | [what's missing or wrong] |
-```
+3. **產出驗收結果**：照「AC 驗收」的表格格式印在對話中，不另存檔
 
 4. **FAIL 的處理**
    - 列出需要修正的項目
@@ -399,67 +260,7 @@ You are a spec-driven development lead. You turn a user feature request into per
    - 讀 `spec.md`、`plan.md`、`tasks.md`
    - 讀 git log（找跟這個 spec 相關的 commit）
 
-2. **產出 `report.md`**
-
-```markdown
-# 結案報告：功能名稱
-
-> **English summary:** Brief summary of what was built and the outcome.
-
-**Spec:** specs/completed/NN-feature-name
-**Status:** completed
-**Date:** YYYY-MM-DD
-
-## 摘要
-
-[1-2 句：做了什麼]
-
-## 方案
-
-[選了什麼方案 + 為什麼；替代方案為何被否決。如果 plan.md 已寫清楚就標「見 plan.md 關鍵決策」。]
-
-## 改動
-
-| 檔案 | 重點 |
-|------|------|
-| `path/to/file.ts` | [這個檔案改了什麼，一句話] |
-| ... | ... |
-
-## 影響分析
-
-[哪些呼叫方 / 下游模組 / 測試被這次改動影響，為什麼安全。附路徑+行號。]
-
-## 三問自審
-
-- **方案正確嗎？** [符合原始需求？沒有誤解？附依據]
-- **影響分析全面嗎？** [有沒有沒考慮到的呼叫方或邊界條件？]
-- **有回歸風險嗎？** [原本會用到這段的場景還能正常運作？]
-
-## 驗收條件結果
-
-| 驗收條件 | 狀態 |
-|---------|------|
-| AC-1: ... | PASS |
-| AC-2: ... | PASS |
-
-## 剩餘風險
-
-[誠實列出還沒覆蓋的點：沒寫測試的邊界、已知但沒修的小問題、未來可能要處理的 tech debt。完全沒有就寫「無」。]
-
-## 關鍵 Commit
-
-| Commit | 說明 |
-|--------|------|
-| abc1234 | ... |
-
-## 與計畫的偏差
-
-[實作過程中跟原本 plan 不同的地方。完全照做就寫「無」。]
-
-## 備註
-
-[學到的教訓、踩過的坑、對未來有用的資訊]
-```
+2. **產出 `report.md`**：照 [templates/report.md](templates/report.md) 的格式寫，「三問自審」與「剩餘風險」兩段不可省略。
 
 3. **更新 tasks.md Status** 為 `VERIFIED`
 
@@ -517,31 +318,14 @@ You are a spec-driven development lead. You turn a user feature request into per
 
 - ❌ **跳過 Self-Review** — 這是擋爛 spec 往下走的唯一關卡；六要素有「TBD / 待補」就是還沒想清楚，回去補
 - ❌ **自己腦補 user 意圖** — 需求模糊、六要素衝突時當場問，不猜；寧可多問一題也不要產出 user 不認同的 spec
-- ❌ **Sycophancy 式審查** — 「看起來不錯」「可以考慮加 X」；改說「X 沒定義、會在 Y 情況炸掉」的具體判斷
+- ❌ **Sycophancy 式審查** — 「看起來不錯」「可以考慮加 X」；改說「X 沒定義、會在 Y 情況炸掉」的具體判斷。spec、plan 有問題或需求自相矛盾，直接講，不要包裝
 - ❌ **順手改沒壞的東西** — Implement Stage 只動當前 task 需要的；不重構、不順便清 pre-existing dead code、不加超出需求的抽象
 - ❌ **恆真 / 假驗收** — AC 要可測試（不是「要好用」），驗收貼證據（file:line / 測試輸出），不用跟實作同套邏輯反推期望值
 - ❌ **同一問題硬撞** — 三次不同方法都失敗就停、跟 user 說清楚，不轉入猜謎
 - ❌ **平行開多個 spec** — 一次一個，除非 user 明確要求
-
-## Completion Status Protocol
-
-每個階段結束時，用以下狀態回報：
-
-| 狀態 | 意思 | 後續動作 |
-|------|------|---------|
-| **DONE** | 全部完成，有證據 | 進入下一階段 |
-| **DONE_WITH_CONCERNS** | 完成了，但有疑慮 | 列出疑慮，問 user 要不要處理 |
-| **BLOCKED** | 卡住了，無法繼續 | 說明卡在哪、試過什麼、建議怎麼解 |
-| **NEEDS_CONTEXT** | 缺少資訊，無法判斷 | 明確說需要什麼資訊 |
-
----
+- ❌ **憑印象審查** — 判準在 `references/`，沒讀就審等於沒審
 
 ## 注意事項
 
-- **不要跳過 Self-Review。** 這是防止爛 spec 往下走的唯一關卡。
-- **不要自己猜 user 的意圖。** 不確定就問。寧可多問一個問題，也不要產出一份 user 不認同的 spec。
 - **tasks.md 是 source of truth。** 換對話、換電腦，看 tasks.md 就知道做到哪。
 - **report.md 是給未來的人看的。** 寫清楚「為什麼這樣做」而不只是「做了什麼」。
-- **一次只做一個 spec。** 不要同時開好幾個 spec 平行實作，除非 user 明確要求。
-- **三振出局。** 同一個問題試 3 次失敗就停，跟 user 說清楚，不要硬做。
-- **直說不好聽的。** 如果 spec 有問題、plan 不可行、需求自相矛盾，直接講，不要包裝。

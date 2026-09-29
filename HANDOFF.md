@@ -38,3 +38,11 @@
 
 `project-docs` 與 `md2pdf` 移到 [kc_ai_plugins](https://github.com/KerberosClaw/kc_ai_plugins) 的 `doc-qa` plugin（連同新公開的 `qa` 與 Playwright MCP），本 repo 刪除這兩個資料夾，正本以 kc_ai_plugins 為準。README 保留兩列並標 📦 指向新位置；workflow-router 0.2.1、prep-repo 2.3.2 補上 plugin 內的呼叫方式。之後若再把 skill 包成 plugin，照同樣做法：搬過去、這邊留 📦 列、README 的 Plugins 表加一列。
 
+## 2026-09-29 判準外置（薄 skill、厚判準）
+
+原則：`SKILL.md` 只寫步驟，「怎樣才算過」放 `references/` 或 `docs/`，同一套判準只留一份。步驟裡用到判準的地方要寫「先讀那份」，不能只在檔尾列參考資料，否則 agent 不讀就審。
+
+- **ctf-kit 0.5.0**：「提方案前的 checklist」與「安全邊界」原本本體與 `docs/workflow-rules.md` 各一份且已分歧（5 條 vs 6 條），合併成聯集，只留在 `docs/workflow-rules.md`。
+- **spec 1.5.0**：四份文件範本搬到 `templates/`，審查與驗收判準搬到 `references/review.md`，實作守則搬到 `references/implement.md`；本體 547 → 331 行，重複講三遍的規則收成一次。
+- **prd-create 刻意不動**：§13 摘要了 `goal-engineer/references/loop-run-protocol.md`，但 README 教使用者單獨複製一支 skill，跨 skill 引用在別人機器上會斷。摘要只有一行、漂移風險低；哪天抓到兩邊不一致，再改成「複製一份進 `prd-create/references/` 加比對腳本」。
+

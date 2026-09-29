@@ -1,7 +1,7 @@
 ---
 name: ctf-kit
 description: "Use when the user is solving an authorized CTF / lab reverse-engineering challenge focused on Windows application authentication or license-check bypass. Guides triage → static analysis → dynamic experiment planning → bypass verification, with strong evidence discipline and VM safety boundaries. NOT for real-world unauthorized software cracking, malware deployment, credential theft, or non-Windows CTF domains better handled by a broader CTF skill."
-version: 0.4.0
+version: 0.5.0
 status: mvp
 triggers:
   - "ctf"
@@ -119,17 +119,9 @@ Windows 應用程式驗證繞過的實戰 playbook。
 
 ### 準則 6：保護環境，高風險操作在 VM 做
 
-```
-⚠️ 不在 host 上做的事：
-- Raw socket capture（可能 hang 整個系統）
-- 認證過程中 attach debugger
-- 任何可能觸發反除錯的操作
-- 未知行為的程式首次執行
+host 一旦被反除錯機制或 raw socket capture 搞掛，輕則重開、重則系統還原，整輪實驗白做。所以 debugger attach、記憶體注入、未知程式首次執行這類操作一律進 VM。
 
-✅ 只在 VM 裡做的事：
-- Debugger attach、記憶體注入
-- 可能觸發反調試的操作
-```
+**哪些只能在 VM、哪些 host 可以、哪些絕對不做，以 [docs/workflow-rules.md](docs/workflow-rules.md) 的「安全邊界」為準**，本檔不另列清單。
 
 ### 準則 7：卡關時的決策流程
 
@@ -157,13 +149,7 @@ Windows 應用程式驗證繞過的實戰 playbook。
 
 ### 準則 8：提方案前的 checklist
 
-```
-□ 讀過失敗記錄了嗎？新方案跟已失敗方法有無相似？
-□ 方案的先決條件都滿足嗎？（不需要真 key？不需要 server 在線？）
-□ 方案達成了目標嗎？
-□ 不確定的部分有查過資料嗎？
-□ 有具體的驗證步驟嗎？（不是「試試看」）
-```
+每次向使用者提出新方案前，**先讀 [docs/workflow-rules.md](docs/workflow-rules.md) 的「提方案前的 checklist」逐條對過**，有一條不過就先補，不要帶著缺口提案。清單只在那份檔案維護，本檔不另抄。
 
 ---
 
@@ -301,6 +287,8 @@ python pe_info.py target.exe --big5 "關鍵字"    # 繁體
 
 > 原則：先輕量觀察，再精準 hook，不要一上來就全面注入。
 
+**開始動態前，先讀完 [docs/workflow-rules.md](docs/workflow-rules.md)**：環境清理、attach 時機、安全邊界都在那份，這一階段的每個動作都受它約束。
+
 **2.1 輕量觀察（零工具）**
 
 直接跑一次：看 UI、`netstat -an` 看連線、看配置檔、記錄錯誤訊息。
@@ -347,6 +335,8 @@ Hook 目標：
 ### Phase 3：繞過
 
 > 原則：從決策層開始，不要從加密層開始。
+
+選定路線、向使用者提案前，照準則 8 對一次 checklist。
 
 **路線選擇：**
 
@@ -498,7 +488,7 @@ python3 -c "print(' '.join(f'{b:02X}' for b in '你要搜的字'.encode('utf-8')
 - [docs/bypass-auth.md](docs/bypass-auth.md) — Frida 腳本範本 + Binary patch 詳細流程
 - [docs/vmp-guide.md](docs/vmp-guide.md) — VMProtect 專區（反調試、VMP 特有的陷阱和對策）
 - [docs/tools-quickref.md](docs/tools-quickref.md) — Capstone / Unicorn / Frida Stalker 使用速查
-- [docs/workflow-rules.md](docs/workflow-rules.md) — 動態測試工作流程規範
+- [docs/workflow-rules.md](docs/workflow-rules.md) — 動態測試工作流程規範；「安全邊界」與「提方案前的 checklist」的唯一版本
 - [scripts/recon.js](scripts/recon.js) — Frida 被動偵察腳本（模組化，開關控制）
 - [scripts/pe_info.py](scripts/pe_info.py) — PE 靜態分析腳本（純 stdlib，零依賴）
 
