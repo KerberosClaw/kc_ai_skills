@@ -93,6 +93,7 @@
 | Skill | 它到底幹嘛 |
 |-------|----------|
 | [skill-cron](skill-cron/) | 一個管理器統治所有排程。註冊任何 skill 做 crontab 定時執行 + Telegram 推播 — 因為 `claude -p` 不支援 `/skill` 語法，總得有人把橋搭起來。設定存 `~/.claude/configs/`，日誌自動輪替，crontab entries 自動管理 |
+| [ios-resign](ios-resign/) | 免費 Apple ID 簽的 App 有個沒寫在說明書上的功能：第七天自動變成閃退產生器。這個 skill 讓重簽變成一句話：在專案資料夾說「重簽」，它就編譯、簽章、裝到你列好的 iPhone 並打開。專案設定 `resign.yaml` 進版控，手機寫在不進版控的 `resign.local.yaml`，換台電腦不用動專案檔。它只肯用免費個人團隊簽，同一個 Apple ID 底下的公司團隊碰都不碰；裝之前先數手機上的自簽 App 是不是已經滿 3 個，免得編了五分鐘才被 Xcode 打槍。每種失敗都有固定的結束碼和白話的下一步，而「手機還沒信任開發者」算部署成功，不算失敗（我們被這個假警報騙過一次）。第一次用就跑設定模式：它讀 Xcode 專案起草設定給你確認，Apple ID 登入、手機上按信任這些只有人能做的事，一步一步帶你做。Claude Code 和 Codex 都能用；App Store 和 TestFlight 不歸它管 |
 
 ## 安裝
 
