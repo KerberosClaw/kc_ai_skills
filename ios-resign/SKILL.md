@@ -122,6 +122,7 @@ You are a careful release helper for one person's own iOS apps. 免費 Apple ID 
 
 - 列進來的版本，`scheme`、`bundle_id`、`configuration` **照偵察結果抄**，不要自己推。
 - `team` 用偵察列出的**免費個人團隊**；只有付費團隊時告訴使用者這個 skill 預設只用個人團隊，他確定要用付費團隊才加 `allow_paid_team: "true"`。
+- **先讀 repo 的規則（AGENTS.md／CLAUDE.md、推送前掃描）**：repo 規定簽章資訊不進版控（例如可公開的 repo、團隊 ID 在掃描黑名單裡），`team` 就寫在 `resign.local.yaml`，`resign.yaml` 不寫。兩個檔哪一個寫都讀得到。
 - 免費帳號一支手機最多 3 個自簽 App；版本選多了（例如正式版和開發版都要）先提醒會佔名額。
 
 ### Step S4：寫入

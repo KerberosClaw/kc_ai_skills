@@ -34,6 +34,7 @@ while [ $# -gt 0 ]; do
   shift
 done
 [ "${STUB_BUILD_RC:-0}" = 0 ] || { echo "error: stub build failed"; exit "${STUB_BUILD_RC}"; }
+cfg="${STUB_PRODUCT_CONFIG:-${cfg}}"   # 模擬 Xcode 把產物放在別的 configuration 資料夾
 mkdir -p "${dd}/Build/Products/${cfg}-iphoneos/App.app"
 echo stub >"${dd}/Build/Products/${cfg}-iphoneos/App.app/embedded.mobileprovision"
 echo "** BUILD SUCCEEDED **"
@@ -150,10 +151,10 @@ all() { local c; for c in "$@"; do eval "${c}" || return 1; done; }
 
 reset_stubs() {
     unset STUB_BUNDLE STUB_DEPLOY STUB_SDK STUB_BUILD_RC STUB_INSTALL_RC STUB_LAUNCH STUB_UNREACHABLE \
-          STUB_DEVMODE_OFF STUB_APPS STUB_NO_ACCOUNT STUB_SETTINGS_RC
+          STUB_DEVMODE_OFF STUB_APPS STUB_NO_ACCOUNT STUB_SETTINGS_RC STUB_PRODUCT_CONFIG
 }
 export_stubs() { export STUB_BUNDLE STUB_DEPLOY STUB_SDK STUB_BUILD_RC STUB_INSTALL_RC STUB_LAUNCH \
-                 STUB_UNREACHABLE STUB_DEVMODE_OFF STUB_APPS STUB_NO_ACCOUNT STUB_SETTINGS_RC 2>/dev/null; }
+                 STUB_UNREACHABLE STUB_DEVMODE_OFF STUB_APPS STUB_NO_ACCOUNT STUB_SETTINGS_RC STUB_PRODUCT_CONFIG 2>/dev/null; }
 
 # ---------- 案例 ----------
 reset_stubs; export_stubs
@@ -275,6 +276,18 @@ printf 'default_variant: dev\n' | local_yaml "${P5}"
 run "${P5}" --build-only
 check "寫了 default_variant 就照它選版本" all 'rc_is 0' 'out_has "版本 dev（scheme App-dev）"' 'log_has "-scheme App-dev"'
 reset_stubs; export_stubs
+
+STUB_BUNDLE=com.example.app.dev; STUB_PRODUCT_CONFIG=Release; export_stubs
+run "${P5}" --build-only --variant dev
+check "產物放在別的 configuration 資料夾也找得到 .app" all 'rc_is 0' 'out_has "Release-iphoneos/App.app"'
+reset_stubs; export_stubs
+
+# 兩個不同專案、資料夾同名（例如兩個 repo 的 worktree）→ 編譯資料夾不能共用
+SAME1="${T}/a/same"; SAME2="${T}/b/same"
+for d in "${SAME1}" "${SAME2}"; do mkdir -p "${d}/App.xcodeproj"; git -C "${d}" init -q; echo "${BASE_YAML}" >"${d}/resign.yaml"; done
+run "${SAME1}" --build-only; dd1="$(sed -n 's/.*-derivedDataPath \([^ ]*\) .*/\1/p' "${STUB_LOG}" | head -1)"
+run "${SAME2}" --build-only; dd2="$(sed -n 's/.*-derivedDataPath \([^ ]*\) .*/\1/p' "${STUB_LOG}" | head -1)"
+check "同名資料夾的不同專案用不同的編譯資料夾" all 'rc_is 0' '[ -n "${dd1}" ]' '[ "${dd1}" != "${dd2}" ]'
 
 P6="$(echo "${BASE_YAML}" | new_project)"
 printf 'variants:\n  prod:\n    bundle_id: com.friend.app\n' | local_yaml "${P6}"

@@ -63,7 +63,8 @@ eval "${env_out}"
 [ -n "${RESIGN_TEAM}" ] || fail 10 "resign.yaml 缺 team（個人團隊 ID，設定模式會幫你查）"
 step "專案：${RESIGN_NAME}，版本 ${RESIGN_VARIANT}（scheme ${RESIGN_SCHEME}）"
 
-WORK="${CACHE}/$(basename "${RESIGN_ROOT}")-${RESIGN_VARIANT}"
+# 加路徑雜湊：同名資料夾（例如不同 repo 的 worktree）才不會共用 DerivedData、拿到別人的 .app
+WORK="${CACHE}/$(basename "${RESIGN_ROOT}")-$(printf '%s' "${RESIGN_ROOT}" | shasum | cut -c1-8)-${RESIGN_VARIANT}"
 DERIVED="${WORK}/DerivedData"
 mkdir -p "${WORK}"
 
@@ -111,7 +112,9 @@ summarize() {
     echo "---- 錯誤摘要 ----" >&2
     grep -E "error:|Error Domain|maximum number|No Account|No profiles|locked|not been registered" "$1" | sort -u | head -15 >&2
 }
-app_path() { find "${DERIVED}/Build/Products/${RESIGN_CONFIGURATION}-iphoneos" -maxdepth 1 -name '*.app' 2>/dev/null | head -1; }
+# 產物資料夾不一定跟 configuration 同名（target 沒有那個設定時 Xcode 會退回預設的，例如 Release），
+# 所以在這個專案專屬的 DerivedData 裡取最新的那個 .app
+app_path() { ls -td "${DERIVED}"/Build/Products/*-iphoneos/*.app 2>/dev/null | head -1; }
 expiry_of() { security cms -D -i "$1/embedded.mobileprovision" 2>/dev/null | plutil -extract ExpirationDate raw - 2>/dev/null; }
 
 # ---- 5. 只編譯 ----

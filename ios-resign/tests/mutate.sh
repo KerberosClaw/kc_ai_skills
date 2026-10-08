@@ -30,6 +30,8 @@ resign.sh|s#\[ -f "${dir}/resign.yaml" \]#false#|不往上找設定檔
 resign.sh|s#DEVELOPMENT_TEAM="${RESIGN_TEAM}"#DEVELOPMENT_TEAM=#|沒帶團隊
 resign.sh|s#return 13; }#return 0; }#|手機連不到當成功
 resign.sh|s#return 17#return 0#|名額滿當成功
+resign.sh|s#shasum#true#|編譯資料夾不分專案（路徑雜湊變空字串）
+resign.sh|s#Products/\*-iphoneos/\*.app#Products/Debug-iphoneos/*.app#|假設產物在 Debug 資料夾
 config.rb|s#if project_cfg.key?("devices")#if false#|允許把手機寫進 resign.yaml
 config.rb|s#when Psych::Nodes::Scalar then node.value.to_s#when Psych::Nodes::Scalar then (Float(node.value) rescue node.value).to_s#|YAML 值被當數字
 config.rb|s#\["bundle_id"\] != v\["bundle_id"\]#["bundle_id"] == v["bundle_id"]#|覆蓋旗標反過來
