@@ -42,8 +42,20 @@ Claude 用新開的 subagent、Codex 用前景 `codex exec -s danger-full-access
 TC5 兩邊都照「先讀 repo 規則」把簽章團隊放進 `resign.local.yaml`（該 repo 規定個人團隊不進 Git），
 也因此抓到人寫的 `resign.yaml` 誤把團隊寫進了版控，已改正。
 
+### 合併後補驗：不在專案資料夾裡、照專案索引找（TC6）
+
+使用者全域指示（AGENTS.md）的手冊表合併後，在一個不是專案的空資料夾說「確認 X 的開發版還編得過，不用裝」：
+
+| | Claude（新 subagent） | Codex（`codex exec`） |
+|---|---|---|
+| 結果 | 通過：找到 repo、`--build-only --variant dev` 編過、repo 沒被改 | 通過：同左 |
+| 怎麼找到的 | 經全域指示的「私有 repo 索引」那列找到 repo，再用 `resign.yaml` 的 `name` 對上 App 名 | 照 Step 0 ＋手冊表新加的那列，讀專案索引的 iOS App 清單找到 repo |
+
+兩邊都沒有掃家目錄。Claude 沒走到新加的那列，比較可能是 subagent 拿到的是工作開始時、還沒加那列的全域指示；
+要等全新對話再確認。
+
 ### 沒驗到的
 
 - 真的裝到手機（這輪刻意不裝）；安裝、啟動、碼 31／32 的分類只在離線測試用假的 devicectl 輸出驗過，
   輸出文字照網路上回報的實際錯誤訊息寫
-- 「不在專案資料夾裡、照使用者環境的專案索引找」這條路徑：要等索引連結合併後才能驗
+- Claude 全新對話是否走專案索引新加的那列（見上節）
