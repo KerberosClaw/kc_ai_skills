@@ -81,10 +81,11 @@ project_bundle="$(setting PRODUCT_BUNDLE_IDENTIFIER)"
 BUNDLE_ARG=()
 if [ "${RESIGN_BUNDLE_ID}" != "${project_bundle}" ]; then
     # 只有本機設定刻意改 bundle ID（例如分享出去的版本各簽各的）才從命令列覆蓋；
-    # 命令列的值會套到所有 target，專案有 App 擴充功能時會衝突，所以預設不帶
+    # 命令列的值會套到所有 target，專案有 App 擴充功能時會衝突，所以預設不帶。
+    # 有擴充功能的專案在設定寫 bundle_id_setting，覆蓋各 target 共用的那個自訂變數
     [ "${RESIGN_BUNDLE_OVERRIDE:-0}" = "1" ] \
         || fail 10 "resign.yaml 的 bundle_id（${RESIGN_BUNDLE_ID}）跟專案實際的（${project_bundle}）不一樣，改其中一邊讓它們一致"
-    BUNDLE_ARG=("PRODUCT_BUNDLE_IDENTIFIER=${RESIGN_BUNDLE_ID}")
+    BUNDLE_ARG=("${RESIGN_BUNDLE_SETTING:-PRODUCT_BUNDLE_IDENTIFIER}=${RESIGN_BUNDLE_ID}")
 fi
 
 # ---- 3. 團隊：預設只准用免費個人團隊（同一個 Apple ID 底下可能還有公司團隊） ----

@@ -294,6 +294,18 @@ printf 'variants:\n  prod:\n    bundle_id: com.friend.app\n' | local_yaml "${P6}
 run "${P6}" --build-only
 check "本機設定改 bundle ID → 從命令列覆蓋" all 'rc_is 0' 'log_has "PRODUCT_BUNDLE_IDENTIFIER=com.friend.app"'
 
+P6B="$(printf '%s\nbundle_id_setting: APP_BUNDLE_ID\n' "${BASE_YAML}" | new_project)"
+printf 'variants:\n  prod:\n    bundle_id: com.friend.app\n' | local_yaml "${P6B}"
+run "${P6B}" --build-only
+check "有擴充功能的專案寫 bundle_id_setting → 覆蓋那個變數、不碰 PRODUCT_BUNDLE_IDENTIFIER" \
+    all 'rc_is 0' 'log_has "APP_BUNDLE_ID=com.friend.app"' 'log_lacks "PRODUCT_BUNDLE_IDENTIFIER=com.friend.app"'
+run "${P6B}" --list
+check "--list 顯示覆蓋用的變數" all 'rc_is 0' 'out_has "覆蓋 bundle ID 用的變數：APP_BUNDLE_ID"'
+
+P6C="$(printf '%s\nbundle_id_setting: "x; rm -rf /"\n' "${BASE_YAML}" | new_project)"
+run "${P6C}" --build-only
+check "bundle_id_setting 不是變數名稱 → 10" all 'rc_is 10' 'out_has "bundle_id_setting 要是建置變數名稱"'
+
 run "${P6}"
 check "本機設定沒列手機、又不是 --build-only → 10" all 'rc_is 10' 'out_has "沒有列任何手機"'
 

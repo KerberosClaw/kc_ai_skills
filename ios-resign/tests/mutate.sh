@@ -38,6 +38,7 @@ config.rb|s#\["bundle_id"\] != v\["bundle_id"\]#["bundle_id"] == v["bundle_id"]#
 config.rb|s#cfg\["allow_paid_team"\] == "true"#false#|忽略 allow_paid_team
 config.rb|s#variant = cfg\["default_variant"\] if blank?(variant)#nil#|忽略 default_variant
 config.rb|s#local_path = File.join(root, "resign.local.yaml")#local_path = "/nonexistent"#|不讀本機設定
+resign.sh|s#"${RESIGN_BUNDLE_SETTING:-PRODUCT_BUNDLE_IDENTIFIER}=#"PRODUCT_BUNDLE_IDENTIFIER=#|忽略 bundle_id_setting
 EOF
 )
 
