@@ -74,6 +74,12 @@ variants.each do |vn, v|
   %w[scheme bundle_id].each { |k| die("版本 #{vn} 缺 #{k}") if blank?(v[k]) }
 end
 
+# 覆蓋 bundle ID 時要設的建置變數。預設 PRODUCT_BUNDLE_IDENTIFIER；
+# 專案有 App 擴充功能（小工具、即時動態）時，命令列的值會套到所有 target 而撞名，
+# 那種專案讓各 target 從同一個自訂變數推出 bundle ID（例如擴充功能＝$(變數).widget），這裡寫那個變數名
+bundle_setting = blank?(cfg["bundle_id_setting"]) ? "PRODUCT_BUNDLE_IDENTIFIER" : cfg["bundle_id_setting"]
+die("bundle_id_setting 要是建置變數名稱（大寫英文、數字、底線），現在是：#{bundle_setting}") unless bundle_setting =~ /\A[A-Z_][A-Z0-9_]*\z/
+
 devices = cfg["devices"] || []
 die("resign.local.yaml 的 devices 要是清單") unless devices.is_a?(Array)
 devices.each_with_index do |d, i|
@@ -86,6 +92,7 @@ if mode == "list"
   puts "團隊：#{blank?(cfg['team']) ? '（未設定，用專案檔裡的）' : cfg['team']}"
   puts "預設版本：#{cfg['default_variant'] || (variants.size == 1 ? variants.keys.first : '（未設定）')}"
   variants.each { |vn, v| puts "  版本 #{vn}：scheme #{v['scheme']}，bundle ID #{v['bundle_id']}#{v['label'] ? "（#{v['label']}）" : ''}" }
+  puts "覆蓋 bundle ID 用的變數：#{bundle_setting}" unless bundle_setting == "PRODUCT_BUNDLE_IDENTIFIER"
   puts "建置前指令：#{cfg['prebuild'] || '無'}"
   puts(devices.empty? ? "手機：本機設定沒有列任何手機（只能 --build-only）" : "手機：#{devices.map { |d| "#{d['name']}（#{d['udid']}）" }.join('、')}")
   exit 0
@@ -110,6 +117,7 @@ out = {
   "RESIGN_PREBUILD" => cfg["prebuild"] || "",
   # 本機設定刻意改了這個版本的 bundle ID（分享出去各簽各的）才從命令列覆蓋
   "RESIGN_BUNDLE_OVERRIDE" => (((project_cfg["variants"] || {})[variant] || {})["bundle_id"] != v["bundle_id"]) ? "1" : "0",
+  "RESIGN_BUNDLE_SETTING" => bundle_setting,
   "RESIGN_ALLOW_PAID_TEAM" => cfg["allow_paid_team"] == "true" ? "1" : "0",
   "RESIGN_DEVICE_COUNT" => devices.size.to_s,
 }

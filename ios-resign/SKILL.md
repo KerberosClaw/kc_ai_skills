@@ -125,6 +125,7 @@ You are a careful release helper for one person's own iOS apps. 免費 Apple ID 
 照偵察結果起草兩個檔（格式見下節），**整份貼給使用者看**，問三件事：要列哪些版本、預設哪個版本、這台電腦要裝哪幾支手機。專案特有、偵察看不出來的前置步驟（例如要先編原生函式庫）要**問使用者**，不要猜。
 
 - 列進來的版本，`scheme`、`bundle_id`、`configuration` **照偵察結果抄**，不要自己推。
+- 專案有 App 擴充功能、而且要分享給別人用自己的 bundle ID 簽：照下方欄位表的 `bundle_id_setting` 處理，不要直接覆蓋 `PRODUCT_BUNDLE_IDENTIFIER`（擴充功能會跟主 App 撞名）。
 - `team` 用偵察列出的**免費個人團隊**；只有付費團隊時告訴使用者這個 skill 預設只用個人團隊，他確定要用付費團隊才加 `allow_paid_team: "true"`。
 - **先讀 repo 的規則（AGENTS.md／CLAUDE.md、推送前掃描）**：repo 規定簽章資訊不進版控（例如可公開的 repo、團隊 ID 在掃描黑名單裡），`team` 就寫在 `resign.local.yaml`，`resign.yaml` 不寫。兩個檔哪一個寫都讀得到。
 - 免費帳號一支手機最多 3 個自簽 App；版本選多了（例如正式版和開發版都要）先提醒會佔名額。
@@ -186,6 +187,7 @@ devices:
 | `prebuild` | resign.yaml | | 專案自己的前置步驟 |
 | `devices` | **只能**在 resign.local.yaml | 要裝手機時 ✅ | 寫在 resign.yaml 會被拒絕 |
 | `allow_paid_team` | 任一 | | `"true"` 才准付費團隊 |
+| `bundle_id_setting` | resign.yaml | | 本機設定改了 `bundle_id` 時從命令列覆蓋哪個建置變數，預設 `PRODUCT_BUNDLE_IDENTIFIER`。專案有 App 擴充功能（小工具、即時動態）又要讓別人各簽各的時，命令列的值會套到所有 target 而撞名：讓各 target 從同一個自訂變數推出 bundle ID（主 App `$(APP_BUNDLE_ID)`、擴充功能 `$(APP_BUNDLE_ID).widget`），這裡寫那個變數名 |
 
 ## Anti-patterns
 
