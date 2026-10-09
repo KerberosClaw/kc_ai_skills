@@ -1,7 +1,7 @@
 ---
 name: ios-resign
-description: "Use when the user wants to rebuild, re-sign and reinstall one of their own iOS apps onto their iPhone(s) — typically because a free Apple ID provisioning profile expired after 7 days and the app now crashes on launch — or wants to set a project up for that (重簽／重新簽／App 過期閃退／重裝到手機／設定重簽). Reads the project's resign.yaml (in version control) plus resign.local.yaml (this Mac's phones), builds with xcodebuild, installs and launches via devicectl, and maps every failure to a fixed exit code with a plain-language next step. Setup mode inspects the Xcode project, drafts both YAML files for the user to confirm, and walks the human-only steps (Apple ID login, trusting the computer, Developer Mode, trusting the developer). NOT for App Store / TestFlight distribution, paid-team ad-hoc signing workflows, or editing app code."
-version: 0.1.0
+description: "Use when the user wants to rebuild, re-sign and reinstall one of their own iOS apps onto their iPhone(s) — typically because a free Apple ID provisioning profile expired after 7 days and the app now crashes on launch — OR just wants to check that such a project still builds and signs without touching any phone (build-only), OR wants to set a project up for this (重簽／重新簽／App 過期閃退／重裝到手機／確認還編得過／只編譯不要裝／設定重簽). If the repo has a resign.yaml, use this skill for any build/sign check instead of hand-rolling xcodebuild: it runs outside the agent sandbox (Swift macro plugins and signing fail inside it) and knows the project's scheme, configuration and prebuild step. Reads the project's resign.yaml (in version control) plus resign.local.yaml (this Mac's phones), builds with xcodebuild, installs and launches via devicectl, and maps every failure to a fixed exit code with a plain-language next step. Setup mode inspects the Xcode project, drafts both YAML files for the user to confirm, and walks the human-only steps (Apple ID login, trusting the computer, Developer Mode, trusting the developer). NOT for App Store / TestFlight distribution, paid-team ad-hoc signing workflows, or editing app code."
+version: 0.1.1
 status: mvp
 triggers:
   - "/ios-resign"
@@ -11,6 +11,8 @@ triggers:
   - "閃退了重裝"
   - "重裝到手機"
   - "設定重簽"
+  - "確認編得過"
+  - "只編譯不要裝"
 ---
 
 # ios-resign — 自己的 iOS App 過期了，重簽裝回手機
