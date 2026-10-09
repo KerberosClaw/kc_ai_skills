@@ -54,8 +54,20 @@ TC5 兩邊都照「先讀 repo 規則」把簽章團隊放進 `resign.local.yaml
 兩邊都沒有掃家目錄。Claude 沒走到新加的那列，比較可能是 subagent 拿到的是工作開始時、還沒加那列的全域指示；
 要等全新對話再確認。
 
+## 2026-10-09 v0.1.1：第二台 Mac 的 Codex smoke test
+
+在另一台 Mac 上用 ChatGPT App 內附的 Codex、**預設沙箱**（靠 `~/.codex/rules` 放行 `resign.sh`／`inspect.sh`），
+在專案資料夾說「確認還編得過，只要編譯、不要裝到手機」：
+
+- **第一輪失敗**：Codex 看 description 判斷 skill「只管重簽安裝」，沒用它，自己在沙箱裡組 `xcodebuild`，
+  Swift 巨集外掛被沙箱擋住、回報無法確認。前面的 TC2 沒抓到，是因為測試 prompt 直接點名了 skill
+- 修正：description 寫明「只確認編得過（build-only）」也是用途，有 `resign.yaml` 就該走 skill 而不是自己組 `xcodebuild`；觸發詞加「確認編得過」「只編譯不要裝」
+- **重跑通過**：用 skill、`--build-only` 在沙箱外編過、repo 沒被改、沒裝手機。同時驗到真機那台的放行規則與 skill 安裝位置（`~/.agents/skills`）
+
+另外同一天 `ios-resign` 第一次真的裝到手機（重簽模式，iPhone 17 Pro）：編譯、簽章、安裝、打開一次成功。
+
 ### 沒驗到的
 
-- 真的裝到手機（這輪刻意不裝）；安裝、啟動、碼 31／32 的分類只在離線測試用假的 devicectl 輸出驗過，
+- 碼 31／32 的分類只在離線測試用假的 devicectl 輸出驗過（真機安裝已在 v0.1.1 那天成功過一次，走的是碼 0），
   輸出文字照網路上回報的實際錯誤訊息寫
 - Claude 全新對話是否走專案索引新加的那列（見上節）
