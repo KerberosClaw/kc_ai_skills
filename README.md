@@ -24,11 +24,14 @@ Skills that moved into a plugin are still listed below, marked 📦, with links 
 
 Grouped by what you're trying to get done — every skill is still a self-contained top-level folder, the grouping is just a map.
 
+**Start here:** [Workflow diagrams, document roles, and the complete skill map](workflow-router/docs/workflow.md). One maintained guide covers the 26 skills in this repo and the 3 skills in the separate doc-qa plugin; the bundle is a menu, not a requirement to run everything.
+
 ### Workflow entrypoint
 
 | Skill | What It Actually Does |
 |-------|----------------------|
 | [workflow-router](workflow-router/) | The front door for the confusing middle: PRD, SD, FR, AC, ADR, tickets, implementation, release, or unattended runs. It asks at most one clarifying question, tells you which specialist skill to use, explains why in plain language, then hands off. It deliberately does not write the PRD/spec/ADR itself |
+| [align](align/) | Bring existing docs up to date with verified implementation and hotfixes. Run manually or after QA in an unattended task; inspect the whole repo and follow cross-repo references for evidence. Edit only authorized repo docs, annotate conflicting history, and keep deployed systems read-only. Report drift in other repos and obtain explicit permission before editing them. Supports unattended runs without adding schedules |
 | 📦 [project-docs](https://github.com/KerberosClaw/kc_ai_plugins/tree/main/plugins/doc-qa/skills/project-docs) | *Moved to the `doc-qa` plugin.* Turn an existing codebase into documentation someone can actually use — for two different readers. Maintainers get evidence-mapped technical docs: architecture, contracts, data models, operations, release handoff, diagrams as Mermaid source. End users and administrators get an operations manual instead: what you must have before you start, step-by-step screens, and what to do when you get stuck. Reuses templates and updates incrementally without changing product code. Defaults to Traditional Chinese technical prose with English summaries for GitHub |
 
 ### Generate & create
@@ -57,7 +60,17 @@ Grouped by what you're trying to get done — every skill is still a self-contai
 | [spec](spec/) | Spec-driven development workflow — from fuzzy idea to verified deliverable. One command, auto-detects project state, walks you through: requirements → review → implement → verify → report. Because "just start coding" is how you end up rewriting everything |
 | [goal-engineer](goal-engineer/) | For when you want an agent to grind on something overnight without you hovering over it. Interview-style, it pins down a goal-driven evaluator-optimizer loop of the generate-and-select kind (generate candidates -> grade against a rubric -> iterate by reason-code -> you pick the winner), then emits a self-contained dispatch doc a fresh session runs blind while you just watch the green/yellow/red pings roll in. It is the upstream *spec author*, not the engine -- hand the dispatch to Claude Code's built-in `/goal`, a headless `claude -p`, or any unattended agent. NOT `/goal` itself, NOT a build-to-spec PRD writer (that's prd-create), NOT a cron timer. One narrow exception: if your build spec is *already frozen* (approved ADR, locked design, machine-checkable AC) and all you're missing is the unattended-run wrapper, it packages a lean build dispatch instead of making you write a full PRD for a decision you already made. Channel-agnostic notifications (Telegram/Discord/Slack/iMessage), and it bakes in a "want an adversarial review before we ship?" gate -- because we got tired of remembering to ask ourselves |
 
-> Not sure which one fits? Start with `workflow-router`. The shortest rule of thumb: product requirements go to `prd-create`; repo-local software design / engineering AC / implementation goes to `spec`; existing-project documentation goes to `project-docs` (in the `doc-qa` plugin); one durable technical decision goes to `adr`; approved PRD tickets go to `prd-breakdown`; a new unattended dispatch for frozen work goes to `goal-engineer`. Already approved documentation work continues with `project-docs` without another requirements interview.
+> Existing docs lag behind implementation or hotfixes? Use `align`. Need a new documentation suite or manual? Use `project-docs`.
+
+`project-docs` can also update existing docs while assessing missing technical docs, manuals, and handoff material. `align` is the focused maintenance pass: check existing docs against implementation and fix drift without designing a new documentation suite. Both read code and can update docs; you do not need to run both for every change.
+
+QA derives its cases from approved requirements/specs, so `project-docs` is not a mandatory step before QA; it can also consume QA evidence afterwards for manuals. Personal features can go straight to `spec`; `prd-create` is for a product PRD deliverable and `prd-breakdown` for work-item/ADO planning, regardless of whether people or agents implement the work. Record an ADR only for a settled decision that qualifies, link it back to the plan, and return to the original stage. ADRs do not replace requirements, AC, or an implementation plan.
+
+Operating manuals describe versioned, usable behavior and known limitations; approved requirements/AC and optional blind acceptance scripts keep the intended behavior. Align does not rewrite expectations to excuse defects. Historical ADR text stays intact, with dated, evidence-backed current-state notes allowed; changed decisions still need a new ADR. Incomplete feature specs return to `spec`, without forcing a product PRD.
+
+Calling `spec` also creates the implementation plan and tasks. Simple features keep the plan in `spec.md`; complex ones use a separate `plan.md`. Requirements/FR and acceptance criteria remain in the spec, progress remains in `tasks.md`, and the plan references requirements instead of copying them. Existing approved layouts stay intact.
+
+> Not sure which one fits? Start with `workflow-router`. The shortest rule of thumb: product requirements go to `prd-create`; repo-local software design / engineering AC / implementation goes to `spec`; existing docs versus implementation goes to `align`; new technical docs / manuals go to `project-docs` (in the `doc-qa` plugin); one durable technical decision goes to `adr`; approved PRD tickets go to `prd-breakdown`; a new unattended dispatch for frozen work goes to `goal-engineer`. Already approved documentation work continues with its existing `align` or `project-docs` route without another requirements interview.
 
 ### Engineering discipline
 
@@ -108,6 +121,10 @@ cp -r kc_ai_skills/prep-repo ~/.claude/skills/
 # Example: install for OpenClaw (workspace-level)
 cp -r kc_ai_skills/searxng ~/.openclaw/workspace/skills/
 ```
+
+> **Documentation alignment:** Call `/align` directly in a repo. For a frozen build run, the full unattended handoff is `spec` approval → `goal-engineer` dispatch → implementation / AC checks → `doc-qa:qa` → `align` → final task report. Install the complete `align` folder and the `doc-qa` plugin on the execution host; the dispatch records skill locations, QA environment/roles/authority, and evidence outputs. Unit tests do not replace real QA. This adds no ticketing, closure, or archive gates.
+
+> **QA runner:** Prefer Codex for mixed Web/desktop QA. Web uses Playwright MCP; native desktop/cross-app QA requires a Codex session with suitable computer-use tools. This workflow requires doc-qa plugin 0.2.1+ / QA skill 0.5.1+ for applicability and exit rules. Claude Code bg/headless agents testing a Web product still use Playwright. Verified product scope with no UI reports UI QA as not applicable, retains original AC/integration evidence, then continues to align and the final report. Missing tools for an existing UI remain untested; blocked cases cannot count as passed. Check actual capabilities: the plugin does not supply a computer-use server or make every target accessible.
 
 > **Naming tip:** Feel free to rename the skill folder with your own prefix when copying (e.g. `my_prep-repo`). It won't break anything. Probably.
 

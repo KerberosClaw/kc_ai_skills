@@ -24,11 +24,14 @@
 
 依「你想完成什麼」分組 — 每個 skill 仍是獨立的根目錄資料夾，分組只是張地圖。
 
+**先看這裡：** [完整流程圖、文件分工與 skill 地圖](workflow-router/docs/workflow.md)。同一份指南涵蓋本 repo 的 26 顆 skill，以及另裝 doc-qa plugin 的 3 顆；整包是選單，不是每個專案都要全部跑一遍。
+
 ### 工作流入口
 
 | Skill | 它到底幹嘛 |
 |-------|----------|
 | [workflow-router](workflow-router/) | 給最容易混的中間地帶當入口：PRD、SD、FR、AC、ADR、拆票、實作、release、無人值守。它最多問一個澄清問題，告訴你該用哪顆 specialist skill，用白話說原因，然後交棒。它刻意不自己寫 PRD/spec/ADR |
+| [align](align/) | 讓既有文件跟上已驗證的實作與 hotfix。手動呼叫，或無人值守任務 QA 後跑一輪，檢查整個 repo；沿引用跨 repo 查證，只改授權 repo 的文件。歷史衝突保留原文加註，已部署環境唯讀；外 repo 文件飄移先回報，另獲授權才改。結果併入任務完成回報，不新增排程 |
 | 📦 [project-docs](https://github.com/KerberosClaw/kc_ai_plugins/tree/main/plugins/doc-qa/skills/project-docs) | *已移至 `doc-qa` plugin。* 把既有專案補成有人看得懂的文件，而且分兩種讀者。給維護者的是技術文件：掃描全專案、對照證據與缺口，更新有交叉連結的 Markdown、Mermaid 圖、介面／資料／維運與發布交接。給終端使用者與管理者的是操作手冊：動手前要先具備什麼、逐步操作與畫面、卡住時怎麼判斷。沿用公司模板，未知就明說，增量更新；技術文件預設正體中文，GitHub 文件加英文摘要 |
 
 ### 生成與創作
@@ -57,7 +60,15 @@
 | [spec](spec/) | Spec-driven 開發流程 — 從模糊想法到驗收結案。一個指令，自動判斷專案狀態，引導你走完：需求釐清 → 審查 → 實作 → 驗收 → 結案報告。因為「先寫再說」就是你之後要全部重寫的原因 |
 | [goal-engineer](goal-engineer/) | 給那種「想丟給 agent 自己磨一整晚、又不想全程盯著」的場景。它用訪談式問答幫你把一條目標驅動的 evaluator-optimizer loop（generate-and-select 型:產候選 → 依 rubric 評 → 依原因碼迭代 → 你挑最終那個）釘死，吐一份新 session 能 blind 執行的 dispatch 文件，你只要看著紅黃綠燈通知滾進來就好。它是**寫規格的上游、不是引擎** — dispatch 丟給 Claude Code 內建的 `/goal`、headless `claude -p`、或任何無人值守 agent 去跑。不是 `/goal` 本身、不是 build-to-spec 的 PRD 作者（那是 prd-create）、也不是 cron 定時器。唯一窄例外：build spec **已經凍結**（核可的 ADR / 鎖定的設計 / 可機器檢核的 AC）、只差無人值守執行的包裝 → 它直接出一份 lean build dispatch，不會逼你為一個已經拍板的決策回頭寫整份 PRD。通知通道隨你換（Telegram/Discord/Slack/iMessage），而且內建一道「ship 前要不要先對抗審查?」的閘 — 因為我們自己每次都忘記問 |
 
-> 不確定用哪顆時，先用 `workflow-router`。最短判斷法：產品需求走 `prd-create`；repo 內的 SD / 工程 AC / 實作走 `spec`；現有專案技術文件走 `project-docs`（在 `doc-qa` plugin）；單一重要技術決策走 `adr`；核可 PRD 拆票走 `prd-breakdown`；凍結目標要另包無人值守 dispatch 走 `goal-engineer`；已核准的文件工作直接續跑 `project-docs`，不用重問需求。
+> 不確定用哪顆時，先用 `workflow-router`。最短判斷法：產品需求走 `prd-create`；repo 內的 SD / 工程 AC / 實作走 `spec`；既有文件跟實作對齊走 `align`；補建專案技術文件走 `project-docs`（在 `doc-qa` plugin）；單一重要技術決策走 `adr`；核可 PRD 拆票走 `prd-breakdown`；凍結目標要另包無人值守 dispatch 走 `goal-engineer`；已核准的文件工作沿原本 `align` 或 `project-docs` 路由續跑，不用重問需求。
+
+`project-docs` 也會更新既有文件，但任務包含判斷缺哪些技術文件、手冊與交接資訊並補建；`align` 則專注核對既有文件與實作、修正飄移，不重新規劃整套文件。兩者都會看程式、都能修文件，不需要每次修改都兩顆各跑一輪。
+
+QA 從已核准需求／spec 推案例，所以 project-docs 不是 QA 必經的前置階段；實跑素材也可在之後回補手冊。自己的 feature 可直接走 spec，prd-create 看是否需要產品 PRD 交付，prd-breakdown 看是否需要工項／ADO，不由人類或 agent 執行來區分。重要且已定的技術取捨才接 ADR，記錄並連回計畫後返回原階段；ADR 不取代需求、AC 或實作計畫。
+
+操作手冊描述該版本可用的行為與已知限制；核准需求／AC 及選用的盲測驗收腳本保留預期行為，align 不改預期替缺陷背書。歷史 ADR 原文保留，允許加有日期與證據的現況註記；決策改變仍需新 ADR。功能規格缺口回原 spec 補齊，不強迫另寫產品 PRD。
+
+呼叫 spec 就會自動產生實作計畫與 tasks。簡單功能把計畫放在 spec.md，複雜才獨立 plan.md；需求／FR 與 AC 仍在 spec，進度仍在 tasks.md，計畫只引用需求不重抄。已有、已確認的文件布局照舊，不自動合併歷史檔案。
 
 ### 工程紀律
 
@@ -108,6 +119,10 @@ cp -r kc_ai_skills/prep-repo ~/.claude/skills/
 # 範例：安裝到 OpenClaw（workspace 層級）
 cp -r kc_ai_skills/searxng ~/.openclaw/workspace/skills/
 ```
+
+> **文件對齊：** 可在 repo 內直接呼叫 `/align` 或說「文件對齊」。凍結 build 的完整無人值守交接為：確認 `spec` → `goal-engineer` 交接文件 → 實作／AC 驗證 → `doc-qa:qa` → `align` → 收尾回報。執行端需安裝完整 `align` 資料夾與 `doc-qa` plugin；交接要寫明 skill 位置、QA 環境／角色／授權與證據輸出。單元測試不能取代實機 QA；不新增開票、結案或歸檔門檻。
+
+> **QA 執行端：** 跨 Web／桌面 QA 建議 Codex。Web 用 Playwright MCP；原生桌面／跨 App 需實際具備 computer-use 工具的 Codex session。本流程需 doc-qa plugin 0.2.1+／QA skill 0.5.1+ 的適用性與出口規則。Claude Code bg session／agents 測 Web 仍走 Playwright；查證受測產品範圍確實無 UI 時才記 UI QA 不適用，保留原 AC／整合驗證證據，再 align 與收尾；有 UI 卻缺工具仍是未測，阻塞案例不能算通過。開跑先查能力，plugin 不內附 computer-use server，也不保證所有目標都可操作。
 
 > **命名提示：** 複製時可自行加上前綴重新命名（如 `my_prep-repo`）。不會壞掉的。大概。
 
