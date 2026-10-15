@@ -7,6 +7,7 @@
 ## 0. Operator contract（先讀 — 這份 dispatch 的憲法）
 - **Visibility:** `<private/internal — real infra refs OK as spec | shared/public — must abstract/redact infra refs>`
 - **規格主版本(SSOT):** `<approved ADR / doc path / work item>` — 狀態:`<approved / locked,日期>`
+- **實作計畫與進度:** `<spec.md 的實作計畫章節或 plan.md；tasks.md 路徑>`。承接唯一計畫位置，不要求簡單功能另外建立 plan.md。
 - **既有決策依據:** `<相關 ADR 路徑；無則寫無>`。ADR 記理由，執行範圍／AC 仍以凍結規格為準。
 - 🔴 **不得重新詮釋規格**:實作疑義一律回 SSOT 查;SSOT 沒答案 = `SPEC_GAP` → 🔴 stop-and-ask,不腦補。
 - **「任務完成」的定義:** §3 DoD 全勾、§7 驗證通過、§7.1 `doc-qa:qa` 依已核准出口條件通過且有證據，並已執行 §7.2 `align` 後收尾回報。milestone 🟢 只是階段進度，不代表整個任務完成；不得在測試全綠時跳過 QA／文件對齊就報完成。

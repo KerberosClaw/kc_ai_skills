@@ -2,6 +2,10 @@
 
 > **English summary:** Brief description of the implementation approach.
 
+**Spec:** [需求與 FR／AC 的相對連結]
+
+只供需要獨立展開的複雜計畫使用；簡單功能將下列必要內容放進 spec.md。引用需求／FR／AC，不重抄。
+
 ## 做法
 
 [1-2 段：怎麼做這個功能]

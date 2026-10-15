@@ -49,6 +49,8 @@
 
 ## 2026-10-15 文件與實作對齊
 
-新增 [align](align/SKILL.md) 0.2.0：手動或無人值守檢查整個 repo，依實作修既有文件，跨 repo 引用可讀查證，修改外 repo 另取授權；歷史衝突保留原文加註，已部署環境唯讀。`workflow-router` 0.5.0、`spec` 1.8.0 與 `goal-engineer` 1.2.0 接好 frozen build 主線：確認 spec → 交接給執行 agent → 實作／AC 驗證 → `doc-qa:qa` → align → 收尾回報。goal-engineer 的 lean build 模板要求記錄執行端 skill 位置／版本、QA 環境與授權、證據輸出與最後回報；測試全綠不可代替實機 QA，generate-and-select 不套這條流程。未新增開票、結案或歸檔程序。project-docs 保留廣義文件盤點／補建與手冊工作，align 專注既有文件飄移；不預設兩者都跑。判準放 align/references/criteria.md，雙語 README 同步。
+新增 [align](align/SKILL.md) 0.2.0：手動或無人值守檢查整個 repo，依實作修既有文件，跨 repo 引用可讀查證，修改外 repo 另取授權；歷史衝突保留原文加註，已部署環境唯讀。`workflow-router` 0.6.0、`spec` 1.9.0 與 `goal-engineer` 1.3.0 接好 frozen build 主線：確認 spec → 交接給執行 agent → 實作／AC 驗證 → `doc-qa:qa` → align → 收尾回報。goal-engineer 的 lean build 模板要求記錄執行端 skill 位置／版本、QA 環境與授權、證據輸出與最後回報；測試全綠不可代替實機 QA，generate-and-select 不套這條流程。未新增開票、結案或歸檔程序。project-docs 保留廣義文件盤點／補建與手冊工作，align 專注既有文件飄移；不預設兩者都跑。判準放 align/references/criteria.md，雙語 README 同步。
 
 ADR 0.3.0 補上設計／實作中重要已定決策的條件接入，依原判準記錄／引用並返回原階段；不合格留原計畫，不用 ADR 批准未定或越權決策。QA 可涵蓋 Web／桌面：Web 為 Playwright MCP，桌面為具 computer-use 的 Codex 執行端（需 doc-qa plugin 0.2.0+ 的 QA 0.5.0+）；跨 UI QA 建議 Codex，仍須驗能力。QA 從需求／spec 推案例，project-docs 並非前置必經；PRD 與拆工項也是依交付物分支，不是依是否有人類工程師分工。
+
+spec 自動產出 FR／AC、實作計畫與 tasks；簡單功能的計畫內嵌 spec.md，複雜才獨立 plan.md，既有布局不自動遷移。實作／dispatch／report 全部承接唯一計畫位置，tasks 保留進度與引用；判準只放 spec/references/review.md。完整 Mermaid 與 26 顆 repo skill＋3 顆 doc-qa skill 的分類索引維護在 [workflow-router/docs/workflow.md](workflow-router/docs/workflow.md)，router 與雙語 README 連過去，不另複製流程圖。

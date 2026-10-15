@@ -24,6 +24,8 @@ Skills that moved into a plugin are still listed below, marked 📦, with links 
 
 Grouped by what you're trying to get done — every skill is still a self-contained top-level folder, the grouping is just a map.
 
+**Start here:** [Workflow diagrams, document roles, and the complete skill map](workflow-router/docs/workflow.md). One maintained guide covers the 26 skills in this repo and the 3 skills in the separate doc-qa plugin; the bundle is a menu, not a requirement to run everything.
+
 ### Workflow entrypoint
 
 | Skill | What It Actually Does |
@@ -63,6 +65,8 @@ Grouped by what you're trying to get done — every skill is still a self-contai
 `project-docs` can also update existing docs while assessing missing technical docs, manuals, and handoff material. `align` is the focused maintenance pass: check existing docs against implementation and fix drift without designing a new documentation suite. Both read code and can update docs; you do not need to run both for every change.
 
 QA derives its cases from approved requirements/specs, so `project-docs` is not a mandatory step before QA; it can also consume QA evidence afterwards for manuals. Personal features can go straight to `spec`; `prd-create` is for a product PRD deliverable and `prd-breakdown` for work-item/ADO planning, regardless of whether people or agents implement the work. Record an ADR only for a settled decision that qualifies, link it back to the plan, and return to the original stage. ADRs do not replace requirements, AC, or an implementation plan.
+
+Calling `spec` also creates the implementation plan and tasks. Simple features keep the plan in `spec.md`; complex ones use a separate `plan.md`. Requirements/FR and acceptance criteria remain in the spec, progress remains in `tasks.md`, and the plan references requirements instead of copying them. Existing approved layouts stay intact.
 
 > Not sure which one fits? Start with `workflow-router`. The shortest rule of thumb: product requirements go to `prd-create`; repo-local software design / engineering AC / implementation goes to `spec`; existing docs versus implementation goes to `align`; new technical docs / manuals go to `project-docs` (in the `doc-qa` plugin); one durable technical decision goes to `adr`; approved PRD tickets go to `prd-breakdown`; a new unattended dispatch for frozen work goes to `goal-engineer`. Already approved documentation work continues with its existing `align` or `project-docs` route without another requirements interview.
 

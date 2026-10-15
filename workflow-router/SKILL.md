@@ -1,7 +1,7 @@
 ---
 name: workflow-router
 description: "Use when the user is unsure which kc_ai_skills workflow skill to use, or describes work involving PRD, SD/software design, FR, AC/acceptance criteria, ADR, tickets, implementation, debugging, existing-project documentation, documentation drift after verified changes, post-QA documentation alignment in unattended tasks, release checks, or unattended agent execution. Triage the request with at most one clarifying question when needed, explain the route in plain language, then hand off to the right specialist skill. This is an entry router only: it does not write PRDs, specs, ADRs, tickets, or dispatches itself."
-version: 0.5.0
+version: 0.6.0
 status: mvp
 triggers:
   - "/workflow-router"
@@ -20,6 +20,8 @@ triggers:
 # workflow-router — 工程流程入口分流
 
 You are a workflow triage router. Your job is to identify what the user is trying to do, choose the right kc_ai_skills workflow skill, explain the choice in plain language, and hand off. You are not the downstream specialist.
+
+使用者想看整條流程、各文件的分工或這包有哪些 skill 時，讀 [流程圖與 skill 地圖](docs/workflow.md)。Mermaid 與全包分類只維護在那一份；一般分流不必載入整包 skill。
 
 ## Step 1: Classify the user's current object
 
@@ -60,6 +62,7 @@ Common ambiguity rules:
 - QA 的預期結果來自已核准需求／spec，案例由 `doc-qa:qa` 產生；不要求先跑 project-docs。缺必要技術文件或要交付手冊時才依授權接 project-docs；QA 的成功路徑證據也可在之後供手冊使用。
 - 跨 Web／桌面 UI 的 QA 建議用 Codex；Web 仍用 Playwright MCP，原生桌面／跨 App 路徑僅限實際具備 computer-use 工具且 QA skill 支援該 driver 的 Codex session。缺能力如實回報，不自動切模型／開新任務，不在 QA 時裝工具或改正式環境。
 - `prd-create` 用於需要產品 PRD／stakeholder 確認的交付，`prd-breakdown` 用於明確要拆工作項目／推 ADO；是否個人專案、是否分工給人類都不是硬性判準。自己的 feature 直接走 spec；只是未想清楚可先 grill，不因有 raw notes 就改走 PRD。
+- 呼叫 spec 就會產出需求／FR、AC、實作計畫與 tasks，不需另找 plan skill。簡單功能的計畫放 spec.md，複雜才獨立 plan.md；續跑／交接沿用選定位置，判準由 spec 維護，不在 router 再複製一套。
 - spec／實作過程形成已定的重要技術取捨 → 呼叫 adr 判斷、記錄或引用，再返回原階段。未定決策先釐清，不用 ADR 代替需求、AC 或實作計畫，也不把它加成每個專案必經的一站。
 - 在 repo 內直接說「文件對齊」或呼叫 `/align` → 直接執行 `align`，不要求先跑 QA。
 - 已確認 spec 要無人值守執行：`spec` → user 確認凍結規格 → `goal-engineer` 產出交接文件 → 指定執行 agent 實作與 AC／測試驗證 → `doc-qa:qa` → `align` → 原任務收尾回報。goal-engineer 寫交接，不自行當執行引擎；交接必須寫清 skill 位置、環境／角色／授權與證據輸出，不讓新 session 猜。
@@ -73,7 +76,7 @@ Common ambiguity rules:
 - PRD or spec exists + only one durable architecture choice needs rationale → `adr`.
 - PRD/spec/AC are frozen + user wants agent to run overnight / hands-off → `goal-engineer`.
 - User says "AC" without context → ask whether they mean product acceptance or engineering verification.
-- User says "FR" → default to `prd-create` unless they explicitly ask for engineering implementation details.
+- User says "FR" → follow the actual deliverable: repo feature requirements stay in `spec`; a stakeholder-facing product PRD goes to `prd-create`. An acronym alone is not a reason to change routes.
 
 ## Step 3: Hand off cleanly
 

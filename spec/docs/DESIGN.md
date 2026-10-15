@@ -2,6 +2,8 @@
 
 # /spec Skill — 設計文件
 
+> 現況註記（2026-10-15）：以下保留早期設計背景；目前 spec 1.9.0 對簡單功能將計畫內嵌在 spec.md，複雜功能才獨立 plan.md，tasks.md 仍保留。下文「用 plan.md 作骨架」應理解為讀取已選定的計畫位置；task 數量也不以 5–10 為硬門檻。現行判準見 [review.md](../references/review.md)。
+
 ## 解決什麼問題？
 
 用 AI agent 寫 code 最常見的災難：

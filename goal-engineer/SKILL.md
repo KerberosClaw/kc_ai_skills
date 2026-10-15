@@ -1,7 +1,7 @@
 ---
 name: goal-engineer
 description: "Author a self-contained unattended dispatch for a generate-and-select loop (generate candidates, grade, iterate, keep the best for human selection), or for a build whose spec is already frozen with approved scope and machine-checkable AC. Frozen builds hand off implementation / checks, doc-qa:qa, align, and the final task report. Fill execution and notification gaps without reopening approved product decisions. This is the dispatch author, not the runtime: a separate agent or headless session executes it. Not for writing a build spec or PRD from raw input, scheduling recurring work, or running the task itself."
-version: 1.2.0
+version: 1.3.0
 status: stable
 triggers:
   - "/goal-engineer"
@@ -100,6 +100,7 @@ agent **絕對不能做**什麼?scope 邊界、禁止動作、只有人能決定
 任一條沒過 → 導去 `prd-create` 或 stop-and-ask,**不准腦補**:
 
 - [ ] **規格主版本明確**:指得出在哪 —— `<ADR / 文件路徑 / work item>`。
+- [ ] **計畫位置明確**：若承接 spec skill，指向 spec.md 的「實作計畫」或既有獨立 plan.md，並帶入 tasks.md；簡單功能沒有 plan.md 不是規格缺口，不為交接另抄一份需求或計畫。
 - [ ] **狀態明確**:approved / locked / user 明說已定版。「已核可的設計決策」≠「可執行的 AC」,兩者都要有。
 - [ ] **範疇明確**:這一輪做哪些、明確不做哪些。
 - [ ] **AC 可機器檢核**:每條都有測試 / 指令 / 可觀察的檢核,不靠人肉眼。

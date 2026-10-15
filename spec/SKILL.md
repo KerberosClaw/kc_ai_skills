@@ -1,7 +1,7 @@
 ---
 name: spec
 description: "Use when the user wants a spec-driven development workflow for implementing a feature in the current codebase, from fuzzy idea or existing active spec through requirements, technical plan, tasks, implementation, verification, and closure report. Auto-detects project/spec state, writes persistent files under specs/, asks one grounded question at a time when requirements are ambiguous, and stops at stage gates. NOT for stakeholder PRDs (prd-create), ADO ticket breakdown (prd-breakdown), single architecture-decision records (adr), or already-frozen tasks that should simply be implemented."
-version: 1.8.0
+version: 1.9.0
 status: stable
 triggers:
   - "spec"
@@ -45,6 +45,7 @@ You are a spec-driven development lead. You turn a user feature request into per
 5. 與 user 的互動用正體中文。spec/plan/tasks/report 文件摘要為英文（English summary），內容為正體中文。
 6. **判準不在本檔。** 「怎樣才算過」寫在 `references/`，文件格式寫在 `templates/`。下面各階段寫到「先讀」的地方，一定要真的讀那份檔再做，不要憑印象。每個階段結束都用 [references/review.md](references/review.md)「完成狀態」的用字回報。
 7. **技術決策需要記錄時接 ADR，再返回原階段。** 設計或實作中形成重要決策時，先讀已安裝的 `adr`（同套件：[adr/SKILL.md](../adr/SKILL.md)），依 repo 慣例與其判準決定是否記錄；不另抄判準、不每個 task 都開 ADR。只記錄已確定的決策，先查重，將結果引用回 DESIGN／plan／tasks；不需要 ADR 就留在原計畫。未決或超出授權的改動先回 user，不能藉 ADR 批准自己。
+8. **計畫只有一個維護位置。** 新 spec 的簡單功能將計畫放在 `spec.md` 的「實作計畫」；複雜功能才獨立 `plan.md`。先讀 [references/review.md](references/review.md) 的「計畫位置與內容」判斷並記錄選擇，後續實作、交接與 report 都讀同一位置。`tasks.md` 仍獨立追蹤進度；既有或 repo 規定的文件布局優先，不為套新規則自動合併舊檔。
 
 ---
 
@@ -77,7 +78,7 @@ You are a spec-driven development lead. You turn a user feature request into per
 
 ### 判斷「需求規模」的標準
 
-問自己：**這個需求能拆成一張 tasks checklist（5-10 項）就做完嗎？**
+問自己：**這個需求能在單一 spec 與一張 tasks checklist 裡清楚定義與驗收嗎？** task 數量依實際交付，不為了湊數增加工作。
 
 - 能 → 單一 spec，直接進 Spec Stage
 - 不能 → 需要先在 Discovery Stage 討論架構，拆成多個 spec
@@ -146,11 +147,11 @@ You are a spec-driven development lead. You turn a user feature request into per
 
 ---
 
-## Spec Stage（產 spec.md + plan.md + tasks.md）
+## Spec Stage（需求、實作計畫與任務清單）
 
 **觸發條件：** user 提供了明確的 feature 需求。
 
-**目標：** 產出三份文件，確保「想清楚再動手」。
+**目標：** 自動產出需求／FR、AC、實作計畫與 tasks，讓 agent 有完整依據。簡單功能為 `spec.md`（含計畫）＋`tasks.md`；複雜功能另外有 `plan.md`。不用 user 再呼叫一個 plan skill。
 
 ### 流程
 
@@ -171,23 +172,23 @@ You are a spec-driven development lead. You turn a user feature request into per
    - feature-name 為 kebab-case，從需求描述摘要
    - 如果 `specs/active/` 不存在，先建好再用
 
-4. **產出 `spec.md`**：照 [templates/spec.md](templates/spec.md) 的格式寫。
+4. **產出 `spec.md`**：照 [templates/spec.md](templates/spec.md) 寫需求／FR、AC 與邊界。FR 描述要有的行為，AC 定義可驗證條件，不能以「有做過某 task」代替。
 
 5. **Self-Review（自己審自己）**
 
    **先讀 [references/review.md](references/review.md) 的「Spec Self-Review」**，逐項檢查並遵守其中的 Anti-Sycophancy 規定。
    有不通過的項目，當場問 user 釐清，不要自己猜。
-   全部通過後，告訴 user：「spec 審查通過，接下來產 plan。」
+   全部通過後，告訴 user：「spec 審查通過，接下來補實作計畫與 tasks。」
 
-6. **產出 `plan.md`**：照 [templates/plan.md](templates/plan.md) 的格式寫。
+6. **產出實作計畫**：先讀 [references/review.md](references/review.md) 的「計畫位置與內容」。簡單功能直接補 `spec.md` 的「實作計畫」；複雜功能依 [templates/plan.md](templates/plan.md) 寫獨立 `plan.md`，spec 只保留連結。計畫寫做法、必要取捨／風險與先後順序，不重抄需求／FR／AC。
 
 7. **產出 `tasks.md`**：照 [templates/tasks.md](templates/tasks.md) 的格式寫，task 怎麼切以 [references/review.md](references/review.md) 的「Task 粒度」為準。
 
 8. **呈現給 user**
-   - 列出三份檔案的摘要（不用全文印出來，user 可以自己開檔案看）
+   - 列出實際產出的檔案摘要與計畫位置（不用全文印出來，user 可以自己開檔案看）
    - 問：「spec 看起來 OK 嗎？要調整什麼？確認後我們就開始實作。」
-   - user 確認後，對已定的關鍵技術取捨依執行規則 7 接 ADR，將路徑引用回 plan；完成或判定不需要後回到原本的實作／交接步驟。
-   - user 確認規格且要求無人值守時，交給 `goal-engineer` 包裝已凍結的 spec／plan／tasks；交接包含實作與驗證 → `doc-qa:qa` → `align` → 收尾回報。只補缺少的執行資訊，不重問規格；由指定的執行 agent 跑，不把產出 dispatch 說成已執行。
+   - user 確認後，對已定的關鍵技術取捨依執行規則 7 接 ADR，將路徑引用回選定的計畫位置；完成或判定不需要後回到原本的實作／交接步驟。
+   - user 確認規格且要求無人值守時，交給 `goal-engineer` 包裝已凍結的 spec、計畫位置與 tasks；沒有獨立 plan.md 不是缺件，不另補一份。交接包含實作與驗證 → `doc-qa:qa` → `align` → 收尾回報。只補缺少的執行資訊，不重問規格；由指定的執行 agent 跑，不把產出 dispatch 說成已執行。
 
 ---
 
@@ -204,12 +205,12 @@ You are a spec-driven development lead. You turn a user feature request into per
 ### 流程
 
 1. **載入上下文**
-   - 讀 `spec.md`、`plan.md`、`tasks.md`
+   - 讀 `spec.md`、其中指定的計畫位置（內嵌章節或 `plan.md`）與 `tasks.md`
    - 找到第一個未完成的 task
    - 如果專案有 `docs/DESIGN.md`，也讀它
 
-2. **進入 Claude Code Plan Mode**
-   - 用 plan.md 的 Implementation Order 作為計畫骨架
+2. **按實作計畫執行**
+   - 用選定計畫的「實作順序」作為骨架；執行端有適用的計畫工具時可使用，不把 Claude Code Plan Mode 當成 Codex 必要能力
    - 逐項執行 task
 
 3. **每完成一個 task**
@@ -263,7 +264,7 @@ You are a spec-driven development lead. You turn a user feature request into per
 ### 流程
 
 1. **收集資訊**
-   - 讀 `spec.md`、`plan.md`、`tasks.md`
+   - 讀 `spec.md`、其中指定的計畫位置（內嵌章節或 `plan.md`）與 `tasks.md`
    - 讀 git log（找跟這個 spec 相關的 commit）
 
 2. **產出 `report.md`**：照 [templates/report.md](templates/report.md) 的格式寫，「三問自審」與「剩餘風險」兩段不可省略。
@@ -290,15 +291,15 @@ You are a spec-driven development lead. You turn a user feature request into per
 ├── specs/
 │   ├── active/                  # 進行中或待驗收的 spec
 │   │   ├── 02-another-feature/
-│   │   │   ├── spec.md          # 需求規格 + 驗收條件
-│   │   │   ├── plan.md          # 實作計畫 + 技術決策
+│   │   │   ├── spec.md          # 需求／FR + AC；簡單功能含實作計畫
+│   │   │   ├── plan.md          # 複雜功能才獨立；或沿用既有布局
 │   │   │   └── tasks.md         # 任務清單 + 狀態追蹤
 │   │   └── 03-yet-another/
 │   │       └── ...
 │   └── completed/               # 已歸檔的 spec（Report Stage 搬進來）
 │       └── 01-first-feature/
 │           ├── spec.md
-│           ├── plan.md
+│           ├── plan.md          # 若採獨立計畫
 │           ├── tasks.md
 │           └── report.md        # 結案報告（Report Stage 產出）
 └── src/                         # 你的程式碼
@@ -335,5 +336,5 @@ You are a spec-driven development lead. You turn a user feature request into per
 
 ## 注意事項
 
-- **tasks.md 是 source of truth。** 換對話、換電腦，看 tasks.md 就知道做到哪。
+- **需求／FR／AC 以 spec.md 為準，計畫只維護選定位置，進度以 tasks.md 為準。** 換對話先看 tasks 的狀態與計畫連結，不把 task 完成誤當成需求或驗收已通過。
 - **report.md 是給未來的人看的。** 寫清楚「為什麼這樣做」而不只是「做了什麼」。
