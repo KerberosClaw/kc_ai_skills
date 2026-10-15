@@ -33,12 +33,13 @@
 - **`<風險類別>`:** `<徵兆 → 對策 → 驗證方式>`
 - **`<風險類別>`:** ...
 
-## 5. Pre-flight gate（fail-fast,任何工作開始前跑、硬擋）
+## 5. Pre-flight gate（fail-fast，任何工作開始前跑；第 0〜3 項硬擋）
 0. **通知測得通**(送測試 ping;失敗 → 不開跑。見 `notify-protocol.md`)。
 1. `<runtime / 服務 / 依賴檢查>`
 2. `<輸入 / 測試環境(staging / dump)備齊>`
 3. `<smoke:最小一項端到端,例如對 dump 空跑一次 migration>`
 4. 確認 §7.1／§7.2 的兩個完整 skill 與 references 在執行端可讀，QA 支援目前適用性與出口契約（doc-qa 0.2.1+／QA 0.5.1+）。先依 QA ui-driver 判斷範圍：有 UI 才要求對應 driver（Web 為 Playwright MCP；桌面／跨 App 為具 computer-use 的 Codex），查證無 UI 則記錄依據與 §7 適用驗證，不要求 driver。有 UI 卻缺工具或環境就回報依賴缺口，不改稱不適用、不自行安裝或以 AC 測試取代 UI 實跑。
+   第 4 項不擋開跑：缺 driver 或 skill 時記下缺口並發 🟡，照常完成實作與 §7。受影響的階段依 §7.1／§7.2 記 `尚未實跑`／`部分執行` 或未執行，§10 以 🔴 回報任務未完成。
 
 ## 6. Execution procedure（新 session 照這個跑）
 1. 讀本 dispatch + SSOT;load state(`<state file>` 存在則 resume,否則 fresh)。

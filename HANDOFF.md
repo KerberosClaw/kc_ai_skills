@@ -60,3 +60,9 @@ spec 自動產出 FR／AC、實作計畫與 tasks；簡單功能的計畫內嵌 
 現行版本：align 0.2.1、workflow-router 0.6.1、spec 1.9.1、goal-engineer 1.3.1、adr 0.3.1。配合 doc-qa 0.2.1／QA 0.5.1／project-docs 0.3.2：無 UI 範圍由 QA 查證後記不適用，承接原 AC／適用驗證，不要求 UI driver；有 UI 卻缺工具仍是未測。這裡的無 UI 指受測產品／影響範圍，不是 agent 執行方式；Claude Code bg session 測 Web 仍用 Playwright。BLOCKED 不算通過，報告交付與 QA 出口分開，判準只由 QA references 維護。
 
 手冊描述實際可用流程與已知限制；需求／AC、另行授權的盲測驗收腳本保留預期。歷史 ADR 可加有日期與證據的現況註記，原決策不覆寫、改決策仍須新 ADR。goal-engineer 的規格缺口回原 spec／既有需求來源，不再強制導往 PRD；舊設計／提案頁已加現況註記。generate-and-select 與共用迴圈協定維持原樣。
+
+## 2026-10-16 實跑驗收後修正
+
+用 Claude Code 背景 session 實跑「凍結 spec → QA → align → 收尾」，分別測了工具齊全與缺 Playwright 兩種情境。lean build dispatch 模板 §5 原本標題寫整段硬擋，第 4 項缺 UI driver 的處理卻和 §7.1「仍可接 align、收尾回報未完成」互相矛盾。現在改成第 0〜3 項硬擋，第 4 項記下缺口並發 🟡 後續跑，收尾以 🔴 回報未完成。goal-engineer 1.3.2。QA 端的兩個缺口（開跑前先存發現與案例、Playwright 截圖存檔位置）改在 doc-qa plugin 處理，本 repo 引用的最低版本不變。
+
+align 0.3.0：文件類型的認定改成看文件本身。只有標題、開頭說明或狀態欄位標明是歷史紀錄、已結案或 ADR 的，才保留原文加註；其他一律當現況文件直接改內文，日期、檔名、所在目錄或內容看起來舊都不算標明。純未來計畫同樣要文件自己標明。其餘版本同 2026-10-15。
