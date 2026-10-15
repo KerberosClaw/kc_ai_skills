@@ -14,7 +14,7 @@ triggers:
 
 You are a spec-driven development lead. You turn a user feature request into persistent requirements, implementation plan, task checklist, verified code, and a closure report while respecting the current repository state.
 
-把「實作 feature 的流程」標準化：需求釐清 → 技術審查 → 實作 → 驗收 → 文件對齊 → 結案。
+把「實作 feature 的流程」標準化：需求釐清 → 技術審查 → 實作 → 驗收 → 結案。
 一個入口，自動判斷該做什麼。
 
 ## 使用方式
@@ -41,7 +41,7 @@ You are a spec-driven development lead. You turn a user feature request into per
 1. 永遠先跑 **Stage Detection** 判斷目前狀態，再決定進入哪個階段。
 2. 所有產出的檔案放在專案根目錄的 `specs/` 下。
 3. 用 `git rev-parse --show-toplevel` 找專案根目錄。如果不在 git repo 裡，用當前工作目錄。
-4. 不主動執行 user 沒要求的事。每個階段完成後說明產出；尚未授權下一階段才詢問。已有一路執行到結案的授權（含無人值守）時直接接續，保留需 user 決策的既有閘門。
+4. 不主動執行 user 沒要求的事。每個階段完成後，說明產出了什麼，問 user 下一步。
 5. 與 user 的互動用正體中文。spec/plan/tasks/report 文件摘要為英文（English summary），內容為正體中文。
 6. **判準不在本檔。** 「怎樣才算過」寫在 `references/`，文件格式寫在 `templates/`。下面各階段寫到「先讀」的地方，一定要真的讀那份檔再做，不要憑印象。每個階段結束都用 [references/review.md](references/review.md)「完成狀態」的用字回報。
 
@@ -244,40 +244,35 @@ You are a spec-driven development lead. You turn a user feature request into per
    - 修完後可以再跑一次 check
 
 5. **全部 PASS**
-   - 準備進入結案時，先完成下方 Report Stage 的 `align` 文件對齊；對齊不重跑 QA，也不改程式或已部署環境。若已獲授權執行到結案（含無人值守），直接接續，不重問已授權步驟。
-   - 否則告訴 user：「驗收通過，要產結案報告嗎？（/spec report NN-feature-name）」
+   - 無人值守且已授權執行完整任務時，可接著呼叫已安裝的 `align` 跑一輪全 repo 文件對齊，再由原任務收尾回報完成，列出文件修訂與未確認項目。align 不增加開票、結案或歸檔門檻；未安裝時如實回報未執行，不自行下載。
+   - 一般互動流程沿用原本階段閘門，告訴 user：「驗收通過，要產結案報告嗎？（/spec report NN-feature-name）」
 
 ---
 
 ## Report Stage（結案）
 
-**觸發條件：** user 明確要求 `/spec report`，或本次已有 QA／驗收後一路執行到結案的授權（含無人值守）。
+**觸發條件：** user 明確要求 `/spec report`。
 
 **目標：** 產出 `report.md`，記錄這個 feature 的完整生命週期。
 
 ### 流程
 
-1. **先完成文件對齊**
-   - 確認已有對應目前實作的 QA／AC 驗收通過證據；尚未通過就回 Check Stage，不以 align 或結案報告代替驗收。
-   - 讀取並執行已安裝的 `align`（同套件位置：[align/SKILL.md](../align/SKILL.md)），對整個 repo 核對文件與實作，沿引用跨 repo 唯讀查證；只改授權 repo 的文件，歷史衝突保留原文加註，已部署環境唯讀。已有覆蓋目前內容的 align 結果時沿用，不重複全掃。
-   - 找不到 align 時回報缺少依賴，停在結案前，不假裝對齊完成。`PARTIAL`／`BLOCKED` 時保留已完成修訂並回報缺口，不更新為 VERIFIED、不歸檔；僅外 repo 待授權且不影響本 repo 結論時，將待辦留在報告，不跨界修改。
-
-2. **收集資訊**
+1. **收集資訊**
    - 讀 `spec.md`、`plan.md`、`tasks.md`
    - 讀 git log（找跟這個 spec 相關的 commit）
 
-3. **產出 `report.md`**：照 [templates/report.md](templates/report.md) 的格式寫，「三問自審」與「剩餘風險」兩段不可省略。
+2. **產出 `report.md`**：照 [templates/report.md](templates/report.md) 的格式寫，「三問自審」與「剩餘風險」兩段不可省略。
 
-4. **更新 tasks.md Status** 為 `VERIFIED`
+3. **更新 tasks.md Status** 為 `VERIFIED`
 
-5. **歸檔：把整個 spec 資料夾從 `specs/active/` 搬到 `specs/completed/`**
+4. **歸檔：把整個 spec 資料夾從 `specs/active/` 搬到 `specs/completed/`**
    - `git mv specs/active/NN-feature-name specs/completed/NN-feature-name`（有 git 的話用 git mv 保留歷史）
    - 沒 git 就普通 `mv`
    - 如果 `specs/completed/` 不存在，先建好
    - **（選用）若使用者另裝有專案管理同步類 skill，可提示把 tasks.md 推到遠端平台**（spec skill 本身不依賴、不 import 任何同步工具）
    - 搬完後把 report.md 裡的 `Spec:` 欄位路徑更新為新位置
 
-6. **告訴 user** 結案完成，附文件對齊結果及仍待授權的外 repo 項目。
+5. **告訴 user** 結案完成。
 
 ---
 
@@ -316,7 +311,7 @@ You are a spec-driven development lead. You turn a user feature request into per
 - **`prd-breakdown`**：把已核可 PRD 拆成 Azure DevOps tickets。本 skill 的 `tasks.md` 是本地開發 checklist，不負責推 ADO。
 - **`goal-engineer`**：把已凍結的目標/規格包成無人值守 dispatch。若規格還需要釐清或 code 還要在當前 repo 實作 → 本 skill；若規格已鎖，只差交給 agent blind run → `goal-engineer`。
 - **`adr`**：記錄單一難回頭決策的「為什麼」。本 skill 可以產生需要 ADR 的決策，但不要把 ADR 寫成 spec，也不要把整個 feature lifecycle 塞進 ADR。
-- **`align`**：QA／驗收通過後、結案前，讓整個 repo 的既有文件跟上實作；也可手動獨立呼叫。結案需安裝本 skill 與 align 兩個完整資料夾。
+- **`align`**：文件與實作對齊，可在 repo 內直接呼叫；無人值守任務 QA 後也可跑一輪，結果併入原任務收尾回報，不更動本 skill 的結案與歸檔流程。
 - **`prep-repo`**：發布前總檢查。功能已做完、要公開或推 GitHub 前 → `prep-repo`；不要用它取代 spec 的需求/實作/驗收流程。
 
 ---

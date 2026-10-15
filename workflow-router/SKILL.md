@@ -1,7 +1,7 @@
 ---
 name: workflow-router
-description: "Use when the user is unsure which kc_ai_skills workflow skill to use, or describes work involving PRD, SD/software design, FR, AC/acceptance criteria, ADR, tickets, implementation, debugging, existing-project documentation, documentation drift after verified changes, QA-passed closure, release checks, or unattended agent execution. Triage the request with at most one clarifying question when needed, explain the route in plain language, then hand off to the right specialist skill. This is an entry router only: it does not write PRDs, specs, ADRs, tickets, or dispatches itself."
-version: 0.3.0
+description: "Use when the user is unsure which kc_ai_skills workflow skill to use, or describes work involving PRD, SD/software design, FR, AC/acceptance criteria, ADR, tickets, implementation, debugging, existing-project documentation, documentation drift after verified changes, post-QA documentation alignment in unattended tasks, release checks, or unattended agent execution. Triage the request with at most one clarifying question when needed, explain the route in plain language, then hand off to the right specialist skill. This is an entry router only: it does not write PRDs, specs, ADRs, tickets, or dispatches itself."
+version: 0.3.1
 status: mvp
 triggers:
   - "/workflow-router"
@@ -14,7 +14,7 @@ triggers:
   - "幫我判斷用哪顆"
   - "文件跟實作對齊"
   - "文件飄移"
-  - "QA 通過準備結案"
+  - "QA 後文件對齊"
 ---
 
 # workflow-router — 工程流程入口分流
@@ -34,7 +34,7 @@ First decide what the user is holding right now:
 | Software design / SD, engineering AC, implementation plan, tasks, code verification | `spec` | Turn requirements into repo-local design, plan, tasks, implementation, check, report |
 | One hard-to-reverse technical decision and the reason why | `adr` | Record the decision if it passes the ADR gates |
 | Frozen spec/goal with machine-checkable AC that should run unattended | `goal-engineer` | Package a blind-runnable agent dispatch; do not invent requirements |
-| Existing docs lag behind implementation / hotfixes, or QA has passed and work is ready for closure | `align` | Inspect the whole repo, follow cross-repo references read-only, update authorized docs, then hand back for closure |
+| Existing docs lag behind implementation / hotfixes, or an unattended task needs a documentation pass after QA | `align` | Inspect the whole repo, follow cross-repo references read-only, update authorized docs, then report changes and remaining gaps |
 | Existing codebase needs a new documentation suite, substantial missing docs, or a new manual / handoff | `project-docs` | Map the actual project and maintain evidence-backed Markdown docs with Mermaid diagrams |
 | Finished repo/docs before public release or GitHub push | `prep-repo` | Release-readiness and leak/link/docs hygiene |
 
@@ -56,8 +56,9 @@ If ambiguous, ask exactly one multiple-choice-style question in prose, with your
 Common ambiguity rules:
 
 - Existing docs contradict or lag behind current implementation / hotfixes → `align`. A broad documentation audit or building missing technical docs / manuals → `project-docs`; new behavior or engineering design → `spec`.
-- QA／驗收已通過、準備 close／結案 → 先執行 `align`，檢查整個 repo，不限 ticket 或近期變更；完成後交還原結案流程。QA 尚未完成則保留原 QA／驗收流程，不用 align 取代驗收。手動呼叫 align 不要求先跑 QA。
-- 無人值守是執行方式，不是改走 `goal-engineer` 的理由：已授權的文件對齊直接執行 `align`，不要重新訪談或新增排程。align 只改指定 repo 文件，外 repo 可讀查證、修改需另行明確授權；部分完成不得宣稱已完整結案。
+- 在 repo 內直接說「文件對齊」或呼叫 `/align` → 直接執行 `align`，不要求先跑 QA。
+- 無人值守任務跑完 QA 後可接一輪 `align`，再由原任務收尾回報完成；align 不增加開票、結案、歸檔或任務狀態閘門。
+- 無人值守是執行方式，不是改走 `goal-engineer` 的理由：已授權的文件對齊直接執行 `align`，不要重新訪談或新增排程。align 只改指定 repo 文件，外 repo 可讀查證、修改需另行明確授權；未確認或未覆蓋的部分如實回報。
 - Internal documentation before eventual OSS → use `align` for drift or `project-docs` for missing docs first; public-release readiness and sanitization → `prep-repo` when that stage is requested. Private documentation does not imply publishing approval.
 - Already approved documentation work + "execute unattended" → continue its existing `align` or `project-docs` route; do not reopen requirements or create a dispatch unless requested.
 

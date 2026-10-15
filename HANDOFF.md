@@ -49,4 +49,4 @@
 
 ## 2026-10-15 文件與實作對齊
 
-新增 [align](align/SKILL.md) 0.1.0：手動或無人值守檢查整個 repo，依實作修既有文件，跨 repo 引用可讀查證，修改外 repo 另取授權；歷史衝突保留原文加註，已部署環境唯讀。`workflow-router` 0.3.0 區分 align 與補建文件的 project-docs；`spec` 1.6.0 在 QA／AC 通過後、結案前呼叫 align，部分完成不自動歸檔。使用 spec 結案功能需一併安裝 align；判準放 align/references/criteria.md，雙語 README 與結案範本同步。
+新增 [align](align/SKILL.md) 0.1.1：手動或無人值守檢查整個 repo，依實作修既有文件，跨 repo 引用可讀查證，修改外 repo 另取授權；歷史衝突保留原文加註，已部署環境唯讀。`workflow-router` 0.3.1 區分 align 與補建文件的 project-docs；`spec` 1.6.0 只增加無人值守 QA 後可跑一輪 align，再收尾回報任務完成的指引，不新增開票、結案、歸檔或狀態閘門。判準放 align/references/criteria.md，雙語 README 同步。
