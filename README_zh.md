@@ -60,6 +60,8 @@
 
 > 不確定用哪顆時，先用 `workflow-router`。最短判斷法：產品需求走 `prd-create`；repo 內的 SD / 工程 AC / 實作走 `spec`；既有文件跟實作對齊走 `align`；補建專案技術文件走 `project-docs`（在 `doc-qa` plugin）；單一重要技術決策走 `adr`；核可 PRD 拆票走 `prd-breakdown`；凍結目標要另包無人值守 dispatch 走 `goal-engineer`；已核准的文件工作沿原本 `align` 或 `project-docs` 路由續跑，不用重問需求。
 
+`project-docs` 也會更新既有文件，但任務包含判斷缺哪些技術文件、手冊與交接資訊並補建；`align` 則專注核對既有文件與實作、修正飄移，不重新規劃整套文件。兩者都會看程式、都能修文件，不需要每次修改都兩顆各跑一輪。
+
 ### 工程紀律
 
 > 這一組是交付流程前、中、後都會用到的行為護欄。`grill` / `diagnose` / `adr` 的紀律機制參考 [mattpocock/skills](https://github.com/mattpocock/skills)（MIT），中文重寫、並調整成本 repo 慣例。
@@ -110,7 +112,7 @@ cp -r kc_ai_skills/prep-repo ~/.claude/skills/
 cp -r kc_ai_skills/searxng ~/.openclaw/workspace/skills/
 ```
 
-> **文件對齊：** 安裝完整 `align` 資料夾後，可在 repo 內直接呼叫 `/align` 或說「文件對齊」。無人值守任務 QA 後也可跑一輪，結果併入任務完成回報；不新增開票、結案或歸檔門檻。
+> **文件對齊：** 可在 repo 內直接呼叫 `/align` 或說「文件對齊」。凍結 build 的完整無人值守交接為：確認 `spec` → `goal-engineer` 交接文件 → 實作／AC 驗證 → `doc-qa:qa` → `align` → 收尾回報。執行端需安裝完整 `align` 資料夾與 `doc-qa` plugin；交接要寫明 skill 位置、QA 環境／角色／授權與證據輸出。單元測試不能取代實機 QA；不新增開票、結案或歸檔門檻。
 
 > **命名提示：** 複製時可自行加上前綴重新命名（如 `my_prep-repo`）。不會壞掉的。大概。
 

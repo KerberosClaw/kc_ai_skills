@@ -60,6 +60,8 @@ Grouped by what you're trying to get done — every skill is still a self-contai
 
 > Existing docs lag behind implementation or hotfixes? Use `align`. Need a new documentation suite or manual? Use `project-docs`.
 
+`project-docs` can also update existing docs while assessing missing technical docs, manuals, and handoff material. `align` is the focused maintenance pass: check existing docs against implementation and fix drift without designing a new documentation suite. Both read code and can update docs; you do not need to run both for every change.
+
 > Not sure which one fits? Start with `workflow-router`. The shortest rule of thumb: product requirements go to `prd-create`; repo-local software design / engineering AC / implementation goes to `spec`; existing docs versus implementation goes to `align`; new technical docs / manuals go to `project-docs` (in the `doc-qa` plugin); one durable technical decision goes to `adr`; approved PRD tickets go to `prd-breakdown`; a new unattended dispatch for frozen work goes to `goal-engineer`. Already approved documentation work continues with its existing `align` or `project-docs` route without another requirements interview.
 
 ### Engineering discipline
@@ -112,7 +114,7 @@ cp -r kc_ai_skills/prep-repo ~/.claude/skills/
 cp -r kc_ai_skills/searxng ~/.openclaw/workspace/skills/
 ```
 
-> **Documentation alignment:** Call `/align` directly in a repo. An unattended task can also run a documentation pass after QA and include the result in its final task report. Install the complete `align` folder; it does not add ticketing, closure, or archive gates.
+> **Documentation alignment:** Call `/align` directly in a repo. For a frozen build run, the full unattended handoff is `spec` approval → `goal-engineer` dispatch → implementation / AC checks → `doc-qa:qa` → `align` → final task report. Install the complete `align` folder and the `doc-qa` plugin on the execution host; the dispatch records skill locations, QA environment/roles/authority, and evidence outputs. Unit tests do not replace real QA. This adds no ticketing, closure, or archive gates.
 
 > **Naming tip:** Feel free to rename the skill folder with your own prefix when copying (e.g. `my_prep-repo`). It won't break anything. Probably.
 

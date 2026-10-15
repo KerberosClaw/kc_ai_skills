@@ -49,4 +49,4 @@
 
 ## 2026-10-15 文件與實作對齊
 
-新增 [align](align/SKILL.md) 0.1.1：手動或無人值守檢查整個 repo，依實作修既有文件，跨 repo 引用可讀查證，修改外 repo 另取授權；歷史衝突保留原文加註，已部署環境唯讀。`workflow-router` 0.3.1 區分 align 與補建文件的 project-docs；`spec` 1.6.0 只增加無人值守 QA 後可跑一輪 align，再收尾回報任務完成的指引，不新增開票、結案、歸檔或狀態閘門。判準放 align/references/criteria.md，雙語 README 同步。
+新增 [align](align/SKILL.md) 0.2.0：手動或無人值守檢查整個 repo，依實作修既有文件，跨 repo 引用可讀查證，修改外 repo 另取授權；歷史衝突保留原文加註，已部署環境唯讀。`workflow-router` 0.4.0、`spec` 1.7.0 與 `goal-engineer` 1.1.0 接好 frozen build 主線：確認 spec → 交接給執行 agent → 實作／AC 驗證 → `doc-qa:qa` → align → 收尾回報。goal-engineer 的 lean build 模板要求記錄執行端 skill 位置／版本、QA 環境與授權、證據輸出與最後回報；測試全綠不可代替實機 QA，generate-and-select 不套這條流程。未新增開票、結案或歸檔程序。project-docs 保留廣義文件盤點／補建與手冊工作，align 專注既有文件飄移；不預設兩者都跑。判準放 align/references/criteria.md，雙語 README 同步。

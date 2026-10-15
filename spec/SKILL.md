@@ -1,7 +1,7 @@
 ---
 name: spec
 description: "Use when the user wants a spec-driven development workflow for implementing a feature in the current codebase, from fuzzy idea or existing active spec through requirements, technical plan, tasks, implementation, verification, and closure report. Auto-detects project/spec state, writes persistent files under specs/, asks one grounded question at a time when requirements are ambiguous, and stops at stage gates. NOT for stakeholder PRDs (prd-create), ADO ticket breakdown (prd-breakdown), single architecture-decision records (adr), or already-frozen tasks that should simply be implemented."
-version: 1.6.0
+version: 1.7.0
 status: stable
 triggers:
   - "spec"
@@ -41,7 +41,7 @@ You are a spec-driven development lead. You turn a user feature request into per
 1. 永遠先跑 **Stage Detection** 判斷目前狀態，再決定進入哪個階段。
 2. 所有產出的檔案放在專案根目錄的 `specs/` 下。
 3. 用 `git rev-parse --show-toplevel` 找專案根目錄。如果不在 git repo 裡，用當前工作目錄。
-4. 不主動執行 user 沒要求的事。每個階段完成後，說明產出了什麼，問 user 下一步。
+4. 不主動執行 user 沒要求的事。每個階段完成後說明產出；已有完整執行授權時不重問相同授權，沒有才問下一步。無人值守沿 dispatch 的授權與停止條件，不自行擴張。
 5. 與 user 的互動用正體中文。spec/plan/tasks/report 文件摘要為英文（English summary），內容為正體中文。
 6. **判準不在本檔。** 「怎樣才算過」寫在 `references/`，文件格式寫在 `templates/`。下面各階段寫到「先讀」的地方，一定要真的讀那份檔再做，不要憑印象。每個階段結束都用 [references/review.md](references/review.md)「完成狀態」的用字回報。
 
@@ -184,6 +184,7 @@ You are a spec-driven development lead. You turn a user feature request into per
 8. **呈現給 user**
    - 列出三份檔案的摘要（不用全文印出來，user 可以自己開檔案看）
    - 問：「spec 看起來 OK 嗎？要調整什麼？確認後我們就開始實作。」
+   - user 確認規格且要求無人值守時，交給 `goal-engineer` 包裝已凍結的 spec／plan／tasks；交接包含實作與驗證 → `doc-qa:qa` → `align` → 收尾回報。只補缺少的執行資訊，不重問規格；由指定的執行 agent 跑，不把產出 dispatch 說成已執行。
 
 ---
 
@@ -220,13 +221,13 @@ You are a spec-driven development lead. You turn a user feature request into per
 
 5. **全部完成時**
    - 更新 tasks.md 的 Status 為 `DONE`
-   - 告訴 user：「所有 task 完成了，要跑驗收嗎？（/spec check NN-feature-name）」
+   - 已有完整無人值守授權時直接進入驗證；否則告訴 user：「所有 task 完成了，要跑驗收嗎？（/spec check NN-feature-name）」
 
 ---
 
 ## Check Stage（驗收）
 
-**觸發條件：** user 明確要求 `/spec check`，或 tasks 全部完成後 user 同意驗收。
+**觸發條件：** user 明確要求 `/spec check`，或 tasks 全部完成後 user 同意驗收（含已有完整無人值守驗證授權）。
 
 **目標：** 對照 spec.md 的 Acceptance Criteria，逐條驗證。
 
@@ -240,11 +241,11 @@ You are a spec-driven development lead. You turn a user feature request into per
 
 4. **FAIL 的處理**
    - 列出需要修正的項目
-   - 問 user：「要現在修嗎？」
+   - 無人值守依已授權範圍與 dispatch 停止條件修正，缺決策或越權才停；一般互動流程問 user：「要現在修嗎？」
    - 修完後可以再跑一次 check
 
 5. **全部 PASS**
-   - 無人值守且已授權執行完整任務時，可接著呼叫已安裝的 `align` 跑一輪全 repo 文件對齊，再由原任務收尾回報完成，列出文件修訂與未確認項目。align 不增加開票、結案或歸檔門檻；未安裝時如實回報未執行，不自行下載。
+   - 無人值守且已授權執行完整任務時，接著讀取並執行 `doc-qa:qa` 的完整實機 QA，再執行 `align` 全 repo 文件對齊，最後由原任務收尾回報。AC／測試通過不等於 QA 通過；QA 缺陷由原執行 agent 在授權與停止條件內修正、重驗，未實跑或未解決項目如實回報。兩個 skill 未安裝時回報缺少依賴，不自行下載，也不跳過後宣稱完整完成。align 不增加開票、結案或歸檔門檻。
    - 一般互動流程沿用原本階段閘門，告訴 user：「驗收通過，要產結案報告嗎？（/spec report NN-feature-name）」
 
 ---
@@ -311,7 +312,7 @@ You are a spec-driven development lead. You turn a user feature request into per
 - **`prd-breakdown`**：把已核可 PRD 拆成 Azure DevOps tickets。本 skill 的 `tasks.md` 是本地開發 checklist，不負責推 ADO。
 - **`goal-engineer`**：把已凍結的目標/規格包成無人值守 dispatch。若規格還需要釐清或 code 還要在當前 repo 實作 → 本 skill；若規格已鎖，只差交給 agent blind run → `goal-engineer`。
 - **`adr`**：記錄單一難回頭決策的「為什麼」。本 skill 可以產生需要 ADR 的決策，但不要把 ADR 寫成 spec，也不要把整個 feature lifecycle 塞進 ADR。
-- **`align`**：文件與實作對齊，可在 repo 內直接呼叫；無人值守任務 QA 後也可跑一輪，結果併入原任務收尾回報，不更動本 skill 的結案與歸檔流程。
+- **`doc-qa:qa`／`align`**：完整無人值守主線為 AC／測試驗證 → doc-qa 實機 QA → align 文件對齊 → 收尾回報；兩者不能互代。align 也可直接手動呼叫，不改本 skill 的結案與歸檔程序。
 - **`prep-repo`**：發布前總檢查。功能已做完、要公開或推 GitHub 前 → `prep-repo`；不要用它取代 spec 的需求/實作/驗收流程。
 
 ---

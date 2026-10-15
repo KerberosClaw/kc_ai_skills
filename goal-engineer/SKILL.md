@@ -1,7 +1,7 @@
 ---
 name: goal-engineer
-description: "Use when the user wants to AUTHOR an unattended dispatch for either: (1) a goal-driven evaluator-optimizer loop of the GENERATE-AND-SELECT kind (generate candidates → grade against a rubric → iterate by reason-code → keep the best; the human picks the final selection), or (2) a lean build-to-spec run whose build spec is ALREADY FROZEN (approved ADR / locked design / accepted machine-checkable AC) and the only missing piece is the unattended-execution wrapper. A fresh-session agent runs the dispatch hands-off while the human only watches traffic-light push notifications. Interview-style forcing questions lock the spec, then it emits a self-contained dispatch markdown + a channel-agnostic notification protocol. This is the upstream SPEC AUTHOR, NOT a runtime: the dispatch is run by Claude Code's /goal, a headless `-p` session, or any unattended agent — /goal is the engine, this writes what you feed it. It NEVER authors build specs, product decisions, or AC — creating a build spec / PRD from raw input is prd-create. NOT a time scheduler (/loop or cron), NOT a recurring-push registrar (skill-cron)."
-version: 1.0.0
+description: "Author a self-contained unattended dispatch for a generate-and-select loop (generate candidates, grade, iterate, keep the best for human selection), or for a build whose spec is already frozen with approved scope and machine-checkable AC. Frozen builds hand off implementation / checks, doc-qa:qa, align, and the final task report. Fill execution and notification gaps without reopening approved product decisions. This is the dispatch author, not the runtime: a separate agent or headless session executes it. Not for writing a build spec or PRD from raw input, scheduling recurring work, or running the task itself."
+version: 1.1.0
 status: stable
 triggers:
   - "/goal-engineer"
@@ -113,6 +113,12 @@ agent **絕對不能做**什麼?scope 邊界、禁止動作、只有人能決定
 - generate-and-select → 用 Q1–Q7 的答案填 `references/dispatch-template.md`。
 - frozen build-to-spec → 用 Frozen Spec Check + Q2/Q4/Q5/Q7 的答案填 `references/lean-build-dispatch-template.md`。
 
+**Frozen build 的交接必須包含整條執行主線：實作與 AC／測試驗證 → `doc-qa:qa` 實機 QA → `align` 全 repo 文件對齊 → 收尾回報。** 這條只適用 build-to-spec，不套到 generate-and-select。
+
+- 產 dispatch 前先定位執行端已安裝的 `doc-qa:qa` 與 `align`，在交接文件填入該執行端可讀取的 skill 位置／版本、QA 環境與角色、資料寫入授權、證據／報告位置，以及 align 的目標 repo。不可只寫兩個 skill 名稱、讓新 session 猜路徑或靠上一段對話接續；缺少必要能力時先回報依賴，不能自動下載或改用單元測試代替實機 QA。
+- QA 的範圍沿用已定 spec／授權，不重開需求訪談；不足資訊與未實跑範圍如實進 QA 報告。依模板 §7.1／§7.2 帶入 QA 缺陷修正與文件對齊的接續方式，不自行發明 QA 通過率。
+- 交接自審要確認：沒有從「測試全綠」直接跳到任務完成；新 session 能找到兩個 skill 及其 references；最終回報會分列實作驗證、QA 真實結果、文件修訂與待授權事項。QA 後不因做完文件就把缺陷或未實跑改成通過。
+
 寫到指定路徑。執行紀律(3 出口 / delta / pre-flight / 機器 AC / 可重現)對齊 `references/loop-run-protocol.md`。然後**自審**:
 - 每段都具體、無「TBD / 看情況」(模糊 = 不能 hand-off)。
 - 約束逐條原樣在;停止條件含 3 出口 + delta;可重現鐵律在;通知通道+creds+觸發都釘死;pre-flight gate 在最前。
@@ -121,6 +127,7 @@ agent **絕對不能做**什麼?scope 邊界、禁止動作、只有人能決定
   - 🔑 需要的 credential env var(依 channel):`<列出名稱>` — secret 由 user 自己注入、不在文件裡
   - ✅ pre-flight 指令:`<跑通知測通的指令>`
   - ▶️ 開跑指令:`<丟給無人值守 session / `/goal` / `-p` 的指令>`
+  - 🧪 frozen build 的後續順序與依賴：`doc-qa:qa` → `align` → 收尾回報；兩個 skill 的執行端位置與 QA 證據輸出位置。
   - 👀 之後 user 只顧 🟢🟡🔴、在 gate 挑最終選定。
 
 ## 產出後:對抗審查（互動詢問,預設提供）
@@ -170,6 +177,7 @@ dispatch 寫好後(尤其它會進 repo 或交給無人值守跑),**主動問 us
 - **`prd-create`(同 monorepo)**:**build-to-spec** 的規格作者(產 PRD)。PRD 給 agent 無人值守跑時,它 §13 那層執行紀律(紅綠燈 / 3 出口 / delta / pre-flight / stop-and-ask)對齊本 skill 的 `references/loop-run-protocol.md`。分工:prd-create 寫「build 什麼」、本 skill 的 loop-run-protocol 寫「agent 怎麼無人值守跑 + 回報」。**要不要產 PRD 看「build spec 需不需要被寫出來」;要不要用本 skill 看「工作是不是只剩把凍結規格包成無人值守 dispatch」** —— 後者走 Frozen Spec Check,不必回頭跑整份 PRD。
 - **`skill-cron`(同 monorepo)**:心跳/排程器,**scheduler-agnostic**。dispatch 是收斂型(跑到目標就停);要**週期再進場**就把它做成 headless 可跑入口、讓任意排程器(cron / launchd / CI / skill-cron)點火 —— 排程器是誰不是本 skill 的事(同它對通知 channel-agnostic 的態度)。
 - **`/loop`(內建,external)**:time-interval 重跑,跟本 skill 的 goal 收斂是不同維度。
+- **`doc-qa:qa`（doc-qa plugin）與 `align`**：frozen build 執行交接的實機 QA 與文件對齊步驟。前者產案例、實跑與證據報告，後者依實作修既有文件；不用 project-docs 取代 align，也不把 QA 包進文件修訂。
 
 ## References（用本 skill 時必讀「對應路徑的 template」+ loop-run-protocol + notify-protocol;用 shell helper 才讀/複製 notify.sh）
 
