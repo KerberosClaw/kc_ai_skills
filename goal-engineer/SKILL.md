@@ -1,7 +1,7 @@
 ---
 name: goal-engineer
 description: "Author a self-contained unattended dispatch for a generate-and-select loop (generate candidates, grade, iterate, keep the best for human selection), or for a build whose spec is already frozen with approved scope and machine-checkable AC. Frozen builds hand off implementation / checks, doc-qa:qa, align, and the final task report. Fill execution and notification gaps without reopening approved product decisions. This is the dispatch author, not the runtime: a separate agent or headless session executes it. Not for writing a build spec or PRD from raw input, scheduling recurring work, or running the task itself."
-version: 1.1.0
+version: 1.2.0
 status: stable
 triggers:
   - "/goal-engineer"
@@ -117,6 +117,8 @@ agent **絕對不能做**什麼?scope 邊界、禁止動作、只有人能決定
 
 - 產 dispatch 前先定位執行端已安裝的 `doc-qa:qa` 與 `align`，在交接文件填入該執行端可讀取的 skill 位置／版本、QA 環境與角色、資料寫入授權、證據／報告位置，以及 align 的目標 repo。不可只寫兩個 skill 名稱、讓新 session 猜路徑或靠上一段對話接續；缺少必要能力時先回報依賴，不能自動下載或改用單元測試代替實機 QA。
 - QA 的範圍沿用已定 spec／授權，不重開需求訪談；不足資訊與未實跑範圍如實進 QA 報告。依模板 §7.1／§7.2 帶入 QA 缺陷修正與文件對齊的接續方式，不自行發明 QA 通過率。
+- 跨 Web／桌面 QA 建議選 Codex runner；Web 使用 Playwright MCP，原生桌面／跨 App 只在有 computer-use 工具且 QA skill 支援該 driver 的 Codex session 執行。不能假設每個 Codex 都有此能力；在交接填目標 App／URL、driver 與證據限制，不硬套瀏覽器工具。project-docs 僅在缺必要文件或要交付手冊時依授權另接，不是 QA 必經站。
+- 技術決策的交接包含既有 ADR 路徑；執行中確定的重要取捨可依 `adr` 判準記錄後返回原任務。不得用新 ADR 偷改凍結規格；未決或超出授權就走原 stop-and-ask。若需記錄，dispatch 填入執行端可讀的 adr skill 位置；不把它變成所有 build 的安裝前提。
 - 交接自審要確認：沒有從「測試全綠」直接跳到任務完成；新 session 能找到兩個 skill 及其 references；最終回報會分列實作驗證、QA 真實結果、文件修訂與待授權事項。QA 後不因做完文件就把缺陷或未實跑改成通過。
 
 寫到指定路徑。執行紀律(3 出口 / delta / pre-flight / 機器 AC / 可重現)對齊 `references/loop-run-protocol.md`。然後**自審**:

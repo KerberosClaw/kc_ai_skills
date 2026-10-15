@@ -62,6 +62,8 @@
 
 `project-docs` 也會更新既有文件，但任務包含判斷缺哪些技術文件、手冊與交接資訊並補建；`align` 則專注核對既有文件與實作、修正飄移，不重新規劃整套文件。兩者都會看程式、都能修文件，不需要每次修改都兩顆各跑一輪。
 
+QA 從已核准需求／spec 推案例，所以 project-docs 不是 QA 必經的前置階段；實跑素材也可在之後回補手冊。自己的 feature 可直接走 spec，prd-create 看是否需要產品 PRD 交付，prd-breakdown 看是否需要工項／ADO，不由人類或 agent 執行來區分。重要且已定的技術取捨才接 ADR，記錄並連回計畫後返回原階段；ADR 不取代需求、AC 或實作計畫。
+
 ### 工程紀律
 
 > 這一組是交付流程前、中、後都會用到的行為護欄。`grill` / `diagnose` / `adr` 的紀律機制參考 [mattpocock/skills](https://github.com/mattpocock/skills)（MIT），中文重寫、並調整成本 repo 慣例。
@@ -113,6 +115,8 @@ cp -r kc_ai_skills/searxng ~/.openclaw/workspace/skills/
 ```
 
 > **文件對齊：** 可在 repo 內直接呼叫 `/align` 或說「文件對齊」。凍結 build 的完整無人值守交接為：確認 `spec` → `goal-engineer` 交接文件 → 實作／AC 驗證 → `doc-qa:qa` → `align` → 收尾回報。執行端需安裝完整 `align` 資料夾與 `doc-qa` plugin；交接要寫明 skill 位置、QA 環境／角色／授權與證據輸出。單元測試不能取代實機 QA；不新增開票、結案或歸檔門檻。
+
+> **QA 執行端：** 跨 Web／桌面 QA 建議 Codex。Web 用 Playwright MCP；原生桌面／跨 App 需實際具備 computer-use 工具的 Codex session，以及支援該 driver 的 QA skill（doc-qa plugin 0.2.0+、QA skill 0.5.0+）。開跑先查能力，plugin 不內附 computer-use server，也不保證所有目標都可操作。
 
 > **命名提示：** 複製時可自行加上前綴重新命名（如 `my_prep-repo`）。不會壞掉的。大概。
 

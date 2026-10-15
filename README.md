@@ -62,6 +62,8 @@ Grouped by what you're trying to get done — every skill is still a self-contai
 
 `project-docs` can also update existing docs while assessing missing technical docs, manuals, and handoff material. `align` is the focused maintenance pass: check existing docs against implementation and fix drift without designing a new documentation suite. Both read code and can update docs; you do not need to run both for every change.
 
+QA derives its cases from approved requirements/specs, so `project-docs` is not a mandatory step before QA; it can also consume QA evidence afterwards for manuals. Personal features can go straight to `spec`; `prd-create` is for a product PRD deliverable and `prd-breakdown` for work-item/ADO planning, regardless of whether people or agents implement the work. Record an ADR only for a settled decision that qualifies, link it back to the plan, and return to the original stage. ADRs do not replace requirements, AC, or an implementation plan.
+
 > Not sure which one fits? Start with `workflow-router`. The shortest rule of thumb: product requirements go to `prd-create`; repo-local software design / engineering AC / implementation goes to `spec`; existing docs versus implementation goes to `align`; new technical docs / manuals go to `project-docs` (in the `doc-qa` plugin); one durable technical decision goes to `adr`; approved PRD tickets go to `prd-breakdown`; a new unattended dispatch for frozen work goes to `goal-engineer`. Already approved documentation work continues with its existing `align` or `project-docs` route without another requirements interview.
 
 ### Engineering discipline
@@ -115,6 +117,8 @@ cp -r kc_ai_skills/searxng ~/.openclaw/workspace/skills/
 ```
 
 > **Documentation alignment:** Call `/align` directly in a repo. For a frozen build run, the full unattended handoff is `spec` approval → `goal-engineer` dispatch → implementation / AC checks → `doc-qa:qa` → `align` → final task report. Install the complete `align` folder and the `doc-qa` plugin on the execution host; the dispatch records skill locations, QA environment/roles/authority, and evidence outputs. Unit tests do not replace real QA. This adds no ticketing, closure, or archive gates.
+
+> **QA runner:** Prefer Codex for mixed Web/desktop QA. Web uses Playwright MCP; native desktop/cross-app QA requires a Codex session with suitable computer-use tools and a QA skill that supports that driver (doc-qa plugin 0.2.0+, QA skill 0.5.0+). Check availability rather than assuming it. The plugin does not supply a computer-use server or make every target accessible.
 
 > **Naming tip:** Feel free to rename the skill folder with your own prefix when copying (e.g. `my_prep-repo`). It won't break anything. Probably.
 

@@ -1,7 +1,7 @@
 ---
 name: spec
 description: "Use when the user wants a spec-driven development workflow for implementing a feature in the current codebase, from fuzzy idea or existing active spec through requirements, technical plan, tasks, implementation, verification, and closure report. Auto-detects project/spec state, writes persistent files under specs/, asks one grounded question at a time when requirements are ambiguous, and stops at stage gates. NOT for stakeholder PRDs (prd-create), ADO ticket breakdown (prd-breakdown), single architecture-decision records (adr), or already-frozen tasks that should simply be implemented."
-version: 1.7.0
+version: 1.8.0
 status: stable
 triggers:
   - "spec"
@@ -39,11 +39,12 @@ You are a spec-driven development lead. You turn a user feature request into per
 ## 執行規則
 
 1. 永遠先跑 **Stage Detection** 判斷目前狀態，再決定進入哪個階段。
-2. 所有產出的檔案放在專案根目錄的 `specs/` 下。
+2. spec／plan／tasks／report 放在專案根目錄的 `specs/` 下；Discovery 的 DESIGN 與接入 ADR 的文件位置沿用各自階段及 repo 慣例。
 3. 用 `git rev-parse --show-toplevel` 找專案根目錄。如果不在 git repo 裡，用當前工作目錄。
 4. 不主動執行 user 沒要求的事。每個階段完成後說明產出；已有完整執行授權時不重問相同授權，沒有才問下一步。無人值守沿 dispatch 的授權與停止條件，不自行擴張。
 5. 與 user 的互動用正體中文。spec/plan/tasks/report 文件摘要為英文（English summary），內容為正體中文。
 6. **判準不在本檔。** 「怎樣才算過」寫在 `references/`，文件格式寫在 `templates/`。下面各階段寫到「先讀」的地方，一定要真的讀那份檔再做，不要憑印象。每個階段結束都用 [references/review.md](references/review.md)「完成狀態」的用字回報。
+7. **技術決策需要記錄時接 ADR，再返回原階段。** 設計或實作中形成重要決策時，先讀已安裝的 `adr`（同套件：[adr/SKILL.md](../adr/SKILL.md)），依 repo 慣例與其判準決定是否記錄；不另抄判準、不每個 task 都開 ADR。只記錄已確定的決策，先查重，將結果引用回 DESIGN／plan／tasks；不需要 ADR 就留在原計畫。未決或超出授權的改動先回 user，不能藉 ADR 批准自己。
 
 ---
 
@@ -141,6 +142,7 @@ You are a spec-driven development lead. You turn a user feature request into per
    - 標明依賴關係（哪個要先做）
    - 問 user：「要從哪個開始？」
    - User 選定後，進入 Spec Stage
+   - 已確認的架構取捨若需要 ADR，依執行規則 7 記錄並連回 DESIGN，再繼續選定的 spec。
 
 ---
 
@@ -184,6 +186,7 @@ You are a spec-driven development lead. You turn a user feature request into per
 8. **呈現給 user**
    - 列出三份檔案的摘要（不用全文印出來，user 可以自己開檔案看）
    - 問：「spec 看起來 OK 嗎？要調整什麼？確認後我們就開始實作。」
+   - user 確認後，對已定的關鍵技術取捨依執行規則 7 接 ADR，將路徑引用回 plan；完成或判定不需要後回到原本的實作／交接步驟。
    - user 確認規格且要求無人值守時，交給 `goal-engineer` 包裝已凍結的 spec／plan／tasks；交接包含實作與驗證 → `doc-qa:qa` → `align` → 收尾回報。只補缺少的執行資訊，不重問規格；由指定的執行 agent 跑，不把產出 dispatch 說成已執行。
 
 ---
@@ -212,6 +215,7 @@ You are a spec-driven development lead. You turn a user feature request into per
 3. **每完成一個 task**
    - 更新 `tasks.md`：把 `- [ ]` 改成 `- [x]`
    - 如果實作過程中有重要的決策偏離 plan，在 tasks.md 的 Notes 區補充
+   - 重要技術決策依執行規則 7 接 ADR，再回本階段；若偏離已核准 spec，先依實作守則處理，不用 ADR 取代重新確認。
 
 4. **遇到阻塞時**
    - 更新 tasks.md 的 Status 為 `BLOCKED`
@@ -311,8 +315,9 @@ You are a spec-driven development lead. You turn a user feature request into per
 - **`prd-create`**：寫給 stakeholder 的產品需求文件，停在 PRD/wiki。若目標是「給別人看的產品規格」→ `prd-create`；若目標是「我在這個 repo 把 feature 做完並驗收」→ 本 skill。
 - **`prd-breakdown`**：把已核可 PRD 拆成 Azure DevOps tickets。本 skill 的 `tasks.md` 是本地開發 checklist，不負責推 ADO。
 - **`goal-engineer`**：把已凍結的目標/規格包成無人值守 dispatch。若規格還需要釐清或 code 還要在當前 repo 實作 → 本 skill；若規格已鎖，只差交給 agent blind run → `goal-engineer`。
-- **`adr`**：記錄單一難回頭決策的「為什麼」。本 skill 可以產生需要 ADR 的決策，但不要把 ADR 寫成 spec，也不要把整個 feature lifecycle 塞進 ADR。
+- **`adr`**：重要技術取捨確定時依執行規則 7 接入，記錄／引用後返回原階段；ADR 不是必經站，也不取代 spec、AC 或整個 feature lifecycle。
 - **`doc-qa:qa`／`align`**：完整無人值守主線為 AC／測試驗證 → doc-qa 實機 QA → align 文件對齊 → 收尾回報；兩者不能互代。align 也可直接手動呼叫，不改本 skill 的結案與歸檔程序。
+- **`project-docs`**：缺必要技術文件或需要手冊／交接時才接，不是 QA 必經站；QA 的案例來自需求／spec。Web 可用 Playwright MCP；原生桌面／跨 App QA 則需支援該 driver、具備 computer-use 的 Codex 執行端。
 - **`prep-repo`**：發布前總檢查。功能已做完、要公開或推 GitHub 前 → `prep-repo`；不要用它取代 spec 的需求/實作/驗收流程。
 
 ---

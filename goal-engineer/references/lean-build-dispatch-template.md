@@ -7,6 +7,7 @@
 ## 0. Operator contract（先讀 — 這份 dispatch 的憲法）
 - **Visibility:** `<private/internal — real infra refs OK as spec | shared/public — must abstract/redact infra refs>`
 - **規格主版本(SSOT):** `<approved ADR / doc path / work item>` — 狀態:`<approved / locked,日期>`
+- **既有決策依據:** `<相關 ADR 路徑；無則寫無>`。ADR 記理由，執行範圍／AC 仍以凍結規格為準。
 - 🔴 **不得重新詮釋規格**:實作疑義一律回 SSOT 查;SSOT 沒答案 = `SPEC_GAP` → 🔴 stop-and-ask,不腦補。
 - **「任務完成」的定義:** §3 DoD 全勾、§7 驗證通過、§7.1 `doc-qa:qa` 依已核准出口條件通過且有證據，並已執行 §7.2 `align` 後收尾回報。milestone 🟢 只是階段進度，不代表整個任務完成；不得在測試全綠時跳過 QA／文件對齊就報完成。
 
@@ -16,7 +17,7 @@
 
 ## 2. Authority boundary（授權邊界）
 - **已授權(可自主):** `<repo / files / db / dev|staging 環境,agent 可全權>`
-- **QA 授權:** `<已確認的測試網址／環境、頁面／角色、可拋棄資料範圍、可寫入動作／不可逆動作限制、帳號的安全取得方式>`。正式環境唯讀；測試環境寫入也不能超過這份授權。
+- **QA 授權:** `<已確認的測試 URL 或原生 App／環境、畫面／角色、可拋棄資料範圍、可寫入動作／不可逆動作限制、帳號的安全取得方式>`。正式環境唯讀；測試環境寫入也不能超過這份授權。
 - **文件對齊授權:** `<本次可修改文件的 repo>`；跨 repo 引用可唯讀查證，其他 repo 文件飄移只回報，取得 user 明確授權才改。
 - **stop-and-ask(遇到即停、發 🔴 待人):** `<規格外衝突 / 白名單外新依賴 / 既有資料的修改刪除 / ...>`
 - 🔴 **禁止(獨立人工 gate,agent 不得自行續跑):** prod 部署 / prod db migration / merge / `<...>`。staging 驗完 ≠ 可進 prod — **staging → prod 是硬性兩階段**,第二階段永遠是人。
@@ -36,12 +37,13 @@
 1. `<runtime / 服務 / 依賴檢查>`
 2. `<輸入 / 測試環境(staging / dump)備齊>`
 3. `<smoke:最小一項端到端,例如對 dump 空跑一次 migration>`
-4. 確認 §7.1／§7.2 的兩個完整 skill 與其 references 在執行端可讀，且有實機 QA 所需的瀏覽器能力。缺少依賴就回報，不把名稱當成已安裝，也不自行安裝或以 AC 測試取代 QA。
+4. 確認 §7.1／§7.2 的兩個完整 skill 與其 references 在執行端可讀，且有實機 QA 對應的 UI driver：Web 為 Playwright MCP，原生桌面／跨 App 為實際具備 computer-use 的 Codex session。桌面路徑需確認 QA skill 包含 ui-driver 支援；缺少依賴就回報，不把名稱當成已安裝，也不自行安裝或以 AC 測試取代 QA。
 
 ## 6. Execution procedure（新 session 照這個跑）
 1. 讀本 dispatch + SSOT;load state(`<state file>` 存在則 resume,否則 fresh)。
 2. 按 §3 checklist 逐項:實作 → 跑該項 verification → 綠才勾,並 append run log 一筆(項次 + 判定 + 原因碼 + delta)。
 3. 沒過 → 記原因碼(§9)、照該碼預設動作調整;每輪報 **delta(往 DoD 推進了什麼)**,連 2 輪無 delta → `ESCALATE`。
+   - 原授權內形成重要且已定的技術取捨時，讀 `<adr skill 的執行端位置；不需記錄則不適用>`，依其判準記錄或引用，連回計畫／run log 後回原步驟；不需要 ADR 就繼續。變更凍結規格或未決架構衝突屬 `SPEC_GAP`，不能先寫 ADR 當作獲准。
 4. milestone(一批 checklist 項完成)→ 🟢 通知(粒度照 `notify-protocol.md`,不 per-item 洗版)。
 5. 實作完成後依序完成 §7 驗證 → §7.1 `doc-qa:qa` → §7.2 `align` → §10 收尾回報。已授權這條無人值守主線，不在每一階段重問要不要繼續；遇 §2／§9 的界線才停。
 
@@ -57,6 +59,7 @@
 
 - **執行端 skill:** `<doc-qa:qa 的 SKILL.md 可讀位置與版本；保留整個 skill 資料夾>`
 - **QA 材料／輸出:** `<spec／需求來源、對應程式版本、測試環境與角色、QA 報告／案例矩陣／截圖的保存位置>`
+- **QA runner／driver:** `<建議 Codex；Web 使用 Playwright MCP，原生桌面／跨 App 僅用有 computer-use 工具的 Codex；記錄目標 App／URL、工具能力與不支援範圍>`。project-docs 不是 QA 前置關卡；案例依據已核准需求／spec，不從現況手冊倒推預期。
 - 讀取並執行 `doc-qa:qa` 的階段 0–4，依其 references 完成範圍稽核、挖掘、案例、實跑與證據報告。範圍／環境／寫入授權已在本 dispatch 決定的就直接承接；缺少的部分如實標記，不能自選正式環境或修改其資料。
 - 保留 `PASS`／`FAIL`／`UNCLEAR`／`BLOCKED`／`NOT RUN` 與 QA 整體狀態、版本、證據邊界。出口沿用已核准需求與 QA 報告契約；不自創覆蓋率、不把「報告產出」等同「QA 通過」。
 - QA 本身不修程式。發現缺陷時，由原執行 agent 在 §2 已授權範圍與 §9 次數／時間上限內修正，再跑相關驗證與新一輪 QA，保留前輪證據。需產品決策、越權或已達停止條件時，不改預期結果來求 PASS；如實收尾或回報阻塞。

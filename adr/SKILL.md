@@ -1,7 +1,7 @@
 ---
 name: adr
 description: "Use when a durable technical decision was just made in conversation and should be recorded, or when user asks to write/record an ADR (開 ADR / 記個決策 / 這要不要 ADR). Runs a three-gate check FIRST and actively talks the user out of writing one when the decision doesn't qualify — then writes a lightweight (title + 1-3 sentences) ADR following the repo's own ADR conventions if any exist. Repo conventions always override this skill's defaults. NOT for requirement specs (spec / prd-create) or for rewriting history (superseded ADRs get a new ADR, never an edit)."
-version: 0.2.0
+version: 0.3.0
 status: mvp
 triggers:
   - "/adr"
@@ -70,6 +70,14 @@ ls -d adr decisions doc/adr docs/adr doc/adrs docs/adrs doc/decisions docs/decis
 - Repo 有 ADR 索引表 / log.md 維護慣例 → 照做（補索引行、補 log 條目）。
 - 被新 ADR 取代的舊 ADR：在新 ADR 註明「取代 ADR-NNN」、索引更新狀態；**舊檔內文不動**（唯一允許的舊檔改動＝頂部加一行「已被 ADR-NNN 取代」標記）。
 - 提交與否照 caller 當下的工作流程走，本 skill 不擅自 commit。
+
+## 從其他流程接入與返回
+
+`spec` 的設計／實作、debug 或無人值守執行中形成重要技術決策時，可直接接入本 skill，先依 Step 1 判斷，不把 ADR 當成每個專案固定的一關。只記錄已由 user 確認或原授權內已確定的決策；未決方案不能靠寫 ADR 自動變成已批准。
+
+先找現有 ADR，已記錄且決策未變就引用，不重開一篇。需要新 ADR 才寫，並讓當前 `DESIGN.md`／`plan.md`／`tasks.md` 或既有交接紀錄引用它；不符合判準則留在原計畫或任務紀錄。接著返回原流程的下一步，不因寫完 ADR 自行開始實作、改需求、部署或結案。
+
+無人值守沿用相同規則：原授權內的決策可記錄後續跑；若需要改凍結規格、變更架構邊界或 user 尚未決定，就保留疑點、交還原流程的 stop-and-ask。ADR 不能取代需求／AC／任務計畫，也不是「有沒有分工給人類工程師」的替代流程。
 
 ## Anti-patterns
 
