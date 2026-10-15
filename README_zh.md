@@ -66,6 +66,8 @@
 
 QA 從已核准需求／spec 推案例，所以 project-docs 不是 QA 必經的前置階段；實跑素材也可在之後回補手冊。自己的 feature 可直接走 spec，prd-create 看是否需要產品 PRD 交付，prd-breakdown 看是否需要工項／ADO，不由人類或 agent 執行來區分。重要且已定的技術取捨才接 ADR，記錄並連回計畫後返回原階段；ADR 不取代需求、AC 或實作計畫。
 
+操作手冊描述該版本可用的行為與已知限制；核准需求／AC 及選用的盲測驗收腳本保留預期行為，align 不改預期替缺陷背書。歷史 ADR 原文保留，允許加有日期與證據的現況註記；決策改變仍需新 ADR。功能規格缺口回原 spec 補齊，不強迫另寫產品 PRD。
+
 呼叫 spec 就會自動產生實作計畫與 tasks。簡單功能把計畫放在 spec.md，複雜才獨立 plan.md；需求／FR 與 AC 仍在 spec，進度仍在 tasks.md，計畫只引用需求不重抄。已有、已確認的文件布局照舊，不自動合併歷史檔案。
 
 ### 工程紀律
@@ -120,7 +122,7 @@ cp -r kc_ai_skills/searxng ~/.openclaw/workspace/skills/
 
 > **文件對齊：** 可在 repo 內直接呼叫 `/align` 或說「文件對齊」。凍結 build 的完整無人值守交接為：確認 `spec` → `goal-engineer` 交接文件 → 實作／AC 驗證 → `doc-qa:qa` → `align` → 收尾回報。執行端需安裝完整 `align` 資料夾與 `doc-qa` plugin；交接要寫明 skill 位置、QA 環境／角色／授權與證據輸出。單元測試不能取代實機 QA；不新增開票、結案或歸檔門檻。
 
-> **QA 執行端：** 跨 Web／桌面 QA 建議 Codex。Web 用 Playwright MCP；原生桌面／跨 App 需實際具備 computer-use 工具的 Codex session，以及支援該 driver 的 QA skill（doc-qa plugin 0.2.0+、QA skill 0.5.0+）。開跑先查能力，plugin 不內附 computer-use server，也不保證所有目標都可操作。
+> **QA 執行端：** 跨 Web／桌面 QA 建議 Codex。Web 用 Playwright MCP；原生桌面／跨 App 需實際具備 computer-use 工具的 Codex session。本流程需 doc-qa plugin 0.2.1+／QA skill 0.5.1+ 的適用性與出口規則。Claude Code bg session／agents 測 Web 仍走 Playwright；查證受測產品範圍確實無 UI 時才記 UI QA 不適用，保留原 AC／整合驗證證據，再 align 與收尾；有 UI 卻缺工具仍是未測，阻塞案例不能算通過。開跑先查能力，plugin 不內附 computer-use server，也不保證所有目標都可操作。
 
 > **命名提示：** 複製時可自行加上前綴重新命名（如 `my_prep-repo`）。不會壞掉的。大概。
 

@@ -1,5 +1,7 @@
 # goal-engineer — 為什麼它不叫 loop-engineer 了
 
+> 現況註記（2026-10-15）：本文保留當時的定位與設計脈絡；下文把一般 build 規格／AC 都導往 PRD 的敘述已更新為「repo 功能回 spec，明確需要產品 PRD 才去 prd-create」。現行入口檢核以 [SKILL.md](../SKILL.md) 為準；QA 適用性、align 與收尾主線見[工作流指南](../../workflow-router/docs/workflow.md)。不依本文歷史條目數判斷 Frozen Spec Check 是否完整。
+
 > **English summary:** Design notes for `goal-engineer` (formerly `loop-engineer`). It authors a blind-runnable *dispatch spec* for an unattended, goal-driven evaluator-optimizer loop of the **generate-and-select** kind (produce candidates → grade → iterate by reason-code → human picks the winner). One narrow exception: when a build spec is **already frozen** (approved ADR / locked design / machine-checkable AC) and the only missing piece is the unattended-execution wrapper, it packages a *lean build dispatch* instead of redirecting to a full PRD — gated by the Frozen Spec Check; it still never authors build specs or product decisions. It is the **upstream spec author, not a runtime** — the spec is executed by Claude Code's built-in `/goal`, a headless `claude -p` session, or any unattended agent. Renamed from `loop-engineer` because that name over-claimed the whole "Loop Engineering" idea while the skill only covers the inner, convergent goal-loop; the "loop" word belonged to the engine (`/goal`) and the recurring-heartbeat flavor, neither of which this skill is.
 
 ## 這東西在做什麼

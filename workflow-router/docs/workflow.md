@@ -1,4 +1,4 @@
-> **English summary:** Workflow diagrams and a map of this skill collection. The spec skill creates requirements, acceptance criteria, an implementation plan and tasks. Simple plans live in spec.md; complex plans use plan.md. ADR and project-docs are conditional branches. Unattended builds continue through real UI QA, align and the final task report.
+> **English summary:** Workflow diagrams and a map of this skill collection. The spec skill creates requirements, acceptance criteria, an implementation plan and tasks. Simple plans live in spec.md; complex plans use plan.md. ADR and project-docs are conditional branches. Unattended builds assess UI QA applicability, run applicable UI checks, then align and report. Verified non-UI scope uses its original AC and integration evidence.
 
 # 工作流與 skill 地圖
 
@@ -55,24 +55,31 @@ flowchart TD
     I -.->|原授權內已定的重要取捨| AD["adr：判斷、記錄或引用"]
     AD -.->|返回原實作步驟| I
     I --> V["AC、單元與整合等驗證"]
-    V --> Q["doc-qa:qa：由需求推案例並實跑"]
+    V --> Q["doc-qa:qa：先查範圍與適用性"]
     V -.->|缺必要文件且已授權補建| PD1["可選 project-docs：技術文件"]
     PD1 -.-> Q
 
-    Q --> DR["Web：Playwright MCP<br/>桌面：具 computer-use 的 Codex"]
+    Q --> U{"有需要驗證的 UI？"}
+    U -->|有，依需求推案例並實跑| DR["Web：Playwright MCP<br/>桌面：具 computer-use 的 Codex"]
+    U -->|已查證無 UI| N["UI QA 不適用<br/>保留 AC 與適用驗證證據"]
+    N --> A["align：全 repo 文件與實作對齊"]
+    U -->|無法確認| X["回報缺口或阻塞，不宣稱成功"]
     DR --> O{"QA 結果"}
     O -->|缺陷可在授權內修正| F["原 agent 修正"]
     F --> V
-    O -->|通過| A["align：全 repo 文件與實作對齊"]
-    O -->|缺能力、決策或授權| X["回報缺口或阻塞，不宣稱成功"]
+    O -->|依 QA 契約通過| A
+    O -->|缺能力、決策、授權或仍有阻塞| X
     O -.->|有成功路徑素材，且另需手冊| PD2["可選 project-docs：操作手冊"]
     PD2 -.-> A
+    X -.->|仍可整理已確認文件| A
     A --> Z["原任務收尾回報<br/>成果、QA 證據、文件修訂與剩餘事項"]
 ```
 
 - **QA 的需求依據**是已核准需求／spec；案例由 QA skill 產生，不能從目前行為反推成永遠會過的預期。
 - **project-docs 不必每輪先跑。** 缺必要文件時可先補；操作手冊也能在 QA 後接實跑素材。它可以獨立執行，不是只存在於開發主線。
 - **Web／桌面 QA**需有對應 driver；跨 UI 建議 Codex，但不能假定每個 Codex session 都有 computer-use。桌面分支需支援該 driver 的 doc-qa 版本及實際工具能力；工具或證據不足不能當測過。
+- **受測產品只有 CLI／背景服務**時，先經 QA 適用性查核；依需求、入口與受影響呼叫鏈確認無 UI 才記不適用，使用原 AC／整合等證據後接 align。有 UI 卻缺工具或環境仍是未測。這與 agent 的執行方式無關：Claude Code bg session／agents 測 Web 仍走 Playwright。判準由 QA 的 ui-driver／report-contract 維護（doc-qa 0.2.1+／QA 0.5.1+）。
+- **文件與驗收預期分開。** project-docs 的操作手冊及 align 描述實際可用步驟、版本與已知限制；需要盲測時另用已核准需求／AC 的驗收腳本，不把缺陷改成預期。歷史 ADR 可保留原文加有日期與證據的現況註記；決策改變仍需新 ADR。
 - **ADR 不取代 spec 或變更授權。** 未決、超出授權或會改凍結規格時，先回報確認；不合 ADR 判準的決策留在原計畫即可。
 - **align 可單獨呼叫。** 在 repo 說「文件對齊」或 `/align` 就能跑，不要求先走完整開發／QA。跨 repo 可讀查證，修改其他 repo 先取明確授權；已部署環境唯讀。
 - **未實跑或仍有缺陷**時，保留 QA 真實結果。可確定的文件仍可整理，但做完 align 不會把缺陷或證據缺口變成通過。上圖停止分支不能再被解讀為任務成功。

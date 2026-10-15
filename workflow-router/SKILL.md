@@ -1,7 +1,7 @@
 ---
 name: workflow-router
 description: "Use when the user is unsure which kc_ai_skills workflow skill to use, or describes work involving PRD, SD/software design, FR, AC/acceptance criteria, ADR, tickets, implementation, debugging, existing-project documentation, documentation drift after verified changes, post-QA documentation alignment in unattended tasks, release checks, or unattended agent execution. Triage the request with at most one clarifying question when needed, explain the route in plain language, then hand off to the right specialist skill. This is an entry router only: it does not write PRDs, specs, ADRs, tickets, or dispatches itself."
-version: 0.6.0
+version: 0.6.1
 status: mvp
 triggers:
   - "/workflow-router"
@@ -66,7 +66,7 @@ Common ambiguity rules:
 - spec／實作過程形成已定的重要技術取捨 → 呼叫 adr 判斷、記錄或引用，再返回原階段。未定決策先釐清，不用 ADR 代替需求、AC 或實作計畫，也不把它加成每個專案必經的一站。
 - 在 repo 內直接說「文件對齊」或呼叫 `/align` → 直接執行 `align`，不要求先跑 QA。
 - 已確認 spec 要無人值守執行：`spec` → user 確認凍結規格 → `goal-engineer` 產出交接文件 → 指定執行 agent 實作與 AC／測試驗證 → `doc-qa:qa` → `align` → 原任務收尾回報。goal-engineer 寫交接，不自行當執行引擎；交接必須寫清 skill 位置、環境／角色／授權與證據輸出，不讓新 session 猜。
-- 這條主線的 QA 明確是 `doc-qa:qa`，不等同 `spec check` 或單元測試。QA 缺陷交回執行 agent 在原授權內修正、重驗；無法實跑或仍有缺陷時如實回報，不靠 align 改文件取得通過。QA 後執行一輪 align，結果併入任務收尾；不增加開票、結案、歸檔或任務狀態閘門。
+- 這條主線的 QA 明確是 `doc-qa:qa`，不等同 `spec check` 或單元測試。由 QA 的 ui-driver／report-contract 判定適用性與出口；查證無 UI 可記不適用，承接原 AC／適用驗證，再 align 與收尾；有 UI 卻缺工具、未測或阻塞不能套此例外。QA 缺陷交回執行 agent 在原授權內修正、重驗，不靠 align 改文件取得通過；不增加開票、結案、歸檔或任務狀態閘門。
 - 無人值守是執行方式，不是改走 `goal-engineer` 的理由：已授權的文件對齊直接執行 `align`，不要重新訪談或新增排程。align 只改指定 repo 文件，外 repo 可讀查證、修改需另行明確授權；未確認或未覆蓋的部分如實回報。
 - Internal documentation before eventual OSS → use `align` for drift or `project-docs` for missing docs first; public-release readiness and sanitization → `prep-repo` when that stage is requested. Private documentation does not imply publishing approval.
 - Already approved documentation work + "execute unattended" → continue its existing `align` or `project-docs` route; do not reopen requirements or create a dispatch unless requested.

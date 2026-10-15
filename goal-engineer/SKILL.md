@@ -1,7 +1,7 @@
 ---
 name: goal-engineer
 description: "Author a self-contained unattended dispatch for a generate-and-select loop (generate candidates, grade, iterate, keep the best for human selection), or for a build whose spec is already frozen with approved scope and machine-checkable AC. Frozen builds hand off implementation / checks, doc-qa:qa, align, and the final task report. Fill execution and notification gaps without reopening approved product decisions. This is the dispatch author, not the runtime: a separate agent or headless session executes it. Not for writing a build spec or PRD from raw input, scheduling recurring work, or running the task itself."
-version: 1.3.0
+version: 1.3.1
 status: stable
 triggers:
   - "/goal-engineer"
@@ -30,14 +30,14 @@ This skill **produces a spec + a notification protocol. It does NOT run the loop
 |---|---|---|
 | 層 | **規格作者**(寫 dispatch) | **引擎**(跑迴圈)= Claude Code `/goal` |
 | 模式 | goal-driven evaluator-optimizer,**generate-and-select**(產候選→評→挑) | time-driven 週期重跑(`/loop`、cron) |
-| 內容型 | 抽卡 / bug-hunt / 候選擇優;**窄例外**:規格已凍結的 lean build dispatch(已核可 ADR / 鎖定設計 → 只包無人值守執行規格,見 Frozen Spec Check) | 從 raw input 產 build spec / PRD / 補產品決策 = `prd-create` |
+| 內容型 | 抽卡 / bug-hunt / 候選擇優;**窄例外**:規格已凍結的 lean build dispatch(已核可 ADR / 鎖定設計 → 只包無人值守執行規格,見 Frozen Spec Check) | 一般 repo 功能規格 = `spec`；產品 PRD 交付 = `prd-create` |
 | 產出 | 一份 dispatch markdown + 通知協定 | 註冊定時推播(`skill-cron`) |
 | 誰來跑 | **新 session 無人值守 agent**(可拿 `/goal` / headless `-p` 當引擎) | 當前 session |
 | 人的角色 | 看 🟢🟡🔴、在 gate 挑最終選定 | 全程盯著 |
 
 **CRITICAL — 這不是 `/goal`**:Claude Code 內建的 `/goal` 是**引擎**(給一個可判真假的條件,獨立小模型每輪判達標、沒過再跑一輪、達標自停)。本 skill 是**上游**:把你要交給 `/goal`(或 headless `-p` session)跑的那個 goal,連同**兩層閘 / 原因碼 / 對抗審查 / 通知協定 / 可重現紀律**一起工程化。`/goal` 的判官只是一個 yes/no、對「這張圖有沒有到位 / 這個 bug 是不是真的」這種主觀又要防自我寬容的目標太粗;本 skill 的評估層(floor+ceiling 閘 + 原因碼 + 獨立 skeptic + 指標)補的就是這塊。
 
-**CRITICAL — 範圍 = 寫無人值守 dispatch、不寫 build spec**:本 skill 主體是 generate-and-select(產一堆候選 → 評分 → 留最好的 → 人挑最終:系列抽卡、bug-hunt、候選擇優)。另有一個**窄例外**:user 已有**凍結的 build spec**(已核可 ADR / 鎖定設計 / 明確可機器檢核的 AC),需求只剩「包成無人值守 agent 可 blind 跑的 dispatch」→ 本 skill 可產 **lean build dispatch**,只套 `references/loop-run-protocol.md` 的執行紀律,不產完整 PRD、不替規格補任何決策、不擴範疇、不發明 AC。build spec 不存在 / 未凍結 / AC 不可機器檢核 → 導去 `prd-create` 或先 stop-and-ask(入口檢核見「Frozen Spec Check」)。
+**CRITICAL — 範圍 = 寫無人值守 dispatch、不寫 build spec**:本 skill 主體是 generate-and-select(產一堆候選 → 評分 → 留最好的 → 人挑最終:系列抽卡、bug-hunt、候選擇優)。另有一個**窄例外**:user 已有**凍結的 build spec**(已核可 ADR / 鎖定設計 / 明確可機器檢核的 AC),需求只剩「包成無人值守 agent 可 blind 跑的 dispatch」→ 本 skill 可產 **lean build dispatch**,只套 `references/loop-run-protocol.md` 的執行紀律,不產完整 PRD、不替規格補任何決策、不擴範疇、不發明 AC。規格不足時依下方執行規則 5 回原規格流程；不因要無人值守就強制補 PRD。
 
 ## 執行規則
 
@@ -46,14 +46,14 @@ This skill **produces a spec + a notification protocol. It does NOT run the loop
 3. **不替 user 腦補**。不知道就問——整個重點是「規格精確到能 blind hand-off」。
 4. dispatch 文件輸出到 user 指定路徑(預設 `docs/<task>_dispatch.md`)。
 5. **接到 build-to-spec 需求先判規格成熟度**:
-   - 規格不存在 / 未凍結 / 要從 raw input 產 AC → 導去 `prd-create`。
+   - 規格不存在／未凍結／AC 不足：一般 repo 功能回 `spec`，已有 spec 就只補原檔缺口；只有明確需要產品 PRD／stakeholder 交付時才去 `prd-create`。只是缺決策或執行資訊就停在該缺口確認，不重開完整訪談，也不另造 PRD。
    - 規格已凍結(已核可 ADR / 鎖定設計 / 已定 AC)、只差無人值守執行 → 跑 Frozen Spec Check,全過才產 lean build dispatch;不可替 user 重寫產品決策。
 
 ## Stage Detection（自動判斷）
 
 1. user 指名既有 dispatch 文件 / 說「resume」→ 載入它、跳到沒填完的洞。
 2. user 描述新的無人值守 generate-and-select loop 需求 → 跑 Forcing Questions。
-2b. user 描述「已核可 ADR / 鎖定設計 / 已有 AC,要 agent 無人值守落地」→ 先跑 Frozen Spec Check;全過 → 產 lean build dispatch,沒過 → 導去 `prd-create` 或 stop-and-ask。
+2b. user 描述「已核可 ADR / 鎖定設計 / 已有 AC,要 agent 無人值守落地」→ 先跑 Frozen Spec Check；全過才產 lean build dispatch，沒過依執行規則 5 回原規格或處理缺口。
 3. 只打 `/goal-engineer` → 問「你想讓 loop 自己磨什麼?(產什麼候選、怎樣算挑到好的?)」
 
 ## Forcing Questions（鎖規格 — 一塊一塊問）
@@ -97,7 +97,7 @@ agent **絕對不能做**什麼?scope 邊界、禁止動作、只有人能決定
 
 ## Frozen Spec Check（build-to-spec 例外入口 — 全過才准走 lean build dispatch）
 
-任一條沒過 → 導去 `prd-create` 或 stop-and-ask,**不准腦補**:
+任一條沒過 → 依執行規則 5 回原規格或 stop-and-ask，**不准腦補，也不強制新增 PRD**：
 
 - [ ] **規格主版本明確**:指得出在哪 —— `<ADR / 文件路徑 / work item>`。
 - [ ] **計畫位置明確**：若承接 spec skill，指向 spec.md 的「實作計畫」或既有獨立 plan.md，並帶入 tasks.md；簡單功能沒有 plan.md 不是規格缺口，不為交接另抄一份需求或計畫。
@@ -107,17 +107,17 @@ agent **絕對不能做**什麼?scope 邊界、禁止動作、只有人能決定
 - [ ] **授權明確**:可動哪些 repo / 檔案 / db / dev|staging 環境;prod / merge / deploy 是否禁止(prod 一律獨立人工 gate)。
 - [ ] **未決決策 = 0**:還有 >0 → stop-and-ask,不准替 user 補決策。
 
-通過後的訪談**只補執行包裝的缺口、不重問規格本身**:Q1(目標)/ Q3(驗收 gate)/ Q6(可重現)由凍結規格 + 模板的驗證段取代;**Q2(紅線)/ Q4(停止條件)/ Q5(runner + 環境)/ Q7(通知)照問**。產出用 `references/lean-build-dispatch-template.md` —— **不是** `dispatch-template.md`(那份是候選 / 最終選定語意,build-to-spec 的風險是假完成 / 碰 prod / migration 出事,語意不同)。
+通過後的訪談**只補執行包裝的缺口、不重問規格本身**：Q1(目標)／Q3(驗收 gate)／Q6(可重現)由凍結規格與模板驗證段取代；Q2(紅線)／Q4(停止條件)／Q5(runner + 環境)／Q7(通知)沿用已定資訊，只問缺的部分。產出用 `references/lean-build-dispatch-template.md` —— **不是** `dispatch-template.md`(那份是候選 / 最終選定語意,build-to-spec 的風險是假完成 / 碰 prod / migration 出事,語意不同)。
 
 ## 產出 dispatch 文件
 
 - generate-and-select → 用 Q1–Q7 的答案填 `references/dispatch-template.md`。
 - frozen build-to-spec → 用 Frozen Spec Check + Q2/Q4/Q5/Q7 的答案填 `references/lean-build-dispatch-template.md`。
 
-**Frozen build 的交接必須包含整條執行主線：實作與 AC／測試驗證 → `doc-qa:qa` 實機 QA → `align` 全 repo 文件對齊 → 收尾回報。** 這條只適用 build-to-spec，不套到 generate-and-select。
+**Frozen build 的交接必須包含整條執行主線：實作與 AC／測試驗證 → `doc-qa:qa` 適用性判定與實機 QA → `align` 全 repo 文件對齊 → 收尾回報。** 這條只適用 build-to-spec，不套到 generate-and-select。
 
-- 產 dispatch 前先定位執行端已安裝的 `doc-qa:qa` 與 `align`，在交接文件填入該執行端可讀取的 skill 位置／版本、QA 環境與角色、資料寫入授權、證據／報告位置，以及 align 的目標 repo。不可只寫兩個 skill 名稱、讓新 session 猜路徑或靠上一段對話接續；缺少必要能力時先回報依賴，不能自動下載或改用單元測試代替實機 QA。
-- QA 的範圍沿用已定 spec／授權，不重開需求訪談；不足資訊與未實跑範圍如實進 QA 報告。依模板 §7.1／§7.2 帶入 QA 缺陷修正與文件對齊的接續方式，不自行發明 QA 通過率。
+- 產 dispatch 前先定位執行端已安裝的 `doc-qa:qa` 與 `align`，在交接文件填入該執行端可讀取的 skill 位置／版本、QA 範圍、環境與角色、資料寫入授權、證據／報告位置，以及 align 的目標 repo。QA 需支援適用性與阻塞出口契約（doc-qa 0.2.1+／QA 0.5.1+）；不能只寫名稱讓新 session 猜路徑。缺必要能力先回報，不自動下載或用單元測試代替 UI 實跑。
+- QA 的範圍沿用已定 spec／授權，不重開需求訪談；不足資訊與未實跑範圍如實進 QA 報告。依 QA 的 ui-driver 與 report-contract 判斷 UI 是否適用、阻塞與出口，再依模板 §7.1／§7.2 接缺陷修正與文件對齊；不自創通過率。查證沒有 UI 可回報不適用並承接原 AC／適用驗證，不要求 UI driver；有 UI 卻缺工具不能走這個例外。
 - 跨 Web／桌面 QA 建議選 Codex runner；Web 使用 Playwright MCP，原生桌面／跨 App 只在有 computer-use 工具且 QA skill 支援該 driver 的 Codex session 執行。不能假設每個 Codex 都有此能力；在交接填目標 App／URL、driver 與證據限制，不硬套瀏覽器工具。project-docs 僅在缺必要文件或要交付手冊時依授權另接，不是 QA 必經站。
 - 技術決策的交接包含既有 ADR 路徑；執行中確定的重要取捨可依 `adr` 判準記錄後返回原任務。不得用新 ADR 偷改凍結規格；未決或超出授權就走原 stop-and-ask。若需記錄，dispatch 填入執行端可讀的 adr skill 位置；不把它變成所有 build 的安裝前提。
 - 交接自審要確認：沒有從「測試全綠」直接跳到任務完成；新 session 能找到兩個 skill 及其 references；最終回報會分列實作驗證、QA 真實結果、文件修訂與待授權事項。QA 後不因做完文件就把缺陷或未實跑改成通過。
@@ -159,13 +159,13 @@ dispatch 寫好後(尤其它會進 repo 或交給無人值守跑),**主動問 us
 - ❌ 沒 pre-flight 通知測通就開跑(通知靜默失敗 = 盲跑)。
 - ❌ 寫死 Telegram(通道是 Q7 的決定、抽象化 transport)。
 - ❌ 把本 skill 當 `/goal` 引擎用(它只寫規格、不跑迴圈)。
-- ❌ 拿本 skill 從 raw input 寫 build-to-spec PRD(那是 `prd-create`)。
+- ❌ 拿本 skill 補需求／AC 或強迫所有 build 先寫 PRD — 缺口依執行規則 5 回原流程。
 - ❌ 在 frozen build dispatch 裡偷偷補規格決策 / 擴範疇 / 自行批准 prod。
 
 ## Important rules（context 再長也要記住）
 
 1. **規格作者、不是引擎**。loop 由 `/goal` / headless `-p` / 無人值守 session 跑;本 skill 只產規格。
-2. **goal-driven、不是 time-driven**。user 要「每 10 分鐘」那是 `/loop`/cron。build-to-spec 只有在規格已凍結、只差無人值守 dispatch 時才收(過 Frozen Spec Check);要產 PRD / AC 則是 `prd-create`。
+2. **goal-driven、不是 time-driven**。user 要「每 10 分鐘」那是 `/loop`/cron。build-to-spec 只有在規格已凍結、只差無人值守 dispatch 時才收；需求／AC 缺口依執行規則 5 回原流程。
 3. dispatch 文件要能被**新 session blind 跑**——零隱含 context。
 4. **兩層閘**(floor + ceiling):「沒缺陷」≠「命中目標」。
 5. **3 出口 + delta 防空轉**是必備停止條件。
@@ -177,7 +177,7 @@ dispatch 寫好後(尤其它會進 repo 或交給無人值守跑),**主動問 us
 ## 跟其他 skill / 工具的關係
 
 - **Claude Code `/goal`(內建,external)**:loop 的**引擎**。本 skill 產出的 dispatch 可丟給 `/goal` 跑(`/goal <condition>` 或 `claude -p "/goal ..."`)。`/goal` 判達標、本 skill 寫「達標的定義 + 迭代紀律 + 通知」。引擎 vs 規格,不重疊。
-- **`prd-create`(同 monorepo)**:**build-to-spec** 的規格作者(產 PRD)。PRD 給 agent 無人值守跑時,它 §13 那層執行紀律(紅綠燈 / 3 出口 / delta / pre-flight / stop-and-ask)對齊本 skill 的 `references/loop-run-protocol.md`。分工:prd-create 寫「build 什麼」、本 skill 的 loop-run-protocol 寫「agent 怎麼無人值守跑 + 回報」。**要不要產 PRD 看「build spec 需不需要被寫出來」;要不要用本 skill 看「工作是不是只剩把凍結規格包成無人值守 dispatch」** —— 後者走 Frozen Spec Check,不必回頭跑整份 PRD。
+- **`spec`／`prd-create`（同 monorepo）**：一般 repo 功能由 spec 寫需求／AC／計畫／tasks；需要產品 PRD 交付才用 prd-create。兩者凍結後都可包成 dispatch；缺規格依執行規則 5 回原來源，不因缺 AC 就強制產 PRD。prd-create 的 agent-run §13 沿用本 skill 的 `references/loop-run-protocol.md` 執行紀律。
 - **`skill-cron`(同 monorepo)**:心跳/排程器,**scheduler-agnostic**。dispatch 是收斂型(跑到目標就停);要**週期再進場**就把它做成 headless 可跑入口、讓任意排程器(cron / launchd / CI / skill-cron)點火 —— 排程器是誰不是本 skill 的事(同它對通知 channel-agnostic 的態度)。
 - **`/loop`(內建,external)**:time-interval 重跑,跟本 skill 的 goal 收斂是不同維度。
 - **`doc-qa:qa`（doc-qa plugin）與 `align`**：frozen build 執行交接的實機 QA 與文件對齊步驟。前者產案例、實跑與證據報告，後者依實作修既有文件；不用 project-docs 取代 align，也不把 QA 包進文件修訂。

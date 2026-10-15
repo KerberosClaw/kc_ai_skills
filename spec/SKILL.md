@@ -1,7 +1,7 @@
 ---
 name: spec
 description: "Use when the user wants a spec-driven development workflow for implementing a feature in the current codebase, from fuzzy idea or existing active spec through requirements, technical plan, tasks, implementation, verification, and closure report. Auto-detects project/spec state, writes persistent files under specs/, asks one grounded question at a time when requirements are ambiguous, and stops at stage gates. NOT for stakeholder PRDs (prd-create), ADO ticket breakdown (prd-breakdown), single architecture-decision records (adr), or already-frozen tasks that should simply be implemented."
-version: 1.9.0
+version: 1.9.1
 status: stable
 triggers:
   - "spec"
@@ -250,7 +250,7 @@ You are a spec-driven development lead. You turn a user feature request into per
    - 修完後可以再跑一次 check
 
 5. **全部 PASS**
-   - 無人值守且已授權執行完整任務時，接著讀取並執行 `doc-qa:qa` 的完整實機 QA，再執行 `align` 全 repo 文件對齊，最後由原任務收尾回報。AC／測試通過不等於 QA 通過；QA 缺陷由原執行 agent 在授權與停止條件內修正、重驗，未實跑或未解決項目如實回報。兩個 skill 未安裝時回報缺少依賴，不自行下載，也不跳過後宣稱完整完成。align 不增加開票、結案或歸檔門檻。
+   - 無人值守且已授權完整任務時，讀取並執行 `doc-qa:qa`（支援適用性／阻塞出口契約的 QA 0.5.1+），依其 ui-driver 與 report-contract 判定適用性、實跑及出口，再執行 `align` 全 repo 文件對齊，最後收尾回報。查證無 UI 時明列不適用並引用本階段適用驗證，不宣稱 UI QA 通過；有 UI 卻未測或仍有阻塞不能套此例外。QA 缺陷由原執行 agent 在授權與停止條件內修正、重驗，缺口如實回報。skill 缺少或版本不支援時回報依賴，不自行下載，也不略過後宣稱完整完成。align 不增加開票、結案或歸檔門檻。
    - 一般互動流程沿用原本階段閘門，告訴 user：「驗收通過，要產結案報告嗎？（/spec report NN-feature-name）」
 
 ---
@@ -317,7 +317,7 @@ You are a spec-driven development lead. You turn a user feature request into per
 - **`prd-breakdown`**：把已核可 PRD 拆成 Azure DevOps tickets。本 skill 的 `tasks.md` 是本地開發 checklist，不負責推 ADO。
 - **`goal-engineer`**：把已凍結的目標/規格包成無人值守 dispatch。若規格還需要釐清或 code 還要在當前 repo 實作 → 本 skill；若規格已鎖，只差交給 agent blind run → `goal-engineer`。
 - **`adr`**：重要技術取捨確定時依執行規則 7 接入，記錄／引用後返回原階段；ADR 不是必經站，也不取代 spec、AC 或整個 feature lifecycle。
-- **`doc-qa:qa`／`align`**：完整無人值守主線為 AC／測試驗證 → doc-qa 實機 QA → align 文件對齊 → 收尾回報；兩者不能互代。align 也可直接手動呼叫，不改本 skill 的結案與歸檔程序。
+- **`doc-qa:qa`／`align`**：完整無人值守主線為 AC／測試驗證 → doc-qa 適用性與必要實機 QA → align 文件對齊 → 收尾回報；出口由 QA 契約維護，兩者不能互代。align 也可直接手動呼叫，不改本 skill 的結案與歸檔程序。
 - **`project-docs`**：缺必要技術文件或需要手冊／交接時才接，不是 QA 必經站；QA 的案例來自需求／spec。Web 可用 Playwright MCP；原生桌面／跨 App QA 則需支援該 driver、具備 computer-use 的 Codex 執行端。
 - **`prep-repo`**：發布前總檢查。功能已做完、要公開或推 GitHub 前 → `prep-repo`；不要用它取代 spec 的需求/實作/驗收流程。
 

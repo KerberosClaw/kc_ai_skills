@@ -1,7 +1,7 @@
 ---
 name: align
 description: "Reconcile existing repository documentation with the current implementation, especially after verified hotfixes or after QA in an unattended task. Inspect the whole target repo and follow cross-repo references for evidence; edit only documentation in the authorized repo, annotating conflicting historical records. Supports manual and unattended runs. Not for fixing code, deploying, inventing requirements, or building a new documentation suite."
-version: 0.2.0
+version: 0.2.1
 status: mvp
 triggers:
   - "/align"
@@ -27,7 +27,7 @@ triggers:
 
 有兩種入口：在 repo 內用 `/align` 或「文件對齊」等關鍵字直接呼叫；無人值守任務跑完 QA 後，也可以接著跑一輪，再由原任務收尾回報完成。手動呼叫不要求先跑 QA；align 不代替 QA，不處理開票、結案或歸檔，也不建立排程。
 
-spec／goal-engineer 的完整無人值守 build 主線為 **實作與 AC／測試驗證 → `doc-qa:qa` 實機 QA → align → 收尾回報**。接收前一階段的 QA 報告、版本與證據，不把單元測試全綠當作 QA 通過；若 QA 未實跑或仍有缺陷，可處理已確定的文件落差，但保留缺口，不改需求或 QA 結果替缺陷背書。align 完成後回到原執行 agent 統一回報。
+spec／goal-engineer 的完整無人值守 build 主線為 **實作與 AC／測試驗證 → `doc-qa:qa` 適用性與必要實跑 → align → 收尾回報**。接收前一階段的 QA 報告、版本與證據；已查證無 UI 時承接不適用結論與原 AC／適用驗證，不把它改成 UI PASS。若有 UI 卻未實跑或仍有缺陷，可處理已確定的文件落差，但保留缺口，不改需求或 QA 結果替缺陷背書。align 完成後回到原執行 agent 統一回報。
 
 ## 執行流程
 

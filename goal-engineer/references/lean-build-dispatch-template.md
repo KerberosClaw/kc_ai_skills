@@ -10,7 +10,7 @@
 - **實作計畫與進度:** `<spec.md 的實作計畫章節或 plan.md；tasks.md 路徑>`。承接唯一計畫位置，不要求簡單功能另外建立 plan.md。
 - **既有決策依據:** `<相關 ADR 路徑；無則寫無>`。ADR 記理由，執行範圍／AC 仍以凍結規格為準。
 - 🔴 **不得重新詮釋規格**:實作疑義一律回 SSOT 查;SSOT 沒答案 = `SPEC_GAP` → 🔴 stop-and-ask,不腦補。
-- **「任務完成」的定義:** §3 DoD 全勾、§7 驗證通過、§7.1 `doc-qa:qa` 依已核准出口條件通過且有證據，並已執行 §7.2 `align` 後收尾回報。milestone 🟢 只是階段進度，不代表整個任務完成；不得在測試全綠時跳過 QA／文件對齊就報完成。
+- **「任務完成」的定義:** §3 DoD 全勾、§7 驗證通過，且 §7.1 依 QA 報告契約通過出口，或已有依據確認 `UI QA 不適用` 並有 §7 適用驗證證據，再執行 §7.2 `align` 後收尾回報。milestone 🟢 只是階段進度，不代表整個任務完成；不得跳過 QA 適用性／必要實跑或文件對齊就報完成。
 
 ## 1. Scope / non-scope
 - **本 run 做:** `<exactly which changes>`
@@ -18,7 +18,7 @@
 
 ## 2. Authority boundary（授權邊界）
 - **已授權(可自主):** `<repo / files / db / dev|staging 環境,agent 可全權>`
-- **QA 授權:** `<已確認的測試 URL 或原生 App／環境、畫面／角色、可拋棄資料範圍、可寫入動作／不可逆動作限制、帳號的安全取得方式>`。正式環境唯讀；測試環境寫入也不能超過這份授權。
+- **QA 授權:** `<已確認的 UI 範圍、測試 URL 或原生 App／環境、畫面／角色、可拋棄資料範圍、可寫入動作／不可逆動作限制、帳號的安全取得方式；查證無 UI 時記不適用依據與 §7 驗證入口>`。正式環境唯讀；測試環境寫入也不能超過這份授權。
 - **文件對齊授權:** `<本次可修改文件的 repo>`；跨 repo 引用可唯讀查證，其他 repo 文件飄移只回報，取得 user 明確授權才改。
 - **stop-and-ask(遇到即停、發 🔴 待人):** `<規格外衝突 / 白名單外新依賴 / 既有資料的修改刪除 / ...>`
 - 🔴 **禁止(獨立人工 gate,agent 不得自行續跑):** prod 部署 / prod db migration / merge / `<...>`。staging 驗完 ≠ 可進 prod — **staging → prod 是硬性兩階段**,第二階段永遠是人。
@@ -38,7 +38,7 @@
 1. `<runtime / 服務 / 依賴檢查>`
 2. `<輸入 / 測試環境(staging / dump)備齊>`
 3. `<smoke:最小一項端到端,例如對 dump 空跑一次 migration>`
-4. 確認 §7.1／§7.2 的兩個完整 skill 與其 references 在執行端可讀，且有實機 QA 對應的 UI driver：Web 為 Playwright MCP，原生桌面／跨 App 為實際具備 computer-use 的 Codex session。桌面路徑需確認 QA skill 包含 ui-driver 支援；缺少依賴就回報，不把名稱當成已安裝，也不自行安裝或以 AC 測試取代 QA。
+4. 確認 §7.1／§7.2 的兩個完整 skill 與 references 在執行端可讀，QA 支援目前適用性與出口契約（doc-qa 0.2.1+／QA 0.5.1+）。先依 QA ui-driver 判斷範圍：有 UI 才要求對應 driver（Web 為 Playwright MCP；桌面／跨 App 為具 computer-use 的 Codex），查證無 UI 則記錄依據與 §7 適用驗證，不要求 driver。有 UI 卻缺工具或環境就回報依賴缺口，不改稱不適用、不自行安裝或以 AC 測試取代 UI 實跑。
 
 ## 6. Execution procedure（新 session 照這個跑）
 1. 讀本 dispatch + SSOT;load state(`<state file>` 存在則 resume,否則 fresh)。
@@ -54,15 +54,15 @@
 - `<unit / integration / e2e 指令>` → `<門檻>`
 - `<build / migration 驗證指令>` → `<門檻>`
 
-**本節全綠只代表 AC／測試驗證完成，不能取代以下實機 QA。** 任何 silent cap(略過的測試 / 抽樣驗證)要明講、別藏。
+**本節全綠只代表 AC／測試驗證完成，不能取代以下 QA 適用性判定與必要實跑。** 任何 silent cap(略過的測試 / 抽樣驗證)要明講、別藏。
 
-### 7.1 實機 QA：`doc-qa:qa`
+### 7.1 QA 適用性與必要實跑：`doc-qa:qa`
 
 - **執行端 skill:** `<doc-qa:qa 的 SKILL.md 可讀位置與版本；保留整個 skill 資料夾>`
 - **QA 材料／輸出:** `<spec／需求來源、對應程式版本、測試環境與角色、QA 報告／案例矩陣／截圖的保存位置>`
-- **QA runner／driver:** `<建議 Codex；Web 使用 Playwright MCP，原生桌面／跨 App 僅用有 computer-use 工具的 Codex；記錄目標 App／URL、工具能力與不支援範圍>`。project-docs 不是 QA 前置關卡；案例依據已核准需求／spec，不從現況手冊倒推預期。
-- 讀取並執行 `doc-qa:qa` 的階段 0–4，依其 references 完成範圍稽核、挖掘、案例、實跑與證據報告。範圍／環境／寫入授權已在本 dispatch 決定的就直接承接；缺少的部分如實標記，不能自選正式環境或修改其資料。
-- 保留 `PASS`／`FAIL`／`UNCLEAR`／`BLOCKED`／`NOT RUN` 與 QA 整體狀態、版本、證據邊界。出口沿用已核准需求與 QA 報告契約；不自創覆蓋率、不把「報告產出」等同「QA 通過」。
+- **QA runner／driver:** `<建議 Codex；Web 使用 Playwright MCP，桌面／跨 App 僅用有 computer-use 的 Codex；記錄目標、工具能力與限制；已查證無 UI 則填不適用及依據>`。project-docs 不是 QA 前置關卡；案例依據已核准需求／spec，不從現況手冊倒推預期。
+- 先讀 `doc-qa:qa` 的 ui-driver 與 report-contract，再執行該 skill。適用 UI 時依階段 0–4 完成稽核、案例、實跑與報告；已查證無 UI 時依其規則從階段 0 直接到報告，連回 §7 的適用驗證，不虛構 UI PASS。範圍／環境／寫入授權沿本 dispatch；缺少的如實標記，不自選正式環境或修改資料。
+- 保留五種案例結果、QA 整體狀態、版本與證據邊界，嚴格依 report-contract 的出口判準交回原流程；不另抄一套、不自創覆蓋率、不以「報告產出」當 QA 通過。`UI QA 不適用` 與有 UI 卻未測必須分開；阻塞或待決項目不能被收尾摘要藏掉。
 - QA 本身不修程式。發現缺陷時，由原執行 agent 在 §2 已授權範圍與 §9 次數／時間上限內修正，再跑相關驗證與新一輪 QA，保留前輪證據。需產品決策、越權或已達停止條件時，不改預期結果來求 PASS；如實收尾或回報阻塞。
 - 沒環境或案例未跑完，照 skill 出 `尚未實跑`／`部分執行` 報告，不能以單元測試綠燈冒充。若無法繼續 QA，仍可把既有可確認資訊交給 align 整理文件，最終清楚回報未完成項目，不宣稱整條任務成功。
 
@@ -109,6 +109,6 @@
 > - **Risk:** db migration(先對 dump 空跑、驗 row count + rollback script)。
 > - **Verification:** `<test suite>` 全綠 + migration dry-run 無 diff 異常。
 > - **Stop:** `SPEC_GAP` 或 `MIGRATION_RISK` 即 🔴;≤6 輪。
-> - **QA:** 用 `doc-qa:qa` 在已授權的測試介面／角色實跑並留下矩陣與證據；沒有介面或環境時如實標記，不拿測試全綠代替。
+> - **QA:** 用 `doc-qa:qa` 在已授權的測試介面／角色實跑並留下矩陣與證據；其他受測產品只有 CLI／背景服務的範圍，依適用性規則回報不適用、承接 §7 驗證。此例有 UI，即使 Claude agent 在 bg session 執行仍須實測；缺工具／環境記未測，不得改稱不適用。
 > - **Docs:** QA 後執行 align，只修授權 repo 的文件；外 repo 落差列待授權。
 > - **Handoff:** PR + run log + QA 結果 + 文件修訂摘要;人審後自己按 merge、自己排 prod migration 時段。

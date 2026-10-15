@@ -1,5 +1,7 @@
 # FOLLOW-UP — goal-engineer scope gap: frozen build spec → lean unattended dispatch
 
+> 現況註記（2026-10-15）：本頁是早期 frozen-build 路由問題與提案的歷史紀錄，原文保留。現行缺口處理依 [SKILL.md](../SKILL.md) 執行規則 5：一般功能回原 spec，只在需要產品 PRD 交付時接 prd-create；不再把缺 AC 一律導向 PRD。最新 QA 適用性與出口亦以 SKILL 引用的執行模板為準。
+
 > **Status**: **applied 2026-07-03**(v0.4.0)— kept as the design-rationale record for the frozen-spec exception. Applied with supplements the original proposal missed: README/README_zh sync, version bump + triggers, forcing-questions mapping for the lean path (Q2/Q4/Q5/Q7 still asked; Q1/Q3/Q6 replaced by the frozen spec), DESIGN.md prose (not just the table, heartbeat row kept), genericized risk sections in the template. Long-term option (extract `unattended-dispatch-engineer`) intentionally NOT taken — default = patch, revisit only if the lean path grows.
 > **Origin**: hit in real use — the skill mis-routed a valid request. Root cause + a reviewed fix are below. A second reviewer (codex) independently confirmed the flaw and refined the fix; its concrete edits are embedded.
 > **Scope of this task**: edit `goal-engineer` SKILL + references only. No company/internal context needed to do it — this is a pure skill-design fix.

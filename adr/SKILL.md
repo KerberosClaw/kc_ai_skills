@@ -1,7 +1,7 @@
 ---
 name: adr
-description: "Use when a durable technical decision was just made in conversation and should be recorded, or when user asks to write/record an ADR (開 ADR / 記個決策 / 這要不要 ADR). Runs a three-gate check FIRST and actively talks the user out of writing one when the decision doesn't qualify — then writes a lightweight (title + 1-3 sentences) ADR following the repo's own ADR conventions if any exist. Repo conventions always override this skill's defaults. NOT for requirement specs (spec / prd-create) or for rewriting history (superseded ADRs get a new ADR, never an edit)."
-version: 0.3.0
+description: "Use when a durable technical decision was just made in conversation and should be recorded, or when user asks to write/record an ADR (開 ADR / 記個決策 / 這要不要 ADR). Runs a three-gate check FIRST and actively talks the user out of writing one when the decision doesn't qualify — then writes a lightweight (title + 1-3 sentences) ADR following the repo's own ADR conventions if any exist. Repo conventions always override this skill's defaults. NOT for requirement specs (spec / prd-create) or rewriting historical decisions; preserve their text, allow evidence-backed current-state notes, and record changed decisions in a new ADR."
+version: 0.3.1
 status: mvp
 triggers:
   - "/adr"
@@ -68,7 +68,8 @@ ls -d adr decisions doc/adr docs/adr doc/adrs docs/adrs doc/decisions docs/decis
 ## Step 4: 收尾
 
 - Repo 有 ADR 索引表 / log.md 維護慣例 → 照做（補索引行、補 log 條目）。
-- 被新 ADR 取代的舊 ADR：在新 ADR 註明「取代 ADR-NNN」、索引更新狀態；**舊檔內文不動**（唯一允許的舊檔改動＝頂部加一行「已被 ADR-NNN 取代」標記）。
+- 被新 ADR 取代的舊 ADR：在新 ADR 註明「取代 ADR-NNN」、索引更新狀態；舊檔保留原決策與理由，頂部加「已被 ADR-NNN 取代」標記。
+- **允許歷史現況註記，不改歷史結論。** align 或本流程查到現況衝突時，可在頂部或衝突處鄰近新增清楚區隔的註記，標查核日期、目前差異及可追溯證據；保留原文、當時狀態與檔名。有已存在的後續 ADR 就連過去。註記不批准新決策；若決策真的變了，仍須另寫新 ADR，未定案則標待確認。
 - 提交與否照 caller 當下的工作流程走，本 skill 不擅自 commit。
 
 ## 從其他流程接入與返回
@@ -84,7 +85,7 @@ ls -d adr decisions doc/adr docs/adr doc/adrs docs/adrs doc/decisions docs/decis
 - ❌ **為記錄而記錄** — 三重閘沒過還硬寫。文件膨脹的起點就是「反正記一下也沒差」
 - ❌ **填滿模板** — 沒有替代方案就不要編一個出來湊 Considered Options
 - ❌ **ADR 當 spec 寫** — 塞 API 定義、資料模型、實作步驟進去
-- ❌ **回頭改歷史 ADR** — 決策變了就開新 ADR 取代並互連，舊的是史料不是草稿
+- ❌ **覆寫歷史 ADR 的決策或理由** — 決策變了開新 ADR；現況註記依 Step 4 保留原文並區隔
 - ❌ **無視 repo 既有格式** — 自帶「標準 ADR 模板」蓋過人家用了十篇的慣例
 - ❌ **改檔名 / 重編號** — 編號與檔名是永久位址
 
@@ -95,7 +96,7 @@ ls -d adr decisions doc/adr docs/adr doc/adrs docs/adrs doc/decisions docs/decis
 3. **輕量體是預設** — 標題 + 1-3 句；欄位有內容才加
 4. **兩型必記** — 刻意偏離顯然路徑、明確的 no
 5. **Lazy 建立** — 第一篇 ADR 需要時才建目錄，不預鋪結構
-6. **歷史不可改** — 取代用新 ADR，不編輯舊 ADR
+6. **歷史原文保留** — 取代用新 ADR；現況註記依 Step 4，不覆寫舊決策
 7. **不記實作細節** — 決策與理由 only
 
 ## 跟其他 skill 的關係
