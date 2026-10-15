@@ -1,7 +1,7 @@
 ---
 name: align
 description: "Reconcile existing repository documentation with the current implementation, especially after verified hotfixes or after QA in an unattended task. Inspect the whole target repo and follow cross-repo references for evidence; edit only documentation in the authorized repo, annotating conflicting historical records. Supports manual and unattended runs. Not for fixing code, deploying, inventing requirements, or building a new documentation suite."
-version: 0.2.1
+version: 0.3.0
 status: mvp
 triggers:
   - "/align"
@@ -37,7 +37,7 @@ spec／goal-engineer 的完整無人值守 build 主線為 **實作與 AC／測�
 
 3. **查證差異。** 修改前先讀 [references/criteria.md](references/criteria.md)，依其中的證據與修訂判準逐項核對。沿文件引用追到相關 repo 的實作、介面、呼叫方或部署紀錄；對同一 repo／引用去重，已走過的循環不重追。外部 repo 的用途是查清本 repo 的敘述，不擴成無關 repo 的全面掃描。
 
-4. **直接修訂目標 repo 的文件。** 更新現況敘述、使用方式、參數、流程與交叉連結；同步受影響的既有索引與翻譯，遵循 repo 慣例，不另起一套文件架構。歷史記錄保留原文，有衝突時加註目前差異與依據。無法確認的項目保留並回報，先完成其他可確定部分。
+4. **直接修訂目標 repo 的文件。** 更新現況敘述、使用方式、參數、流程與交叉連結；同步受影響的既有索引與翻譯，遵循 repo 慣例，不另起一套文件架構。文件本身標明是歷史紀錄、已結案或 ADR 的才算歷史記錄，保留原文並在有衝突時加註目前差異與依據；其他一律當現況文件直接修。無法確認的項目保留並回報，先完成其他可確定部分。
 
 5. **驗證與回報。** 看完整 diff，確認僅有授權的文件修訂、歷史原文仍在、證據能支持新敘述，並查連結／索引／圖表是否一致。可使用已確認不會改變部署或外部狀態的文件檢查；不要為了對齊而重跑部署、資料遷移或生產驗收。回報改了什麼與仍待確認的項目；無人值守時把結果併入原任務的收尾回報。
 
