@@ -1,7 +1,7 @@
 ---
 name: goal-engineer
 description: "Author a self-contained unattended dispatch for a generate-and-select loop (generate candidates, grade, iterate, keep the best for human selection), or for a build whose spec is already frozen with approved scope and machine-checkable AC. Frozen builds hand off implementation / checks, doc-qa:qa, align, and the final task report. Fill execution and notification gaps without reopening approved product decisions. This is the dispatch author, not the runtime: a separate agent or headless session executes it. Not for writing a build spec or PRD from raw input, scheduling recurring work, or running the task itself."
-version: 1.3.1
+version: 1.3.2
 status: stable
 triggers:
   - "/goal-engineer"
