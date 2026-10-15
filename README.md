@@ -29,6 +29,7 @@ Grouped by what you're trying to get done — every skill is still a self-contai
 | Skill | What It Actually Does |
 |-------|----------------------|
 | [workflow-router](workflow-router/) | The front door for the confusing middle: PRD, SD, FR, AC, ADR, tickets, implementation, release, or unattended runs. It asks at most one clarifying question, tells you which specialist skill to use, explains why in plain language, then hands off. It deliberately does not write the PRD/spec/ADR itself |
+| [align](align/) | Bring existing docs up to date with verified implementation and hotfixes. Run manually or after QA before closure; inspect the whole repo and follow cross-repo references for evidence. Edit only authorized repo docs, annotate conflicting history, and keep deployed systems read-only. Report drift in other repos and obtain explicit permission before editing them. Supports unattended runs without adding schedules |
 | 📦 [project-docs](https://github.com/KerberosClaw/kc_ai_plugins/tree/main/plugins/doc-qa/skills/project-docs) | *Moved to the `doc-qa` plugin.* Turn an existing codebase into documentation someone can actually use — for two different readers. Maintainers get evidence-mapped technical docs: architecture, contracts, data models, operations, release handoff, diagrams as Mermaid source. End users and administrators get an operations manual instead: what you must have before you start, step-by-step screens, and what to do when you get stuck. Reuses templates and updates incrementally without changing product code. Defaults to Traditional Chinese technical prose with English summaries for GitHub |
 
 ### Generate & create
@@ -54,10 +55,12 @@ Grouped by what you're trying to get done — every skill is still a self-contai
 |-------|----------------------|
 | [prd-create](prd-create/) | Turn a pile of meeting notes, scattered chat messages, and hand-waved feature requests into a structured PRD that follows your org's guideline — it quizzes you for the gaps instead of fabricating them, surfaces stakeholder conflicts instead of silently picking a side, then sanitizes and publishes to ADO Wiki. Pure prompt-driven, no Python. First half of the prd-create → prd-breakdown → ADO chain |
 | [prd-breakdown](prd-breakdown/) | Take a finished PRD and slice it into Azure DevOps work items along vertical slices (HITL/AFK tags + blocked_by dependencies), then push them via the az CLI — idempotent re-runs via fingerprint markers, so re-running won't duplicate items. Second half of the prd-create → prd-breakdown → ADO chain |
-| [spec](spec/) | Spec-driven development workflow — from fuzzy idea to verified deliverable. One command, auto-detects project state, walks you through: requirements → review → implement → verify → report. Because "just start coding" is how you end up rewriting everything |
+| [spec](spec/) | Spec-driven development workflow — from fuzzy idea to verified deliverable. One command, auto-detects project state, walks you through: requirements → review → implement → verify → align docs → report. Because "just start coding" is how you end up rewriting everything |
 | [goal-engineer](goal-engineer/) | For when you want an agent to grind on something overnight without you hovering over it. Interview-style, it pins down a goal-driven evaluator-optimizer loop of the generate-and-select kind (generate candidates -> grade against a rubric -> iterate by reason-code -> you pick the winner), then emits a self-contained dispatch doc a fresh session runs blind while you just watch the green/yellow/red pings roll in. It is the upstream *spec author*, not the engine -- hand the dispatch to Claude Code's built-in `/goal`, a headless `claude -p`, or any unattended agent. NOT `/goal` itself, NOT a build-to-spec PRD writer (that's prd-create), NOT a cron timer. One narrow exception: if your build spec is *already frozen* (approved ADR, locked design, machine-checkable AC) and all you're missing is the unattended-run wrapper, it packages a lean build dispatch instead of making you write a full PRD for a decision you already made. Channel-agnostic notifications (Telegram/Discord/Slack/iMessage), and it bakes in a "want an adversarial review before we ship?" gate -- because we got tired of remembering to ask ourselves |
 
-> Not sure which one fits? Start with `workflow-router`. The shortest rule of thumb: product requirements go to `prd-create`; repo-local software design / engineering AC / implementation goes to `spec`; existing-project documentation goes to `project-docs` (in the `doc-qa` plugin); one durable technical decision goes to `adr`; approved PRD tickets go to `prd-breakdown`; a new unattended dispatch for frozen work goes to `goal-engineer`. Already approved documentation work continues with `project-docs` without another requirements interview.
+> Existing docs lag behind implementation or hotfixes? Use `align`. Need a new documentation suite or manual? Use `project-docs`.
+
+> Not sure which one fits? Start with `workflow-router`. The shortest rule of thumb: product requirements go to `prd-create`; repo-local software design / engineering AC / implementation goes to `spec`; existing docs versus implementation goes to `align`; new technical docs / manuals go to `project-docs` (in the `doc-qa` plugin); one durable technical decision goes to `adr`; approved PRD tickets go to `prd-breakdown`; a new unattended dispatch for frozen work goes to `goal-engineer`. Already approved documentation work continues with its existing `align` or `project-docs` route without another requirements interview.
 
 ### Engineering discipline
 
@@ -108,6 +111,8 @@ cp -r kc_ai_skills/prep-repo ~/.claude/skills/
 # Example: install for OpenClaw (workspace-level)
 cp -r kc_ai_skills/searxng ~/.openclaw/workspace/skills/
 ```
+
+> **Closure setup:** The `spec` closure stage calls `align`; install both complete skill folders for closure. The sequence is QA / acceptance passed → `align` → closure report and archive. You can also call `/align` independently in a repo.
 
 > **Naming tip:** Feel free to rename the skill folder with your own prefix when copying (e.g. `my_prep-repo`). It won't break anything. Probably.
 

@@ -46,3 +46,7 @@
 - **spec 1.5.0**：四份文件範本搬到 `templates/`，審查與驗收判準搬到 `references/review.md`，實作守則搬到 `references/implement.md`；本體 547 → 331 行，重複講三遍的規則收成一次。
 - **prd-create 刻意不動**：§13 摘要了 `goal-engineer/references/loop-run-protocol.md`，但 README 教使用者單獨複製一支 skill，跨 skill 引用在別人機器上會斷。摘要只有一行、漂移風險低；哪天抓到兩邊不一致，再改成「複製一份進 `prd-create/references/` 加比對腳本」。
 
+
+## 2026-10-15 文件與實作對齊
+
+新增 [align](align/SKILL.md) 0.1.0：手動或無人值守檢查整個 repo，依實作修既有文件，跨 repo 引用可讀查證，修改外 repo 另取授權；歷史衝突保留原文加註，已部署環境唯讀。`workflow-router` 0.3.0 區分 align 與補建文件的 project-docs；`spec` 1.6.0 在 QA／AC 通過後、結案前呼叫 align，部分完成不自動歸檔。使用 spec 結案功能需一併安裝 align；判準放 align/references/criteria.md，雙語 README 與結案範本同步。

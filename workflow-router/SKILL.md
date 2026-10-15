@@ -1,7 +1,7 @@
 ---
 name: workflow-router
-description: "Use when the user is unsure which kc_ai_skills workflow skill to use, or describes work involving PRD, SD/software design, FR, AC/acceptance criteria, ADR, tickets, implementation, debugging, existing-project documentation, release checks, or unattended agent execution. Triage the request with at most one clarifying question when needed, explain the route in plain language, then hand off to the right specialist skill. This is an entry router only: it does not write PRDs, specs, ADRs, tickets, or dispatches itself."
-version: 0.2.1
+description: "Use when the user is unsure which kc_ai_skills workflow skill to use, or describes work involving PRD, SD/software design, FR, AC/acceptance criteria, ADR, tickets, implementation, debugging, existing-project documentation, documentation drift after verified changes, QA-passed closure, release checks, or unattended agent execution. Triage the request with at most one clarifying question when needed, explain the route in plain language, then hand off to the right specialist skill. This is an entry router only: it does not write PRDs, specs, ADRs, tickets, or dispatches itself."
+version: 0.3.0
 status: mvp
 triggers:
   - "/workflow-router"
@@ -12,6 +12,9 @@ triggers:
   - "流程怎麼走"
   - "補齊專案技術文件"
   - "幫我判斷用哪顆"
+  - "文件跟實作對齊"
+  - "文件飄移"
+  - "QA 通過準備結案"
 ---
 
 # workflow-router — 工程流程入口分流
@@ -31,7 +34,8 @@ First decide what the user is holding right now:
 | Software design / SD, engineering AC, implementation plan, tasks, code verification | `spec` | Turn requirements into repo-local design, plan, tasks, implementation, check, report |
 | One hard-to-reverse technical decision and the reason why | `adr` | Record the decision if it passes the ADR gates |
 | Frozen spec/goal with machine-checkable AC that should run unattended | `goal-engineer` | Package a blind-runnable agent dispatch; do not invent requirements |
-| Existing codebase needs a documentation audit, missing technical docs, or an updated handoff | `project-docs` | Map the actual project and maintain evidence-backed Markdown docs with Mermaid diagrams |
+| Existing docs lag behind implementation / hotfixes, or QA has passed and work is ready for closure | `align` | Inspect the whole repo, follow cross-repo references read-only, update authorized docs, then hand back for closure |
+| Existing codebase needs a new documentation suite, substantial missing docs, or a new manual / handoff | `project-docs` | Map the actual project and maintain evidence-backed Markdown docs with Mermaid diagrams |
 | Finished repo/docs before public release or GitHub push | `prep-repo` | Release-readiness and leak/link/docs hygiene |
 
 `project-docs` ships in the `doc-qa` plugin (https://github.com/KerberosClaw/kc_ai_plugins). When installed as a plugin it is invoked as `doc-qa:project-docs`; if it is not installed, point the user to that repo.
@@ -51,9 +55,11 @@ If ambiguous, ask exactly one multiple-choice-style question in prose, with your
 
 Common ambiguity rules:
 
-- Existing system + document what it does / fill documentation gaps → `project-docs`; new behavior or engineering design → `spec`.
-- Internal documentation before eventual OSS → `project-docs` first; public-release readiness and sanitization → `prep-repo` when that stage is requested. Private documentation does not imply publishing approval.
-- Already approved documentation work + "execute unattended" → continue `project-docs`; do not reopen requirements or create a dispatch unless requested.
+- Existing docs contradict or lag behind current implementation / hotfixes → `align`. A broad documentation audit or building missing technical docs / manuals → `project-docs`; new behavior or engineering design → `spec`.
+- QA／驗收已通過、準備 close／結案 → 先執行 `align`，檢查整個 repo，不限 ticket 或近期變更；完成後交還原結案流程。QA 尚未完成則保留原 QA／驗收流程，不用 align 取代驗收。手動呼叫 align 不要求先跑 QA。
+- 無人值守是執行方式，不是改走 `goal-engineer` 的理由：已授權的文件對齊直接執行 `align`，不要重新訪談或新增排程。align 只改指定 repo 文件，外 repo 可讀查證、修改需另行明確授權；部分完成不得宣稱已完整結案。
+- Internal documentation before eventual OSS → use `align` for drift or `project-docs` for missing docs first; public-release readiness and sanitization → `prep-repo` when that stage is requested. Private documentation does not imply publishing approval.
+- Already approved documentation work + "execute unattended" → continue its existing `align` or `project-docs` route; do not reopen requirements or create a dispatch unless requested.
 
 - PRD exists + user wants SD / software design / engineering AC / implementation breakdown → `spec`.
 - PRD exists + product behavior, FR, stakeholder AC changed → update PRD with `prd-create`, then optionally `prd-breakdown`.
@@ -89,5 +95,5 @@ If the environment supports invoking the target skill directly, proceed with tha
 1. **Route, don't do.** 本 skill 是入口，不是下游工作者。
 2. **One question max.** 不清楚才問，而且只問最能分流的一題。
 3. **PRD / SD / FR / AC 用白話翻譯。** FR = 功能需求；AC = 驗收條件；SD = 軟體/系統設計。
-4. **產品層走 PRD，新工程設計走 spec，現有專案文件走 project-docs，決策紀錄走 ADR；需要包無人值守 dispatch 才走 goal-engineer。**
+4. **產品層走 PRD，新工程設計走 spec，既有文件跟實作對齊走 align，補建專案文件走 project-docs，決策紀錄走 ADR；需要包無人值守 dispatch 才走 goal-engineer。**
 5. **Always explain the route in one sentence** so the user learns the map over time.
