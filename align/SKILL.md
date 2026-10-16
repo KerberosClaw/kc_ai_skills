@@ -1,7 +1,7 @@
 ---
 name: align
-description: "Reconcile existing repository documentation with the current implementation, especially after verified hotfixes or after QA in an unattended task. Inspect the whole target repo and follow cross-repo references for evidence; edit only documentation in the authorized repo, annotating conflicting historical records. Supports manual and unattended runs. Not for fixing code, deploying, inventing requirements, or building a new documentation suite."
-version: 0.3.0
+description: "Reconcile existing repository documentation with the current implementation, especially after verified hotfixes or after QA in an unattended task. A manual run first asks whether to align only the docs a specific change touched (trigger scope) or rescan the whole repo; unattended runs use the scope the dispatch states and default to the whole repo. Follow cross-repo references for evidence; edit only documentation in the authorized repo, annotating conflicting historical records. Not for fixing code, deploying, inventing requirements, or building a new documentation suite."
+version: 0.4.0
 status: mvp
 triggers:
   - "/align"
@@ -10,6 +10,8 @@ triggers:
   - "文件飄移"
   - "hotfix 後補文件"
   - "QA 通過後對齊文件"
+  - "只對齊這次改動的文件"
+  - "文件全庫重掃"
 ---
 
 # align — 讓文件跟上實作
@@ -22,6 +24,8 @@ triggers:
 /align
 /align /path/to/repo
 這個 repo 跑一輪文件對齊
+/align 只對齊這次刪掉 legacy/ 目錄的影響
+/align 全庫重掃
 無人值守執行 align，目標 /path/to/repo
 ```
 
@@ -29,11 +33,26 @@ triggers:
 
 spec／goal-engineer 的完整無人值守 build 主線為 **實作與 AC／測試驗證 → `doc-qa:qa` 適用性與必要實跑 → align → 收尾回報**。接收前一階段的 QA 報告、版本與證據；已查證無 UI 時承接不適用結論與原 AC／適用驗證，不把它改成 UI PASS。若有 UI 卻未實跑或仍有缺陷，可處理已確定的文件落差，但保留缺口，不改需求或 QA 結果替缺陷背書。align 完成後回到原執行 agent 統一回報。
 
+## 對齊範圍
+
+| 範圍 | 適合的情況 | 做法 |
+|---|---|---|
+| **觸發範圍** | 起因是一件明確的改動：某個 hotfix、刪除或搬走的檔案／目錄、改名的介面／參數／指令、某段 commit 區間 | 從觸發事件列出搜尋鍵，在整個 repo 找引用到它的文件，只查證、修訂這些；範圍外看到的落差只記錄 |
+| **全庫重掃** | 沒有單一起因、很久沒對齊、交接或發布前、無人值守主線 QA 後 | 照下方流程盤點整個 repo |
+
+怎麼決定：
+
+- **手動呼叫**：第 1 步完成後、開始盤點前，先問 user 要用哪一種。只問這一題，並附上建議：辨認得出具體觸發事件就建議觸發範圍，且把你辨認出的事件寫進選項讓 user 確認；辨認不出就建議全庫重掃。user 的請求已講明範圍（例如「只對齊這次刪除的影響」「全庫重掃」）就不再問。
+- **無人值守**：不問。照 dispatch 指定的範圍；沒指定就全庫重掃，這是 spec／goal-engineer 主線的預設。
+- **觸發範圍跑到一半**，發現同類落差明顯散到觸發事件之外：手動時回報並問要不要轉全庫重掃；無人值守時記成範圍外發現。都不自行擴大修訂範圍。
+
 ## 執行流程
 
-1. **確定目標與規則。** 使用明確指定的 repo，否則以目前 Git 根目錄為準；無法定位時才問。讀適用的 `AGENTS.md`／`CLAUDE.md`，wiki 型 repo 先讀 `SCHEMA.md`。記錄 HEAD 與既有工作區變更，保留他人的修改，不自動 stash、reset、切換版本或更新 checkout。
+1. **確定目標、規則與範圍。** 使用明確指定的 repo，否則以目前 Git 根目錄為準；無法定位時才問。讀適用的 `AGENTS.md`／`CLAUDE.md`，wiki 型 repo 先讀 `SCHEMA.md`。記錄 HEAD 與既有工作區變更，保留他人的修改，不自動 stash、reset、切換版本或更新 checkout。接著照「對齊範圍」決定這次用哪一種。
 
-2. **盤點整個 repo。** 列出維護中的說明、操作手冊、架構／介面文件、規格、歷史記錄與入口索引，對照程式、設定、測試及已有 QA 證據。Git log／diff 用來追原因，不能只看最近一次變更。跳過 `.git`、依賴、快取與產生檔等非維護來源；大 repo 分批閱讀並保留覆蓋清單，未讀完不得說全庫已對齊。
+2. **盤點。** 先讀 [references/criteria.md](references/criteria.md) 中對應範圍的覆蓋判準。
+   - **全庫重掃**：列出維護中的說明、操作手冊、架構／介面文件、規格、歷史記錄與入口索引，對照程式、設定、測試及已有 QA 證據。Git log／diff 用來追原因，不能只看最近一次變更。跳過 `.git`、依賴、快取與產生檔等非維護來源；大 repo 分批閱讀並保留覆蓋清單，未讀完不得說全庫已對齊。
+   - **觸發範圍**：把觸發事件寫成一句話，列出搜尋鍵，用它們掃整個 repo 的維護文件，命中的段落逐條讀完並核對目標的現況。命中清單就是這次的覆蓋範圍。
 
 3. **查證差異。** 修改前先讀 [references/criteria.md](references/criteria.md)，依其中的證據與修訂判準逐項核對。沿文件引用追到相關 repo 的實作、介面、呼叫方或部署紀錄；對同一 repo／引用去重，已走過的循環不重追。外部 repo 的用途是查清本 repo 的敘述，不擴成無關 repo 的全面掃描。
 
@@ -53,7 +72,8 @@ spec／goal-engineer 的完整無人值守 build 主線為 **實作與 AC／測�
 
 回報放在對話或原執行流程已有的結果管道，不強制新增報告檔：
 
-- **範圍與覆蓋**：目標 repo／HEAD、已查文件與實作區域、排除項、未完成區域、引用到的 repo／版本。
+- **範圍與覆蓋**：採用的範圍及原因、目標 repo／HEAD、已查文件與實作區域、排除項、未完成區域、引用到的 repo／版本。觸發範圍要另列觸發事件、搜尋鍵與命中清單，並寫明這不是全庫對齊。
+- **範圍外發現**（僅觸發範圍）：順帶看到、但不屬於這次觸發事件的落差，只列出不修，可建議轉全庫重掃。
 - **已修訂**：文件、落差、修訂內容與依據（檔案位置／commit／既有紀錄）。沒有差異就明確說未改檔。
 - **歷史加註**：哪些舊紀錄保留、補了什麼現況註記。
 - **待確認／待授權**：證據不足與外 repo 建議分列，清楚指出是否影響本 repo 的結論。
@@ -69,7 +89,9 @@ spec／goal-engineer 的完整無人值守 build 主線為 **實作與 AC／測�
 
 ## Anti-patterns
 
-- 只看近期 diff 或入口 README，就宣稱整個 repo 已對齊。
+- 只看近期 diff 或入口 README，就宣稱整個 repo 已對齊；或跑完觸發範圍，回報讀起來像全庫已對齊。
+- 手動呼叫沒問範圍就自行決定做局部或全庫（請求已講明的除外）。
+- 觸發範圍只搜頂層路徑或前綴，漏掉子路徑、單獨出現的名稱與舊名寫法。
 - 把規格、測試名稱或模型先前的報告當成當前行為的充分證據。
 - 改寫歷史決策、把尚未部署寫成已部署，或為修文件順手改程式。
 - 讀到其他 repo 有落差就直接改，或沿 symlink 越過授權邊界。
