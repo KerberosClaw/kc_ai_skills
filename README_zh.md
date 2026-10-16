@@ -31,7 +31,7 @@
 | Skill | 它到底幹嘛 |
 |-------|----------|
 | [workflow-router](workflow-router/) | 給最容易混的中間地帶當入口：PRD、SD、FR、AC、ADR、拆票、實作、release、無人值守。它最多問一個澄清問題，告訴你該用哪顆 specialist skill，用白話說原因，然後交棒。它刻意不自己寫 PRD/spec/ADR |
-| [align](align/) | 讓既有文件跟上已驗證的實作與 hotfix。手動呼叫，或無人值守任務 QA 後跑一輪，檢查整個 repo；沿引用跨 repo 查證，只改授權 repo 的文件。歷史衝突保留原文加註，已部署環境唯讀；外 repo 文件飄移先回報，另獲授權才改。結果併入任務完成回報，不新增排程 |
+| [align](align/) | 讓既有文件跟上已驗證的實作與 hotfix。手動呼叫，或無人值守任務 QA 後跑一輪。手動時先問要只對齊某次改動影響到的文件，還是全庫重掃；無人值守預設全庫。沿引用跨 repo 查證，只改授權 repo 的文件。歷史衝突保留原文加註，已部署環境唯讀；外 repo 文件飄移先回報，另獲授權才改。結果併入任務完成回報，不新增排程 |
 | 📦 [project-docs](https://github.com/KerberosClaw/kc_ai_plugins/tree/main/plugins/doc-qa/skills/project-docs) | *已移至 `doc-qa` plugin。* 把既有專案補成有人看得懂的文件，而且分兩種讀者。給維護者的是技術文件：掃描全專案、對照證據與缺口，更新有交叉連結的 Markdown、Mermaid 圖、介面／資料／維運與發布交接。給終端使用者與管理者的是操作手冊：動手前要先具備什麼、逐步操作與畫面、卡住時怎麼判斷。沿用公司模板，未知就明說，增量更新；技術文件預設正體中文，GitHub 文件加英文摘要 |
 
 ### 生成與創作

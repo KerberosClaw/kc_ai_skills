@@ -1,7 +1,7 @@
 ---
 name: workflow-router
 description: "Use when the user is unsure which kc_ai_skills workflow skill to use, or describes work involving PRD, SD/software design, FR, AC/acceptance criteria, ADR, tickets, implementation, debugging, existing-project documentation, documentation drift after verified changes, post-QA documentation alignment in unattended tasks, release checks, or unattended agent execution. Triage the request with at most one clarifying question when needed, explain the route in plain language, then hand off to the right specialist skill. This is an entry router only: it does not write PRDs, specs, ADRs, tickets, or dispatches itself."
-version: 0.6.1
+version: 0.6.2
 status: mvp
 triggers:
   - "/workflow-router"
@@ -37,7 +37,7 @@ First decide what the user is holding right now:
 | A durable technical decision was settled, or a caller needs to record its rationale | `adr` | Apply the ADR criteria, record or reference it if needed, then return to the caller |
 | Frozen spec/goal with machine-checkable AC that should run unattended | `goal-engineer` | Package the execution handoff; frozen builds run implementation / checks → doc-qa:qa → align → final report |
 | UI / user-flow QA beyond unit and API tests | `doc-qa:qa` | Derive cases from requirements; Web via Playwright, desktop via available Codex computer-use; report evidence and gaps |
-| Existing docs lag behind implementation / hotfixes, or an unattended task needs a documentation pass after QA | `align` | Inspect the whole repo, follow cross-repo references read-only, update authorized docs, then report changes and remaining gaps |
+| Existing docs lag behind implementation / hotfixes, or an unattended task needs a documentation pass after QA | `align` | Manual runs first ask: trigger scope (docs a specific change touched) or full-repo rescan; unattended runs default to full repo. Follow cross-repo references read-only, update authorized docs, then report changes and remaining gaps |
 | Existing codebase needs a new documentation suite, substantial missing docs, or a new manual / handoff | `project-docs` | Map the actual project and maintain evidence-backed Markdown docs with Mermaid diagrams |
 | Finished repo/docs before public release or GitHub push | `prep-repo` | Release-readiness and leak/link/docs hygiene |
 
@@ -64,7 +64,7 @@ Common ambiguity rules:
 - `prd-create` 用於需要產品 PRD／stakeholder 確認的交付，`prd-breakdown` 用於明確要拆工作項目／推 ADO；是否個人專案、是否分工給人類都不是硬性判準。自己的 feature 直接走 spec；只是未想清楚可先 grill，不因有 raw notes 就改走 PRD。
 - 呼叫 spec 就會產出需求／FR、AC、實作計畫與 tasks，不需另找 plan skill。簡單功能的計畫放 spec.md，複雜才獨立 plan.md；續跑／交接沿用選定位置，判準由 spec 維護，不在 router 再複製一套。
 - spec／實作過程形成已定的重要技術取捨 → 呼叫 adr 判斷、記錄或引用，再返回原階段。未定決策先釐清，不用 ADR 代替需求、AC 或實作計畫，也不把它加成每個專案必經的一站。
-- 在 repo 內直接說「文件對齊」或呼叫 `/align` → 直接執行 `align`，不要求先跑 QA。
+- 在 repo 內直接說「文件對齊」或呼叫 `/align` → 直接執行 `align`，不要求先跑 QA。對齊範圍（觸發範圍或全庫重掃）由 align 開跑前自己問，router 不先問。
 - 已確認 spec 要無人值守執行：`spec` → user 確認凍結規格 → `goal-engineer` 產出交接文件 → 指定執行 agent 實作與 AC／測試驗證 → `doc-qa:qa` → `align` → 原任務收尾回報。goal-engineer 寫交接，不自行當執行引擎；交接必須寫清 skill 位置、環境／角色／授權與證據輸出，不讓新 session 猜。
 - 這條主線的 QA 明確是 `doc-qa:qa`，不等同 `spec check` 或單元測試。由 QA 的 ui-driver／report-contract 判定適用性與出口；查證無 UI 可記不適用，承接原 AC／適用驗證，再 align 與收尾；有 UI 卻缺工具、未測或阻塞不能套此例外。QA 缺陷交回執行 agent 在原授權內修正、重驗，不靠 align 改文件取得通過；不增加開票、結案、歸檔或任務狀態閘門。
 - 無人值守是執行方式，不是改走 `goal-engineer` 的理由：已授權的文件對齊直接執行 `align`，不要重新訪談或新增排程。align 只改指定 repo 文件，外 repo 可讀查證、修改需另行明確授權；未確認或未覆蓋的部分如實回報。
