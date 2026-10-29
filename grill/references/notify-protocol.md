@@ -1,6 +1,6 @@
 # Notification protocol — traffic-light, channel-agnostic
 
-The loop reports to the human over a **push channel**. The *format* (traffic-light) is channel-independent; only the *transport* differs. Decide the channel + credential source in the skill's Q7, then wire `notify.sh` (or your own helper) accordingly.
+The loop reports to the human over a **push channel**. The *format* (traffic-light) is channel-independent; only the *transport* differs. Use the dispatch’s authorized channel and credential source, then wire `notify.sh` (or your own helper) accordingly.
 
 > **Artifact-neutral by default.** The protocol assumes outputs are generic candidates (text, code, structured data, files). If your loop produces **media** (images/audio/video), see the *Media artifacts (optional)* note at the bottom — that part is opt-in, not core.
 
@@ -22,7 +22,7 @@ The loop reports to the human over a **push channel**. The *format* (traffic-lig
 
 ## Channel-agnostic transport
 
-| Channel | Transport | Credential（由 Q7 決定來源、env/config 注入）|
+| Channel | Transport | Credential（由派工單指定來源、env/config 注入）|
 |---|---|---|
 | Telegram | `sendMessage` / `sendPhoto` HTTP API（curl）| `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` |
 | Discord | incoming webhook（curl POST）| `DISCORD_WEBHOOK_URL` |
@@ -30,7 +30,7 @@ The loop reports to the human over a **push channel**. The *format* (traffic-lig
 | iMessage | local `osascript`（macOS only）| `IMESSAGE_TO` |
 | other | 自訂 | — |
 
-**Credential source（Q7 決定，三種常見）**：
+**Credential source（派工單指定，三種常見）**：
 - (a) operator 互動時直接給 → 寫進該專案的私有 env / config（**不進 repo、不寫進 dispatch 文件正文**）。
 - (b) operator 指一個 **config 檔路徑** → helper `NOTIFY_CONFIG=<path>` source 它。
 - (c) operator 指定一個**安全的 config 來源**讓你取 → 取用即可。

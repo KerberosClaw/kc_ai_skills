@@ -58,9 +58,9 @@
 | [prd-create](prd-create/) | 把一堆會議紀錄、散落的對話訊息、hand-waved 的需求，拼成一份照你 org guideline 的結構化 PRD — 缺的它 quiz 你、不亂編，stakeholder 衝突 surface 給你拍板、不擅自選邊，最後 sanitize + 發布到 ADO Wiki。純 prompt-driven、無 Python。prd-create → prd-breakdown → ADO 這條 chain 的前半 |
 | [prd-breakdown](prd-breakdown/) | 拿一份完成的 PRD，沿 vertical slice 拆成 Azure DevOps 工作項（HITL/AFK 標記 + blocked_by 依賴），再用 az CLI 推上去 — fingerprint 標記做 idempotent、重跑不會重複建項。prd-create → prd-breakdown → ADO 這條 chain 的後半 |
 | [spec](spec/) | Spec-driven 開發流程 — 從模糊想法到驗收結案。一個指令，自動判斷專案狀態，引導你走完：需求釐清 → 審查 → 實作 → 驗收 → 結案報告。因為「先寫再說」就是你之後要全部重寫的原因 |
-| [goal-engineer](goal-engineer/) | 給那種「想丟給 agent 自己磨一整晚、又不想全程盯著」的場景。它用訪談式問答幫你把一條目標驅動的 evaluator-optimizer loop（generate-and-select 型:產候選 → 依 rubric 評 → 依原因碼迭代 → 你挑最終那個）釘死，吐一份新 session 能 blind 執行的 dispatch 文件，你只要看著紅黃綠燈通知滾進來就好。它是**寫規格的上游、不是引擎** — dispatch 丟給 Claude Code 內建的 `/goal`、headless `claude -p`、或任何無人值守 agent 去跑。不是 `/goal` 本身、不是 build-to-spec 的 PRD 作者（那是 prd-create）、也不是 cron 定時器。唯一窄例外：build spec **已經凍結**（核可的 ADR / 鎖定的設計 / 可機器檢核的 AC）、只差無人值守執行的包裝 → 它直接出一份 lean build dispatch，不會逼你為一個已經拍板的決策回頭寫整份 PRD。通知通道隨你換（Telegram/Discord/Slack/iMessage），而且內建一道「ship 前要不要先對抗審查?」的閘 — 因為我們自己每次都忘記問 |
+| [review-gate](review-gate/) | 派工前與實作後共用的雙 agent 審查：無對話脈絡的盲審先找問題，有脈絡的複核者逐條核對成立性、範圍與修法風險；main 負責修改驗證。保留原始意見與有據處置，不要求改到零建議。實驗版，不取代測試或 UI QA |
 
-> 不確定用哪顆時，先用 `workflow-router`。最短判斷法：產品需求走 `prd-create`；repo 內的 SD / 工程 AC / 實作走 `spec`；既有文件跟實作對齊走 `align`；補建專案技術文件走 `project-docs`（在 `doc-qa` plugin）；單一重要技術決策走 `adr`；核可 PRD 拆票走 `prd-breakdown`；凍結目標要另包無人值守 dispatch 走 `goal-engineer`；已核准的文件工作沿原本 `align` 或 `project-docs` 路由續跑，不用重問需求。
+> 不確定用哪顆時，先用 `workflow-router`。日常可走 `grill` → main 寫工單 → `review-gate` → 執行與驗收。要完整開發生命週期才用 `spec`；正式 PRD／ADO、重要決策、除錯、QA 與文件維護仍走各自入口。無人值守不再新增派工作者 skill；已核准工作沿原授權續跑。
 
 `project-docs` 也會更新既有文件，但任務包含判斷缺哪些技術文件、手冊與交接資訊並補建；`align` 則專注核對既有文件與實作、修正飄移，不重新規劃整套文件。兩者都會看程式、都能修文件，不需要每次修改都兩顆各跑一輪。
 
@@ -106,6 +106,10 @@ QA 從已核准需求／spec 推案例，所以 project-docs 不是 QA 必經的
 | [skill-cron](skill-cron/) | 一個管理器統治所有排程。註冊任何 skill 做 crontab 定時執行 + Telegram 推播 — 因為 `claude -p` 不支援 `/skill` 語法，總得有人把橋搭起來。設定存 `~/.claude/configs/`，日誌自動輪替，crontab entries 自動管理 |
 | [ios-resign](ios-resign/) | 免費 Apple ID 簽的 App 有個沒寫在說明書上的功能：第七天自動變成閃退產生器。這個 skill 讓重簽變成一句話：在專案資料夾說「重簽」，它就編譯、簽章、裝到你列好的 iPhone 並打開。專案設定 `resign.yaml` 進版控，手機寫在不進版控的 `resign.local.yaml`，換台電腦不用動專案檔。它只肯用免費個人團隊簽，同一個 Apple ID 底下的公司團隊碰都不碰；裝之前先數手機上的自簽 App 是不是已經滿 3 個，免得編了五分鐘才被 Xcode 打槍。每種失敗都有固定的結束碼和白話的下一步，而「手機還沒信任開發者」算部署成功，不算失敗（我們被這個假警報騙過一次）。第一次用就跑設定模式：它讀 Xcode 專案起草設定給你確認，Apple ID 登入、手機上按信任這些只有人能做的事，一步一步帶你做。Claude Code 和 Codex 都能用；App Store 和 TestFlight 不歸它管 |
 
+`goal-engineer` 入口已退役；執行、停止／恢復與通知的精簡紀律留在 grill 的交接參考，舊候選擇優模板可從 Git 歷史取回。review-gate 目前為 experimental，先完成了唯讀乾跑，尚未證明修後收斂與回歸防止效果。
+
+審查呼叫方需同時安裝完整 `review-gate` 資料夾（含 references）；只複製 grill 或 spec 不會自動安裝它。沒有 subagent／脈絡隔離能力時不能把自審當雙 agent。
+
 ## 安裝
 
 拿你需要的，不需要的不用管：
@@ -120,7 +124,7 @@ cp -r kc_ai_skills/prep-repo ~/.claude/skills/
 cp -r kc_ai_skills/searxng ~/.openclaw/workspace/skills/
 ```
 
-> **文件對齊：** 可在 repo 內直接呼叫 `/align` 或說「文件對齊」。凍結 build 的完整無人值守交接為：確認 `spec` → `goal-engineer` 交接文件 → 實作／AC 驗證 → `doc-qa:qa` → `align` → 收尾回報。執行端需安裝完整 `align` 資料夾與 `doc-qa` plugin；交接要寫明 skill 位置、QA 環境／角色／授權與證據輸出。單元測試不能取代實機 QA；不新增開票、結案或歸檔門檻。
+> **完整開發交接：** 已定需求 → main 工單與 `review-gate` → 實作／AC 驗證 → 程式審查 → 適用的 `doc-qa:qa` → `align` → 收尾回報。執行端需有被呼叫的完整 skill；缺工具／未實跑保留缺口，單元測試不能取代 UI QA。`align` 也可獨立呼叫，不新增開票、結案或歸檔門檻。
 
 > **QA 執行端：** 跨 Web／桌面 QA 建議 Codex。Web 用 Playwright MCP；原生桌面／跨 App 需實際具備 computer-use 工具的 Codex session。本流程需 doc-qa plugin 0.2.1+／QA skill 0.5.1+ 的適用性與出口規則。Claude Code bg session／agents 測 Web 仍走 Playwright；查證受測產品範圍確實無 UI 時才記 UI QA 不適用，保留原 AC／整合驗證證據，再 align 與收尾；有 UI 卻缺工具仍是未測，阻塞案例不能算通過。開跑先查能力，plugin 不內附 computer-use server，也不保證所有目標都可操作。
 

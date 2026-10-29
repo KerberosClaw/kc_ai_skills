@@ -1,7 +1,7 @@
 ---
 name: align
 description: "Reconcile existing repository documentation with the current implementation, especially after verified hotfixes or after QA in an unattended task. A manual run first asks whether to align only the docs a specific change touched (trigger scope) or rescan the whole repo; unattended runs use the scope the dispatch states and default to the whole repo. Follow cross-repo references for evidence; edit only documentation in the authorized repo, annotating conflicting historical records. Not for fixing code, deploying, inventing requirements, or building a new documentation suite."
-version: 0.4.0
+version: 0.4.1
 status: mvp
 triggers:
   - "/align"
@@ -31,7 +31,7 @@ triggers:
 
 有兩種入口：在 repo 內用 `/align` 或「文件對齊」等關鍵字直接呼叫；無人值守任務跑完 QA 後，也可以接著跑一輪，再由原任務收尾回報完成。手動呼叫不要求先跑 QA；align 不代替 QA，不處理開票、結案或歸檔，也不建立排程。
 
-spec／goal-engineer 的完整無人值守 build 主線為 **實作與 AC／測試驗證 → `doc-qa:qa` 適用性與必要實跑 → align → 收尾回報**。接收前一階段的 QA 報告、版本與證據；已查證無 UI 時承接不適用結論與原 AC／適用驗證，不把它改成 UI PASS。若有 UI 卻未實跑或仍有缺陷，可處理已確定的文件落差，但保留缺口，不改需求或 QA 結果替缺陷背書。align 完成後回到原執行 agent 統一回報。
+spec／派工執行 的完整無人值守 build 主線為 **實作與 AC／測試驗證 → `doc-qa:qa` 適用性與必要實跑 → align → 收尾回報**。接收前一階段的 QA 報告、版本與證據；已查證無 UI 時承接不適用結論與原 AC／適用驗證，不把它改成 UI PASS。若有 UI 卻未實跑或仍有缺陷，可處理已確定的文件落差，但保留缺口，不改需求或 QA 結果替缺陷背書。align 完成後回到原執行 agent 統一回報。
 
 ## 對齊範圍
 
@@ -43,7 +43,7 @@ spec／goal-engineer 的完整無人值守 build 主線為 **實作與 AC／測�
 怎麼決定：
 
 - **手動呼叫**：第 1 步完成後、開始盤點前，先問 user 要用哪一種。只問這一題，並附上建議：辨認得出具體觸發事件就建議觸發範圍，且把你辨認出的事件寫進選項讓 user 確認；辨認不出就建議全庫重掃。user 的請求已講明範圍（例如「只對齊這次刪除的影響」「全庫重掃」）就不再問。
-- **無人值守**：不問。照 dispatch 指定的範圍；沒指定就全庫重掃，這是 spec／goal-engineer 主線的預設。
+- **無人值守**：不問。照 dispatch 指定的範圍；沒指定就全庫重掃，這是 spec／派工執行 主線的預設。
 - **觸發範圍跑到一半**，發現同類落差明顯散到觸發事件之外：手動時回報並問要不要轉全庫重掃；無人值守時記成範圍外發現。都不自行擴大修訂範圍。
 
 ## 執行流程
