@@ -225,18 +225,11 @@ Agent 容易偷跑的環節（未對齊先動工、沒證據先下結論、未�
 
 ---
 
-## 發布前：對抗審查（互動詢問；public skill 必做）
+## 發布前：共用審查
 
-skill 寫完、**release 前主動問 user 要不要對抗審查**（不要等 user 自己喊——這是 leak 防線）：
+公開 skill 的敏感資料檢查仍必做。使用者已授權或適用流程要求獨立審查時，呼叫 `review-gate`，不再各寫一套「找碴到零意見」。小修改依 prep-repo 的適用性，不自動增加 subagent gate。
 
-> 「skill 寫好了，要先派對抗審查再 release 嗎?
-> 1. 派 sub-agent 審　2. 不用　3. 其他（自訂輪數/順序/reviewer，例「兩輪，先 sub-agent 後 codex」）」
-
-- 每位 reviewer：**獨立、預設找碴**，分兩塊——
-  - 🔴 **LEAK 獵殺（public skill 紅線）**：NSFW／公司·客戶·同事／個人身份／真實 credential（token·chat_id·webhook）／真實機器名·絕對路徑·repo·IP，連「間接暗示私密來源」的指紋都抓。**範例一律抽象。**
-  - **品質**：pattern 合規（上述那些）＋ bug ＋ blind-runnable。
-- 多輪：修完一輪再審下一輪，全過才 release。
-- 🔴 **為什麼必做**：public skill 一旦 leak 就追不回（曾發生過）。codex + 獨立 LLM sub-agent 交叉審最穩。
+呼叫方提供發布判準：真實 credential、公司／客戶／個人與機器身分是否洩漏，範例是否抽象，skill 是否能照做且符合本次目標。私有操作文件的必要路徑不自動當洩漏；以實際發布清單為準。review-gate 負責獨立盲審、有脈絡複核、去重、修後再驗與停止條件；main 修正和驗證。已處置問題不因換 reviewer 重開，重要問題未解也不因輪數到頂放行。
 
 ## 套用 checklist（寫新 skill 時）
 

@@ -1,7 +1,7 @@
 ---
 name: prep-repo
 description: "Prepare an existing project for GitHub or public release with scope-appropriate checks for sensitive data, documentation, installation, tests and release artifacts. Separate release blockers from polish, preserve existing authorization, and verify the published result only when publishing is requested. Not for designing new features or publishing private operational material."
-version: 2.3.2
+version: 2.3.3
 status: stable
 triggers:
   - "/prep-repo"
@@ -87,7 +87,7 @@ gitleaks git . --log-opts="--all" --no-banner --redact
 
 ### 1. Commit 前
 
-完成適用檢查與必要修正，核對實際 staging／package 清單，不把測試 residue、私人報告或無關改動帶入。使用者或適用流程要求獨立審查時，依指定範圍、嚴重度與輪次執行；通過證據綁定那批檔案／diff，之後有改動就重驗受影響範圍。一般小修改不自動增加 subagent gate。
+完成適用檢查與必要修正，核對實際 staging／package 清單，不把測試 residue、私人報告或無關改動帶入。使用者或適用流程要求獨立審查時，呼叫 `review-gate`，提供本次發布範圍、適用安全／品質判準與授權；通過證據綁定那批檔案／diff，之後有改動就重驗受影響範圍。一般小修改不自動增加 subagent gate。
 
 新 repo 還沒有 commit 時，記錄「history 尚不存在」，先檢查候選 tree／artifacts。不要為了跑 history scan 先提交未審核檔案。
 

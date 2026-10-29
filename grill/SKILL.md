@@ -1,7 +1,7 @@
 ---
 name: grill
 description: "Use when the user says 先討論 / wants to align on a fuzzy idea before building, or before any non-trivial implementation whose requirements are still ambiguous — interviews the user until shared understanding is confirmed, one question at a time, each with a suggested answer; facts answerable from the filesystem/code are looked up, never asked. Optionally maintains the repo's CONTEXT.md glossary when vocabulary settles during discussion. Also invoked by other skills (spec / prd-create) as their interviewing discipline. NOT for already-frozen specs (just implement) or for debugging (use diagnose)."
-version: 0.1.0
+version: 0.2.0
 status: mvp
 triggers:
   - "/grill"
@@ -63,7 +63,11 @@ You are an interviewer whose only goal is shared understanding. 停止條件不�
 - 未確認假設：<有就列，沒有寫「無」>
 ```
 
-User 確認摘要 → 解除禁動，交棒給實作（或 spec / prd-create 等下游流程）。
+User 確認摘要 → 可把已定內容整理成需求／派工草稿。準備開始非小幅實作或交給另一個 agent 執行時，先呼叫 `review-gate`：以草稿和既有來源為對象，採派工／需求判準，由盲審與有脈絡複核產出處置。main 修正必要問題與驗證；審查 READY 後才交棒。有執行授權就接著做，不增加一次例行確認。
+
+要無人值守派工時，先讀 [交接紀律](references/unattended-dispatch.md)，只補缺少的執行資訊。已對齊的工作只需這段紀律，不重啟訪談；main 可直接寫工單，不必另叫派工作者 skill。缺 `review-gate` 或雙 agent 能力時回報能力缺口，不能把自審當已完成獨立審查。
+
+純討論、詞彙落檔不啟動這一關。若下游 spec 已對同一版本跑過 review-gate，沿用其結果，不重複加一輪；測試、驗收與 UI QA 仍由原工作流程負責。
 
 ### 不阻塞條款
 

@@ -1,7 +1,7 @@
 ---
 name: spec
 description: "Use when the user wants a spec-driven development workflow for implementing a feature in the current codebase, from fuzzy idea or existing active spec through requirements, technical plan, tasks, implementation, verification, and closure report. Auto-detects project/spec state, writes persistent files under specs/, asks one grounded question at a time when requirements are ambiguous, and stops at stage gates. NOT for stakeholder PRDs (prd-create), ADO ticket breakdown (prd-breakdown), single architecture-decision records (adr), or already-frozen tasks that should simply be implemented."
-version: 1.9.1
+version: 1.10.0
 status: stable
 triggers:
   - "spec"
@@ -184,11 +184,15 @@ You are a spec-driven development lead. You turn a user feature request into per
 
 7. **產出 `tasks.md`**：照 [templates/tasks.md](templates/tasks.md) 的格式寫，task 怎麼切以 [references/review.md](references/review.md) 的「Task 粒度」為準。
 
-8. **呈現給 user**
+8. **完整需求與計畫審查**
+   - spec、唯一計畫位置與 tasks 都產出後，呼叫 `review-gate`，提供這三者、既有需求／決策與本 skill 的需求／計畫判準。Self-Review 保留為作者檢查，不能冒稱獨立審查。
+   - main 依有脈絡複核的處置修正必要問題；缺產品決策才回問。審查輪次、去重、停止條件由 review-gate 維護，不要求零建議。
+
+9. **呈現給 user**
    - 列出實際產出的檔案摘要與計畫位置（不用全文印出來，user 可以自己開檔案看）
    - 問：「spec 看起來 OK 嗎？要調整什麼？確認後我們就開始實作。」
    - user 確認後，對已定的關鍵技術取捨依執行規則 7 接 ADR，將路徑引用回選定的計畫位置；完成或判定不需要後回到原本的實作／交接步驟。
-   - user 確認規格且要求無人值守時，交給 `goal-engineer` 包裝已凍結的 spec、計畫位置與 tasks；沒有獨立 plan.md 不是缺件，不另補一份。交接包含實作與驗證 → `doc-qa:qa` → `align` → 收尾回報。只補缺少的執行資訊，不重問規格；由指定的執行 agent 跑，不把產出 dispatch 說成已執行。
+   - user 確認規格且要求無人值守時，由 main 直接整理工單，只補執行位置、授權、停止／恢復與回報資訊，不重問規格、不補獨立 plan.md。工單呼叫 review-gate；若沿用剛審過的完整對象，只審新增交接內容。由指定執行 agent 跑實作與驗證 → 程式審查 → `doc-qa:qa` → `align` → 收尾，不把產出工單說成已執行。
 
 ---
 
@@ -208,6 +212,7 @@ You are a spec-driven development lead. You turn a user feature request into per
    - 讀 `spec.md`、其中指定的計畫位置（內嵌章節或 `plan.md`）與 `tasks.md`
    - 找到第一個未完成的 task
    - 如果專案有 `docs/DESIGN.md`，也讀它
+   - 記下本次實作的 base 與既有未提交變更，供實作後審查固定範圍；不要把別人的變更混成本次成果。
 
 2. **按實作計畫執行**
    - 用選定計畫的「實作順序」作為骨架；執行端有適用的計畫工具時可使用，不把 Claude Code Plan Mode 當成 Codex 必要能力
@@ -250,6 +255,7 @@ You are a spec-driven development lead. You turn a user feature request into per
    - 修完後可以再跑一次 check
 
 5. **全部 PASS**
+   - 先呼叫 `review-gate` 做實作後審查，提供本次 base/head／diff、原需求與既有功能證據，採程式碼判準。main 修正必要問題後重驗相關 AC／測試；只有指定版本審查 READY 才繼續。缺獨立審查能力、重要缺陷或證據時如實回報，不能用測試全綠跳過。
    - 無人值守且已授權完整任務時，讀取並執行 `doc-qa:qa`（支援適用性／阻塞出口契約的 QA 0.5.1+），依其 ui-driver 與 report-contract 判定適用性、實跑及出口，再執行 `align` 全 repo 文件對齊，最後收尾回報。查證無 UI 時明列不適用並引用本階段適用驗證，不宣稱 UI QA 通過；有 UI 卻未測或仍有阻塞不能套此例外。QA 缺陷由原執行 agent 在授權與停止條件內修正、重驗，缺口如實回報。skill 缺少或版本不支援時回報依賴，不自行下載，也不略過後宣稱完整完成。align 不增加開票、結案或歸檔門檻。
    - 一般互動流程沿用原本階段閘門，告訴 user：「驗收通過，要產結案報告嗎？（/spec report NN-feature-name）」
 
@@ -311,11 +317,11 @@ You are a spec-driven development lead. You turn a user feature request into per
 
 ## 跟其他工程流程 skill 的關係
 
-- **`grill`**：只做「先討論、對齊理解」，不產 spec/plan/tasks、不實作。需求還在霧裡、user 明確說先討論 → 先用 `grill`；一旦要落成可執行開發流程 → 回到本 skill。
+- **`grill`**：討論到共同理解確認，再由 main 整理草稿並接 review-gate；不強迫每次改走本 skill。需要完整規格、tasks、實作與驗收管理時才回本 skill。
 - **`diagnose`**：處理已經壞掉的軟體。症狀是 bug/crash/錯誤輸出/flaky → 先用 `diagnose` 建 reproduction 和假說，不要開新 spec 假裝是 feature。
 - **`prd-create`**：寫給 stakeholder 的產品需求文件，停在 PRD/wiki。若目標是「給別人看的產品規格」→ `prd-create`；若目標是「我在這個 repo 把 feature 做完並驗收」→ 本 skill。
 - **`prd-breakdown`**：把已核可 PRD 拆成 Azure DevOps tickets。本 skill 的 `tasks.md` 是本地開發 checklist，不負責推 ADO。
-- **`goal-engineer`**：把已凍結的目標/規格包成無人值守 dispatch。若規格還需要釐清或 code 還要在當前 repo 實作 → 本 skill；若規格已鎖，只差交給 agent blind run → `goal-engineer`。
+- **`review-gate`**：共用盲審→有脈絡複核→main 處理的流程。本 skill 提供需求／計畫判準；實作後改採程式碼判準。同版本已有有效結果就沿用，不能取代 AC 或 QA。
 - **`adr`**：重要技術取捨確定時依執行規則 7 接入，記錄／引用後返回原階段；ADR 不是必經站，也不取代 spec、AC 或整個 feature lifecycle。
 - **`doc-qa:qa`／`align`**：完整無人值守主線為 AC／測試驗證 → doc-qa 適用性與必要實機 QA → align 文件對齊 → 收尾回報；出口由 QA 契約維護，兩者不能互代。align 也可直接手動呼叫，不改本 skill 的結案與歸檔程序。
 - **`project-docs`**：缺必要技術文件或需要手冊／交接時才接，不是 QA 必經站；QA 的案例來自需求／spec。Web 可用 Playwright MCP；原生桌面／跨 App QA 則需支援該 driver、具備 computer-use 的 Codex 執行端。
@@ -325,7 +331,7 @@ You are a spec-driven development lead. You turn a user feature request into per
 
 ## Anti-patterns
 
-- ❌ **跳過 Self-Review** — 這是擋爛 spec 往下走的唯一關卡；六要素有「TBD / 待補」就是還沒想清楚，回去補
+- ❌ **跳過 Self-Review 或完整審查** — 作者檢查 spec 後，還要對完整需求／計畫／tasks 跑 review-gate；六要素有必要未決點要明列，不自行填答案
 - ❌ **自己腦補 user 意圖** — 需求模糊、六要素衝突時當場問，不猜；寧可多問一題也不要產出 user 不認同的 spec
 - ❌ **Sycophancy 式審查** — 「看起來不錯」「可以考慮加 X」；改說「X 沒定義、會在 Y 情況炸掉」的具體判斷。spec、plan 有問題或需求自相矛盾，直接講，不要包裝
 - ❌ **順手改沒壞的東西** — Implement Stage 只動當前 task 需要的；不重構、不順便清 pre-existing dead code、不加超出需求的抽象

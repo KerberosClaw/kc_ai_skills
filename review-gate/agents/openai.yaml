@@ -1,0 +1,4 @@
+interface:
+  display_name: "Review Gate"
+  short_description: "Independent review with contextual adjudication"
+  default_prompt: "Use $review-gate to review this dispatch or implementation and adjudicate the findings against our agreed requirements."
