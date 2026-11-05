@@ -121,7 +121,7 @@ Claude 讀進來，識別：
 
 **§13 Test Strategy 依執行模式分形**（Phase 1 鎖定的）：
 - **人跑** → 一般測試策略（測試層級 / 覆蓋率 / 驗收方式）。
-- **agent 無人值守跑** → §13 額外承載**無人值守執行紀律**：每條 AC 機器可檢核（silent cap 明講）、兩層閘（floor + ceiling）、原因碼迭代、紅綠燈通知（🟢🟡🔴 + pre-flight 測通才開跑）、3 出口（`NEEDS_INPUT`/`ESCALATE`/`REFUSE`）+ delta 防空轉、授權邊界 + stop-and-ask、可重現（recipe + run log）。這層紀律的**正典在 `grill/references/unattended-dispatch.md`**（內容無關、跨 skill 共用）;prd-create 內化同一份 checklist 進 §13、與其同步（per「algorithm 內化未 vendor」原則）。human-run 不帶這層。
+- **agent 無人值守跑** → §13 額外承載**無人值守執行紀律**：每條 AC 機器可檢核（silent cap 明講）、兩層閘（floor + ceiling）、原因碼迭代、紅綠燈通知（🟢🟡🔴 + pre-flight 測通才開跑）、3 出口（`NEEDS_INPUT`/`ESCALATE`/`REFUSE`）+ delta 防空轉、授權邊界 + stop-and-ask、可重現（recipe + run log）。這層紀律的**正典在 owl plugin**（`owl:brief` 寫工單、`owl:run` 執行端紀律）；沒裝 owl 時才對齊 `grill/references/unattended-dispatch.md` 的最小底線。prd-create 內化同一份 checklist 進 §13、與正典同步（per「algorithm 內化未 vendor」原則）。候選擇優的「保留參數／種子／配方」寫法已移出交接參考，需要時從 Git 歷史取回。human-run 不帶這層。
 
 POC scope simplification：
 - 章末附 §15 Deviation 段，明列偏離 Guideline 的點 + 理由（如「§3.4 量化 NFR：POC 不適用 SLO 99.9%，改方向性敘述」）
@@ -251,7 +251,7 @@ Caller 不確定怎麼寫某章節時，可貼 fixture 對應段給 Claude 對�
 - **`grill`（同 repo）**：Phase 3 quiz loop 的問法紀律（附建議答案、fact 自查 decision 才問）正典在它那；prd-create 管章節結構與優先序
 - **`prd-breakdown`（同 repo）**：拿 prd-create 產出的 PRD.md → 拆 vertical slice → push ADO tasks。Chain：`prd-create` → `prd-breakdown` → ADO
 - **`spec` skill（同 repo）**：caller 自家開發 spec workflow（spec.md / plan.md / tasks.md / report.md）。`prd-create` 產出 PRD 作 input；`spec` 是「caller 自身 codebase 開發 spec」不是「產品需求 PRD」
-- **無人值守交接**：main 承接凍結 PRD 整理工單，再呼叫 review-gate；不重新訪談或補產品決策。§13 仍內化執行紀律，正典位置改為 grill 的 `references/unattended-dispatch.md`，不用為讀一份 PRD 另安裝 grill。這次只修引用，不為正式 PRD 加獨立審查關卡。
+- **無人值守交接**：main 承接凍結 PRD 整理工單，再呼叫 review-gate；不重新訪談或補產品決策。§13 仍內化執行紀律，正典是 owl plugin（`owl:brief`／`owl:run`），沒裝 owl 時才用 grill 的 `references/unattended-dispatch.md` 最小底線；不用為讀一份 PRD 另安裝 grill 或 owl。這次只修引用，不為正式 PRD 加獨立審查關卡。
 - 這些 skill 透過 markdown 文件對接，不互相 import
 
 ## Important rules
@@ -268,7 +268,7 @@ Caller 不確定怎麼寫某章節時，可貼 fixture 對應段給 Claude 對�
 8. **No Python wrapper** — Claude 透過 Bash 直接 `az`；不寫 / 不召喚 Python helper script
 9. **Industry term retain English** — JWT / OAuth / API / token / WinForm / ONNX / mp4 等不譯
 10. **Public repo discipline** — 此 skill repo 為 public；fixtures 用 placeholders（無真名 / 真客戶 / 真政治 context）
-11. **執行模式分形** — Phase 1 先鎖定「人跑 / agent 跑」，缺則 quiz 不預設；agent-run PRD 的 §13 要帶無人值守執行紀律（對齊 `grill/references/unattended-dispatch.md`），human-run 不帶
+11. **執行模式分形** — Phase 1 先鎖定「人跑 / agent 跑」，缺則 quiz 不預設；agent-run PRD 的 §13 要帶無人值守執行紀律（正典是 owl plugin；沒裝 owl 時對齊 `grill/references/unattended-dispatch.md` 的最小底線），human-run 不帶
 12. **凍結規格不重寫** — input 已是凍結 build spec、只差無人值守包裝 → 由 main 整理派工草稿並接 review-gate，本 skill 只在「spec 還需要被寫出來」時進場
 
 ## Acknowledgments

@@ -45,7 +45,7 @@ You are a workflow triage router. Choose the smallest route that fits the user's
 
 路由清楚就直接說並接續，不請使用者再選一次。必要時一次問一題，建議選項放前面，例如：「你要先把需求談清楚（grill），還是要一路管理到實作驗收（spec）？」
 
-- **無人值守是執行方式。** 需求已定，由 `owl:brief` 寫可交接工單、接 review-gate；沒裝 owl 時由 main 照 grill 交接參考寫。審查輪數依風險：動正式環境最多 3 輪，其他 1 輪。維運查修這類不寫工單的輕量工作不套 owl。已授權的文件或其他工作仍沿原路執行。
+- **無人值守是執行方式。** 需求已定，由 `owl:brief` 寫可交接工單、接 review-gate，審查輪數照 owl:brief；沒裝 owl 時由 main 照 grill 交接參考寫。維運查修這類不寫工單的輕量工作不套 owl。已授權的文件或其他工作仍沿原路執行。
 - **grill 不強制接 spec。** 常用路徑可直接是討論 → owl:brief 工單 → review-gate → owl:run 執行 → owl:accept 驗收。只有使用者要完整開發生命週期才走 spec。
 - 審查流程只由 review-gate 維護。呼叫方提供專業判準與受審版本；不在 router 複製角色、處置分類或輪數。只需審新增工單內容時，不重審已有效審過的相同需求版本。
 - PRD／ADO 看交付物，不看是公司或個人、交給人類或 agent。「FR／AC／SD」等縮寫本身不能決定路由。
