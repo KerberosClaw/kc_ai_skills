@@ -17,6 +17,7 @@
 | Plugin | 包含的 skill | 安裝 |
 |---|---|---|
 | [doc-qa](https://github.com/KerberosClaw/kc_ai_plugins/tree/main/plugins/doc-qa) | `project-docs`、`qa`、`md2pdf` | `/plugin marketplace add KerberosClaw/kc_ai_plugins`，再 `/plugin install doc-qa@kc-ai-plugins` |
+| [owl](https://github.com/KerberosClaw/kc_ai_plugins/tree/main/plugins/owl) | `brief`、`run`、`accept` | `/plugin marketplace add KerberosClaw/kc_ai_plugins`，再 `/plugin install owl@kc-ai-plugins` |
 
 已經搬進 plugin 的 skill 仍列在下面，標 📦 並連到新位置。只想要單一 skill，一樣可以到那邊複製整個資料夾。
 
@@ -24,7 +25,7 @@
 
 依「你想完成什麼」分組 — 每個 skill 仍是獨立的根目錄資料夾，分組只是張地圖。
 
-**先看這裡：** [完整流程圖、文件分工與 skill 地圖](workflow-router/docs/workflow.md)。同一份指南涵蓋本 repo 的 26 顆 skill，以及另裝 doc-qa plugin 的 3 顆；整包是選單，不是每個專案都要全部跑一遍。
+**先看這裡：** [完整流程圖、文件分工與 skill 地圖](workflow-router/docs/workflow.md)。同一份指南涵蓋本 repo 的 26 顆 skill，以及另裝 doc-qa、owl 兩個 plugin 的 6 顆；整包是選單，不是每個專案都要全部跑一遍。
 
 ### 工作流入口
 
@@ -106,7 +107,7 @@ QA 從已核准需求／spec 推案例，所以 project-docs 不是 QA 必經的
 | [skill-cron](skill-cron/) | 一個管理器統治所有排程。註冊任何 skill 做 crontab 定時執行 + Telegram 推播 — 因為 `claude -p` 不支援 `/skill` 語法，總得有人把橋搭起來。設定存 `~/.claude/configs/`，日誌自動輪替，crontab entries 自動管理 |
 | [ios-resign](ios-resign/) | 免費 Apple ID 簽的 App 有個沒寫在說明書上的功能：第七天自動變成閃退產生器。這個 skill 讓重簽變成一句話：在專案資料夾說「重簽」，它就編譯、簽章、裝到你列好的 iPhone 並打開。專案設定 `resign.yaml` 進版控，手機寫在不進版控的 `resign.local.yaml`，換台電腦不用動專案檔。它只肯用免費個人團隊簽，同一個 Apple ID 底下的公司團隊碰都不碰；裝之前先數手機上的自簽 App 是不是已經滿 3 個，免得編了五分鐘才被 Xcode 打槍。每種失敗都有固定的結束碼和白話的下一步，而「手機還沒信任開發者」算部署成功，不算失敗（我們被這個假警報騙過一次）。第一次用就跑設定模式：它讀 Xcode 專案起草設定給你確認，Apple ID 登入、手機上按信任這些只有人能做的事，一步一步帶你做。Claude Code 和 Codex 都能用；App Store 和 TestFlight 不歸它管 |
 
-`goal-engineer` 入口已退役；執行、停止／恢復與通知的精簡紀律留在 grill 的交接參考，舊候選擇優模板可從 Git 歷史取回。review-gate 目前為 experimental，先完成了唯讀乾跑，尚未證明修後收斂與回歸防止效果。
+`goal-engineer` 入口已退役；派工、執行、停止／恢復與通知的紀律改由 [owl plugin](https://github.com/KerberosClaw/kc_ai_plugins/tree/main/plugins/owl) 提供，grill 的交接參考只保留沒裝 owl 時的最小底線，舊候選擇優模板可從 Git 歷史取回。review-gate 目前為 experimental，先完成了唯讀乾跑，尚未證明修後收斂與回歸防止效果。
 
 審查呼叫方需同時安裝完整 `review-gate` 資料夾（含 references）；只複製 grill 或 spec 不會自動安裝它。沒有 subagent／脈絡隔離能力時不能把自審當雙 agent。
 

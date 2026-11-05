@@ -17,6 +17,7 @@ Some skills now ship as **plugins** in [kc_ai_plugins](https://github.com/Kerber
 | Plugin | Skills | Install |
 |---|---|---|
 | [doc-qa](https://github.com/KerberosClaw/kc_ai_plugins/tree/main/plugins/doc-qa) | `project-docs`, `qa`, `md2pdf` | `/plugin marketplace add KerberosClaw/kc_ai_plugins` then `/plugin install doc-qa@kc-ai-plugins` |
+| [owl](https://github.com/KerberosClaw/kc_ai_plugins/tree/main/plugins/owl) | `brief`, `run`, `accept` | `/plugin marketplace add KerberosClaw/kc_ai_plugins` then `/plugin install owl@kc-ai-plugins` |
 
 Skills that moved into a plugin are still listed below, marked 📦, with links to their new home. You can also copy a single skill folder from there, as before.
 
@@ -24,7 +25,7 @@ Skills that moved into a plugin are still listed below, marked 📦, with links 
 
 Grouped by what you're trying to get done — every skill is still a self-contained top-level folder, the grouping is just a map.
 
-**Start here:** [Workflow diagrams, document roles, and the complete skill map](workflow-router/docs/workflow.md). One maintained guide covers the 26 skills in this repo and the 3 skills in the separate doc-qa plugin; the bundle is a menu, not a requirement to run everything.
+**Start here:** [Workflow diagrams, document roles, and the complete skill map](workflow-router/docs/workflow.md). One maintained guide covers the 26 skills in this repo and the 6 skills in the separate doc-qa and owl plugins; the bundle is a menu, not a requirement to run everything.
 
 ### Workflow entrypoint
 
@@ -108,7 +109,7 @@ Calling `spec` also creates the implementation plan and tasks. Simple features k
 | [skill-cron](skill-cron/) | One manager to schedule them all. Register any skill for crontab execution + Telegram push — because `claude -p` doesn't support `/skill` syntax, so somebody had to build the bridge. Config in `~/.claude/configs/`, logs auto-rotate, crontab entries self-managed |
 | [ios-resign](ios-resign/) | Apps signed with a free Apple ID ship with an undocumented feature: on day seven they turn into crash-on-launch machines. This skill makes re-signing a one-liner — say "re-sign" in the project folder and it builds, signs, installs onto the iPhones you listed, and launches the app. Project settings live in a committed `resign.yaml`; the phones live in an untracked `resign.local.yaml`, so a new Mac never means editing the Xcode project. It only signs with a free Personal Team, so the company team sitting under the same Apple ID never gets used by accident, and it counts the self-signed apps on the phone *before* building, because finding out about the three-app limit after a five-minute build is no fun. Every failure maps to a fixed exit code with a plain-language next step, and "the phone hasn't trusted the developer yet" counts as a successful deploy, not a failure (that false alarm fooled us once). First time? Setup mode reads the Xcode project, drafts the config for you to confirm, and walks you through the parts only a human can do — Apple ID login, tapping Trust on the phone. Works in Claude Code and Codex; App Store and TestFlight are someone else's problem |
 
-The `goal-engineer` entrypoint is retired. Compact execution, stop/resume and notification guidance lives with grill; the old generate-and-select templates remain in Git history. Review-gate is experimental: read-only dry runs exercised the flow, but have not established repair convergence or regression prevention.
+The `goal-engineer` entrypoint is retired. Dispatch, execution, stop/resume and notification discipline now lives in the [owl plugin](https://github.com/KerberosClaw/kc_ai_plugins/tree/main/plugins/owl); grill keeps only a minimal baseline for machines without owl. The old generate-and-select templates remain in Git history. Review-gate is experimental: read-only dry runs exercised the flow, but have not established repair convergence or regression prevention.
 
 Callers need the complete `review-gate` folder, including references; copying grill or spec alone does not install it. A client without subagent/context isolation support cannot substitute self-review and claim the two-agent gate passed.
 

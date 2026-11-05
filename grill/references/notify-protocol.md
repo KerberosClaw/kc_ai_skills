@@ -1,5 +1,7 @@
 # Notification protocol — traffic-light, channel-agnostic
 
+> 使用 [owl plugin](https://github.com/KerberosClaw/kc_ai_plugins/tree/main/plugins/owl) 時，通知改照 owl:run 的通知契約（固定事件＋一行訊息＋可選的結果檔，送法由各 repo 的 `owl.md` 決定）。本頁保留給沒裝 owl 的派工。
+
 The loop reports to the human over a **push channel**. The *format* (traffic-light) is channel-independent; only the *transport* differs. Use the dispatch’s authorized channel and credential source, then wire `notify.sh` (or your own helper) accordingly.
 
 > **Artifact-neutral by default.** The protocol assumes outputs are generic candidates (text, code, structured data, files). If your loop produces **media** (images/audio/video), see the *Media artifacts (optional)* note at the bottom — that part is opt-in, not core.
@@ -44,7 +46,7 @@ The loop reports to the human over a **push channel**. The *format* (traffic-lig
 
 若執行主機已有登記來源的通知服務，優先設定 `NOTIFY_COMMAND` 為其**絕對可執行路徑**，讓來源、project、目的地、待送匣與回執由該服務管理。`notify.sh` 會直接轉交原參數並保留退出碼；失敗時不再發第二個管道。
 
-使用 kc_notify v2 時，在任務設定中明確提供已登記的 `KC_NOTIFY_SOURCE`／`KC_NOTIFY_PROJECT`；agent 來源另給 `KC_NOTIFY_AGENT`。依任務選個人或公司 project，pre-flight 與後續回報使用同一設定。不要從 repo 名稱、目前目錄或預設 Telegram 憑證猜測分類。只有取得送達回執的同步介面可通過 pre-flight，單純 `queued` 不能當作測通。
+通知服務要求來源、專案或 agent 識別時，在任務設定中明確提供已登記的值（例如 `NOTIFY_SOURCE`、`NOTIFY_PROJECT`、`NOTIFY_AGENT`，實際名稱依該服務），pre-flight 與後續回報使用同一設定。不要從 repo 名稱、目前目錄或預設 Telegram 憑證猜測分類。只有取得送達回執的同步介面可通過 pre-flight，單純 `queued` 不能當作測通。
 
 公開範本只描述環境變數契約；source/project 的實值與私人設定留在執行環境。
 

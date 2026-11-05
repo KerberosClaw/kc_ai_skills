@@ -1,4 +1,4 @@
-> **English summary:** The everyday path is discussion with grill, a dispatch drafted by the main agent, review-gate, then authorized execution and verification. Spec remains an optional full lifecycle. Review-gate shares fresh review and contextual adjudication across dispatch and code review. Tests, applicable UI QA and documentation alignment keep their separate evidence boundaries.
+> **English summary:** The everyday path is discussion with grill, a dispatch written with owl:brief (or by the main agent when the owl plugin is not installed), review-gate, then execution with owl:run and acceptance with owl:accept. Spec remains an optional full lifecycle. Review-gate shares fresh review and contextual adjudication across dispatch and code review. Tests, applicable UI QA and documentation alignment keep their separate evidence boundaries.
 
 # 工作流與 skill 地圖
 
@@ -25,12 +25,12 @@
 ```mermaid
 flowchart TD
     R["workflow-router"] -->|需要討論| GR["grill：查現況、談清楚"]
-    GR --> D["main：整理需求／派工草稿"]
+    GR --> D["owl:brief：派工草稿<br/>沒裝 owl 則由 main 照最小底線寫"]
     R -->|需求已定，要交接| D
     D --> RV["review-gate：派工／需求判準"]
     RV --> C{"重要問題有據處置？"}
     C -->|仍缺決策| GR
-    C -->|READY 且已有授權| E["執行與驗收"]
+    C -->|READY 且已有授權| E["owl:run 執行<br/>owl:accept 驗收"]
     R -->|需要完整 lifecycle| S["spec：需求、計畫、tasks"]
     S --> RV
     R -->|正式產品文件| P["prd-create"]
@@ -40,7 +40,7 @@ flowchart TD
 
 ## 執行、QA 與文件同步
 
-下圖是已授權完整開發任務的接續；工單由 main 寫，指定 agent 執行，沒有另一顆派工作者 skill。互動操作保留原階段閘門，不因圖上有 QA 就增加未授權工作。
+下圖是已授權完整開發任務的接續；工單由 owl:brief（或 main）寫，指定 agent 照 owl:run 執行，交回後用 owl:accept 驗收。互動操作保留原階段閘門，不因圖上有 QA 就增加未授權工作。
 
 ```mermaid
 flowchart TD
@@ -84,7 +84,7 @@ flowchart TD
 
 ## 這包有哪些 skill
 
-以下依本 repo 的根目錄 `SKILL.md` 盤點：26 顆本地 skill，加上另由 doc-qa plugin 提供的 3 顆。這不是這台機器所有已安裝 skill 的總表；新增／移除本 repo skill 時同步更新此表與雙語 README。
+以下依本 repo 的根目錄 `SKILL.md` 盤點：26 顆本地 skill，加上另由 doc-qa、owl 兩個 plugin 提供的 6 顆。這不是這台機器所有已安裝 skill 的總表；新增／移除本 repo skill 時同步更新此表與雙語 README。
 
 | 類別 | Skills | 什麼時候找它們 |
 |---|---|---|
@@ -96,7 +96,8 @@ flowchart TD
 | 研究與評估 | [searxng](../../searxng/SKILL.md)、[repo-scan](../../repo-scan/SKILL.md)、[ctf-kit](../../ctf-kit/SKILL.md)、[job-scout](../../job-scout/SKILL.md) | 搜尋、第三方 repo 評估、授權 CTF、公司／職缺調研 |
 | 自動化與維運 | [skill-cron](../../skill-cron/SKILL.md)、[ios-resign](../../ios-resign/SKILL.md) | 明確要註冊排程，或 iOS App 重簽 |
 | doc-qa plugin（另裝） | [project-docs](https://github.com/KerberosClaw/kc_ai_plugins/tree/main/plugins/doc-qa/skills/project-docs)、[qa](https://github.com/KerberosClaw/kc_ai_plugins/tree/main/plugins/doc-qa/skills/qa)、[md2pdf](https://github.com/KerberosClaw/kc_ai_plugins/tree/main/plugins/doc-qa/skills/md2pdf) | 文件盤點／補建／手冊、實機 QA、Markdown 轉 PDF |
+| owl plugin（另裝） | [brief](https://github.com/KerberosClaw/kc_ai_plugins/tree/main/plugins/owl/skills/brief)、[run](https://github.com/KerberosClaw/kc_ai_plugins/tree/main/plugins/owl/skills/run)、[accept](https://github.com/KerberosClaw/kc_ai_plugins/tree/main/plugins/owl/skills/accept) | 無人值守派工：寫工單、執行端紀律、驗收 |
 
-日常可以直接 grill → main 工單 → review-gate → 執行與驗收；需要完整規格與進度管理才選 spec。程式完成後依任務跑測試與程式審查，完整開發任務再接適用 QA、align 與回報。goal-engineer 入口已退役，執行／恢復／通知紀律保留在 [grill 交接參考](../../grill/references/unattended-dispatch.md)，候選擇優模板留在 Git 歷史。手邊只是 hotfix 後文件沒跟上，直接 align。
+日常可以直接 grill → owl:brief 工單 → review-gate → owl:run 執行 → owl:accept 驗收；需要完整規格與進度管理才選 spec。程式完成後依任務跑測試與程式審查，完整開發任務再接適用 QA、align 與回報。goal-engineer 入口已退役，派工、執行、恢復與通知紀律由 owl plugin 提供，[grill 交接參考](../../grill/references/unattended-dispatch.md) 保留沒裝 owl 時的最小底線，候選擇優模板留在 Git 歷史。手邊只是 hotfix 後文件沒跟上，直接 align。
 
 review-gate 目前為 experimental：已做派工與程式碼的唯讀 dry run，但尚未證明修後收斂或回歸防止效果。缺少獨立 agent 能力不能假稱完成這一關。每種審查沿用專業判準；正式 PRD、ADR 與文件盲測不自動改成共用流程。
