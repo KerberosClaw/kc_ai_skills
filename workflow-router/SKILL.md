@@ -1,7 +1,7 @@
 ---
 name: workflow-router
 description: "Use when the user is unsure which engineering workflow skill to use: discussion, dispatch or code review, a full spec lifecycle, PRD/ADO, ADR, debugging, documentation, QA or release readiness. Choose the smallest applicable route, explain it, then hand off. The router does not author artifacts or execute tasks itself."
-version: 0.7.0
+version: 0.8.0
 status: mvp
 triggers:
   - "/workflow-router"
@@ -23,7 +23,9 @@ You are a workflow triage router. Choose the smallest route that fits the user's
 | 目前工作 | 路由 | 接下來 |
 |---|---|---|
 | 先討論、目標或取捨未定 | `grill` | 查現況、一次一題談到共同理解 |
-| 已談妥，準備寫派工單交給 agent | main 寫草稿，再 `review-gate` | 補必要執行資訊，審查處置完成後依授權交出；不另叫派工作者 skill |
+| 已談妥，準備寫派工單交給 agent | `owl:brief`（沒裝 owl 就由 main 照 grill 交接參考寫草稿），再 `review-gate` | 列測試與正式環境的差異、把真人問法題組放進驗收；審查處置完成後依授權交出 |
+| 無人值守的工單要執行或接續 | `owl:run` | 狀態檔與紀錄、中途改指示、鎖、通知；owl.md 有缺口時記下來照退路做，不停下來問 |
+| 派工交回結果，要驗收 | `owl:accept` | 對實際環境核對、跑真人問法題組、補 owl.md 缺口 |
 | 已有派工草稿、需求／計畫，想審能不能照做 | `review-gate` | 採派工／需求判準，保留來源與版本 |
 | 程式已實作，要審缺陷與回歸 | `review-gate` | 採程式碼判準；測試與 QA 另依任務執行 |
 | 要在 repo 完整管理需求、計畫、tasks、實作與驗收 | `spec` | 需要完整 lifecycle 才選；內部在實作前、實作後接 review-gate |
@@ -37,14 +39,14 @@ You are a workflow triage router. Choose the smallest route that fits the user's
 | 缺專案技術文件、手冊或維護交接 | `doc-qa:project-docs` | 依現有 code 補建，不先設計新功能 |
 | 明確要 GitHub／公開發布整備 | `prep-repo` | 適用的洩漏、安裝、測試與交付檢查 |
 
-`qa`、`project-docs` 由 [doc-qa plugin](https://github.com/KerberosClaw/kc_ai_plugins) 提供。依賴／subagent 缺少時如實回報，不把自審當雙 agent，不把單元測試當 UI QA。
+`qa`、`project-docs` 由 [doc-qa plugin](https://github.com/KerberosClaw/kc_ai_plugins) 提供；`brief`、`run`、`accept` 由 [owl plugin](https://github.com/KerberosClaw/kc_ai_plugins/tree/main/plugins/owl) 提供。依賴／subagent 缺少時如實回報，不把自審當雙 agent，不把單元測試當 UI QA。
 
 ## 2. 只在真的分不出來時問一題
 
 路由清楚就直接說並接續，不請使用者再選一次。必要時一次問一題，建議選項放前面，例如：「你要先把需求談清楚（grill），還是要一路管理到實作驗收（spec）？」
 
-- **無人值守是執行方式。** 「跑一整晚」不新增一顆 skill；需求已定，由 main 寫可交接工單、接 review-gate。已授權的文件或其他工作仍沿原路執行。
-- **grill 不強制接 spec。** 常用路徑可直接是討論 → main 工單 → review-gate → 執行與驗收。只有使用者要完整開發生命週期才走 spec。
+- **無人值守是執行方式。** 需求已定，由 `owl:brief` 寫可交接工單、接 review-gate；沒裝 owl 時由 main 照 grill 交接參考寫。審查輪數依風險：動正式環境最多 3 輪，其他 1 輪。維運查修這類不寫工單的輕量工作不套 owl。已授權的文件或其他工作仍沿原路執行。
+- **grill 不強制接 spec。** 常用路徑可直接是討論 → owl:brief 工單 → review-gate → owl:run 執行 → owl:accept 驗收。只有使用者要完整開發生命週期才走 spec。
 - 審查流程只由 review-gate 維護。呼叫方提供專業判準與受審版本；不在 router 複製角色、處置分類或輪數。只需審新增工單內容時，不重審已有效審過的相同需求版本。
 - PRD／ADO 看交付物，不看是公司或個人、交給人類或 agent。「FR／AC／SD」等縮寫本身不能決定路由。
 - ADR 記已定取捨，不代替未決需求、規格或變更授權；記完回原流程。
@@ -57,4 +59,4 @@ You are a workflow triage router. Choose the smallest route that fits the user's
 
 用一兩句說「用哪顆、因為什麼」，有能力就載入目標 skill 繼續；否則給可直接用的呼叫方式。需要 main 整理工單時，交回 main 作者職責，router 自己不寫。
 
-**goal-engineer 入口已退役。** 派工紀律隨 grill 提供，共用審查由 review-gate 負責；歷史候選擇優模板可從 Git 記錄取回，不當成現行入口。
+**goal-engineer 入口已退役。** 派工紀律由 owl plugin 提供（沒裝時 grill 交接參考保留最小底線），共用審查由 review-gate 負責；歷史候選擇優模板可從 Git 記錄取回，不當成現行入口。

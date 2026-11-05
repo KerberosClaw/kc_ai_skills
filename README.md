@@ -17,6 +17,7 @@ Some skills now ship as **plugins** in [kc_ai_plugins](https://github.com/Kerber
 | Plugin | Skills | Install |
 |---|---|---|
 | [doc-qa](https://github.com/KerberosClaw/kc_ai_plugins/tree/main/plugins/doc-qa) | `project-docs`, `qa`, `md2pdf` | `/plugin marketplace add KerberosClaw/kc_ai_plugins` then `/plugin install doc-qa@kc-ai-plugins` |
+| [owl](https://github.com/KerberosClaw/kc_ai_plugins/tree/main/plugins/owl) | `brief`, `run`, `accept` | `/plugin marketplace add KerberosClaw/kc_ai_plugins` then `/plugin install owl@kc-ai-plugins` |
 
 Skills that moved into a plugin are still listed below, marked 📦, with links to their new home. You can also copy a single skill folder from there, as before.
 
@@ -24,7 +25,7 @@ Skills that moved into a plugin are still listed below, marked 📦, with links 
 
 Grouped by what you're trying to get done — every skill is still a self-contained top-level folder, the grouping is just a map.
 
-**Start here:** [Workflow diagrams, document roles, and the complete skill map](workflow-router/docs/workflow.md). One maintained guide covers the 26 skills in this repo and the 3 skills in the separate doc-qa plugin; the bundle is a menu, not a requirement to run everything.
+**Start here:** [Workflow diagrams, document roles, and the complete skill map](workflow-router/docs/workflow.md). One maintained guide covers the 26 skills in this repo and the 6 skills in the separate doc-qa and owl plugins; the bundle is a menu, not a requirement to run everything.
 
 ### Workflow entrypoint
 

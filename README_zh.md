@@ -17,6 +17,7 @@
 | Plugin | 包含的 skill | 安裝 |
 |---|---|---|
 | [doc-qa](https://github.com/KerberosClaw/kc_ai_plugins/tree/main/plugins/doc-qa) | `project-docs`、`qa`、`md2pdf` | `/plugin marketplace add KerberosClaw/kc_ai_plugins`，再 `/plugin install doc-qa@kc-ai-plugins` |
+| [owl](https://github.com/KerberosClaw/kc_ai_plugins/tree/main/plugins/owl) | `brief`、`run`、`accept` | `/plugin marketplace add KerberosClaw/kc_ai_plugins`，再 `/plugin install owl@kc-ai-plugins` |
 
 已經搬進 plugin 的 skill 仍列在下面，標 📦 並連到新位置。只想要單一 skill，一樣可以到那邊複製整個資料夾。
 
@@ -24,7 +25,7 @@
 
 依「你想完成什麼」分組 — 每個 skill 仍是獨立的根目錄資料夾，分組只是張地圖。
 
-**先看這裡：** [完整流程圖、文件分工與 skill 地圖](workflow-router/docs/workflow.md)。同一份指南涵蓋本 repo 的 26 顆 skill，以及另裝 doc-qa plugin 的 3 顆；整包是選單，不是每個專案都要全部跑一遍。
+**先看這裡：** [完整流程圖、文件分工與 skill 地圖](workflow-router/docs/workflow.md)。同一份指南涵蓋本 repo 的 26 顆 skill，以及另裝 doc-qa、owl 兩個 plugin 的 6 顆；整包是選單，不是每個專案都要全部跑一遍。
 
 ### 工作流入口
 
