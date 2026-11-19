@@ -2,7 +2,7 @@
 name: review-gate
 description: "Use to review a dispatch before handoff, requirements and plans before implementation, or code after implementation. Runs a fresh reviewer, then a separate context-aware adjudicator; returns evidence-backed dispositions to the main agent. Does not replace tests, acceptance checks or UI QA, and does not authorize execution or publication."
 metadata:
-  version: "0.1.0"
+  version: "0.2.0"
   status: experimental
 ---
 
@@ -60,7 +60,7 @@ B 回主對話的精簡報告只含：審查版本、每個 ID 的處置／依�
 
 修後只複核改動及其影響路徑，保留已處置的問題 ID；只有新證據、需求變更或相關程式改動才重開。新 reviewer 仍保持獨立，B 持續維護去重與處置紀錄。
 
-預設至多 **3 輪**（呼叫方可明訂更小上限）；沒有實質進展或修正引入回歸時，先重評方案，不繼續堆補丁。到上限仍有重要問題，回報阻塞與選項，不能靠上限宣稱通過，也不自動增加輪數。
+要不要審、審幾輪由使用者決定，呼叫方先問過再帶來；輪數以使用者指定的值為準，沒有指定時預設至多 **3 輪**；沒有實質進展或修正引入回歸時，先重評方案，不繼續堆補丁。到上限仍有重要問題，回報阻塞與選項，不能靠上限宣稱通過，也不自動增加輪數。
 
 結論只用：
 

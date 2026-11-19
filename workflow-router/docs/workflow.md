@@ -1,4 +1,4 @@
-> **English summary:** The everyday path is discussion with grill, a dispatch written with owl:brief (or by the main agent when the owl plugin is not installed), review-gate, then execution with owl:run and acceptance with owl:accept. Spec remains an optional full lifecycle. Review-gate shares fresh review and contextual adjudication across dispatch and code review. Tests, applicable UI QA and documentation alignment keep their separate evidence boundaries.
+> **English summary:** The everyday path is discussion with grill, a dispatch written with owl:brief (or by the main agent when the owl plugin is not installed), review-gate only if the user chooses it and for the rounds the user picks, then execution with owl:run and acceptance with owl:accept. Spec remains an optional full lifecycle. Review-gate shares fresh review and contextual adjudication across dispatch and code review. Tests, applicable UI QA and documentation alignment keep their separate evidence boundaries.
 
 # 工作流與 skill 地圖
 
@@ -27,12 +27,14 @@ flowchart TD
     R["workflow-router"] -->|需要討論| GR["grill：查現況、談清楚"]
     GR --> D["owl:brief：派工草稿<br/>沒裝 owl 則由 main 照最小底線寫"]
     R -->|需求已定，要交接| D
-    D --> RV["review-gate：派工／需求判準"]
+    D --> ASK{"使用者要審嗎？審幾輪？"}
+    ASK -->|要審| RV["review-gate：派工／需求判準"]
+    ASK -->|不審：標明未經 review-gate| E
     RV --> C{"重要問題有據處置？"}
     C -->|仍缺決策| GR
     C -->|READY 且已有授權| E["owl:run 執行<br/>owl:accept 驗收"]
     R -->|需要完整 lifecycle| S["spec：需求、計畫、tasks"]
-    S --> RV
+    S --> ASK
     R -->|正式產品文件| P["prd-create"]
     P -.->|要開工項| B["prd-breakdown／ADO"]
     S -.->|已定的重要取捨| AD["adr：記理由後返回"]
@@ -44,17 +46,19 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    E["已審查的工單／規格與既有授權"] --> I["指定 agent 實作"]
+    E["已審查或使用者選不審的工單／規格與既有授權"] --> I["指定 agent 實作"]
     I -.->|原授權內已定的重要取捨| AD["adr：判斷、記錄或引用"]
     AD -.->|返回原實作步驟| I
     I --> V["AC、單元與整合等驗證"]
-    V --> CR["review-gate：程式缺陷與回歸"]
+    V --> ASK2{"要審程式嗎？<br/>互動問使用者，無人值守照工單"}
+    ASK2 -->|要審| CR["review-gate：程式缺陷與回歸"]
+    ASK2 -->|不審：回報標明未經 review-gate| Q
     CR --> RD{"審查處置與驗證完成？"}
     RD -->|原授權內修正| I
     RD -->|缺決策或能力| X["回報缺口或阻塞，不宣稱成功"]
     RD -->|READY| Q["doc-qa:qa：先查範圍與適用性"]
     V -.->|缺必要文件且已授權補建| PD1["可選 project-docs：技術文件"]
-    PD1 -.-> CR
+    PD1 -.-> ASK2
 
     Q --> U{"有需要驗證的 UI？"}
     U -->|有，依需求推案例並實跑| DR["Web：Playwright MCP<br/>桌面：具 computer-use 的 Codex"]
@@ -98,6 +102,6 @@ flowchart TD
 | doc-qa plugin（另裝） | [project-docs](https://github.com/KerberosClaw/kc_ai_plugins/tree/main/plugins/doc-qa/skills/project-docs)、[qa](https://github.com/KerberosClaw/kc_ai_plugins/tree/main/plugins/doc-qa/skills/qa)、[md2pdf](https://github.com/KerberosClaw/kc_ai_plugins/tree/main/plugins/doc-qa/skills/md2pdf) | 文件盤點／補建／手冊、實機 QA、Markdown 轉 PDF |
 | owl plugin（另裝） | [brief](https://github.com/KerberosClaw/kc_ai_plugins/tree/main/plugins/owl/skills/brief)、[run](https://github.com/KerberosClaw/kc_ai_plugins/tree/main/plugins/owl/skills/run)、[accept](https://github.com/KerberosClaw/kc_ai_plugins/tree/main/plugins/owl/skills/accept) | 無人值守派工：寫工單、執行端紀律、驗收 |
 
-日常可以直接 grill → owl:brief 工單 → review-gate → owl:run 執行 → owl:accept 驗收；需要完整規格與進度管理才選 spec。程式完成後依任務跑測試與程式審查，完整開發任務再接適用 QA、align 與回報。goal-engineer 入口已退役，派工、執行、恢復與通知紀律由 owl plugin 提供，[grill 交接參考](../../grill/references/unattended-dispatch.md) 保留沒裝 owl 時的最小底線，候選擇優模板留在 Git 歷史。手邊只是 hotfix 後文件沒跟上，直接 align。
+日常可以直接 grill → owl:brief 工單 →（使用者決定要不要、審幾輪）review-gate → owl:run 執行 → owl:accept 驗收；需要完整規格與進度管理才選 spec。程式完成後依任務跑測試與程式審查，完整開發任務再接適用 QA、align 與回報。goal-engineer 入口已退役，派工、執行、恢復與通知紀律由 owl plugin 提供，[grill 交接參考](../../grill/references/unattended-dispatch.md) 保留沒裝 owl 時的最小底線，候選擇優模板留在 Git 歷史。手邊只是 hotfix 後文件沒跟上，直接 align。
 
 review-gate 目前為 experimental：已做派工與程式碼的唯讀 dry run，但尚未證明修後收斂或回歸防止效果。缺少獨立 agent 能力不能假稱完成這一關。每種審查沿用專業判準；正式 PRD、ADR 與文件盲測不自動改成共用流程。

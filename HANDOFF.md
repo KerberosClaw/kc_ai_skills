@@ -7,7 +7,7 @@
 
 新增 experimental `review-gate`：fresh 盲審 → 繼承主對話的唯讀複核 → main 修正／驗證。派工與程式碼各保留專業判準、原始 findings 與逐條處置；預設最多三輪，不以零意見或輪數到頂冒稱通過。唯讀乾跑確認協作與合成反例處置，未證明修後收斂、避免回歸或實機交付。
 
-日常入口為 grill → main 工單 → review-gate → 執行與驗收；spec 留作完整 lifecycle，完整規格／計畫／tasks 和實作後各接同一顆審查。goal-engineer 入口與模板退役，歷史可由 Git 取回；執行、停止／恢復與通知參考搬到 grill/references，通知 helper 只換位置與註解、沒有發送測試。PRD 只修正引用，不新增審查；ADR、文件盲測與 doc-qa 不改。router 0.7.0、grill 0.2.0、spec 1.10.0、align 0.4.1、prd-create 0.3.2、prep-repo 2.3.3。
+日常入口為 grill → main 工單 →（使用者決定要不要、審幾輪）review-gate → 執行與驗收；spec 留作完整 lifecycle，完整規格／計畫／tasks 和實作後各接同一顆審查。goal-engineer 入口與模板退役，歷史可由 Git 取回；執行、停止／恢復與通知參考搬到 grill/references，通知 helper 只換位置與註解、沒有發送測試。PRD 只修正引用，不新增審查；ADR、文件盲測與 doc-qa 不改。router 0.7.0、grill 0.2.0、spec 1.10.0、align 0.4.1、prd-create 0.3.2、prep-repo 2.3.3。2026-11-19 起 review-gate 審不審、審幾輪改由使用者決定，呼叫方附建議問過才審（grill 0.3.0、spec 1.11.0、router 0.9.0、prd-create 0.4.0、review-gate 0.2.0）。
 
 新 skill 使用標準 frontmatter（版本／狀態放 metadata），以 skill-creator 驗證器檢查；既有 skill 沿用自己的欄位，不為本次工作全庫改格式。安裝／升級要同時提供 review-gate，其他主機的舊 goal-engineer 複本／symlink 需在切換時移除；PR 內容不代表遠端主機已更新。
 

@@ -1,7 +1,7 @@
 ---
 name: prd-create
 description: "Use when user wants to draft a PRD (Product Requirements Document) from raw input (meeting transcripts, hand-waved descriptions, scattered decisions). Workflow: load org's PRD Guideline + writing discipline → lock execution mode (human-run vs unattended-agent-run) → ingest raw input → quiz user numbered-list iterate to fill §1-§15 → draft v0.1 → handle stakeholder merge (review feedback, surface conflicts) → lock v1.0 + sanitize per ADO publication contract → publish to ADO Wiki. For an agent-run PRD, §13 carries the unattended-execution discipline (machine-checkable AC + traffic-light + 3-exits + stop-and-ask), aligned with the unattended-dispatch discipline maintained with grill. NOT for packaging an ALREADY-FROZEN build spec (approved ADR / locked design / machine-checkable AC) into an unattended dispatch — the main agent writes that handoff and calls review-gate. Pure prompt-driven — Claude is the runtime, no Python helper. Trigger phrases: 寫 PRD / PRD 撰寫 / prd-create / 初版 PRD / 起 PRD."
-version: 0.3.2
+version: 0.4.0
 status: mvp
 triggers:
   - "prd-create"
@@ -51,7 +51,7 @@ User 觸發詞如「寫 PRD」「prd-create」「起 PRD」時走這條。
 
 **同時鎖定執行模式**：這份 PRD 是 **人跑** 還是 **agent 無人值守跑**?（POC / Production scope 也一併確認）。agent-run 會讓 §13 Test Strategy 額外承載無人值守執行紀律（見 Phase 4）— 缺這資訊就先問，不要預設。
 
-**同時判規格成熟度（路由檢查）**：若 input 已是**凍結的 build spec**（已核可 ADR / 鎖定設計 / AC 可機器檢核）、需求只剩「包成無人值守 agent 可跑的 dispatch」→ **不需要產 PRD**，由 main 直接整理派工草稿並呼叫 `review-gate`，不重開已定需求。只有 build spec 還需要被**寫出來**（raw input → 決策 → AC）才走本 skill。
+**同時判規格成熟度（路由檢查）**：若 input 已是**凍結的 build spec**（已核可 ADR / 鎖定設計 / AC 可機器檢核）、需求只剩「包成無人值守 agent 可跑的 dispatch」→ **不需要產 PRD**，由 main 直接整理派工草稿，再問使用者要不要接 `review-gate`、審幾輪，不重開已定需求。只有 build spec 還需要被**寫出來**（raw input → 決策 → AC）才走本 skill。
 
 **同時判受眾/目的（路由檢查，vs `spec`）**：本 skill 產的是**給 stakeholder 看、要上 wiki 的產品需求文件、停在文件**。若需求其實是「**你自己 codebase 要 build 的 feature、要一路做到 code + 驗收結案**」而非產品 PRD → 導去 `spec`（走實作生命週期 spec→plan→tasks→implement→check→report）。兩者前半都做需求釐清、手感易混——**先問一句「這是給別人看的產品 PRD、還是你自己要 build 的 feature？」把入口岔開**，別預設。
 
@@ -223,7 +223,7 @@ Caller 不確定怎麼寫某章節時，可貼 fixture 對應段給 Claude 對�
 ## Anti-patterns
 
 - ❌ **Fabricate missing info** — Raw input 沒提的事不要硬填，列為 question quiz user
-- ❌ **對已凍結的 spec 重跑整份 PRD 訪談** — 已核可 ADR / 鎖版 PRD 只差無人值守包裝 → 由 main 整理派工草稿並接 review-gate，不是重新 quiz §1-§15
+- ❌ **對已凍結的 spec 重跑整份 PRD 訪談** — 已核可 ADR / 鎖版 PRD 只差無人值守包裝 → 由 main 整理派工草稿，要不要接 review-gate 問使用者，不是重新 quiz §1-§15
 - ❌ **Skip First-Principles check** — Problem / Goal / Non-Goal / Constraints 任一缺即停下對齊，不先寫架構
 - ❌ **Auto-merge stakeholder feedback with conflicts** — implementer 答案跟 Constraint 矛盾要 surface user 拍板，不擅自選邊
 - ❌ **Batch quiz** — 一口氣丟所有 §1-§15 questions，認知負擔太大；用 numbered list iterate
@@ -251,7 +251,7 @@ Caller 不確定怎麼寫某章節時，可貼 fixture 對應段給 Claude 對�
 - **`grill`（同 repo）**：Phase 3 quiz loop 的問法紀律（附建議答案、fact 自查 decision 才問）正典在它那；prd-create 管章節結構與優先序
 - **`prd-breakdown`（同 repo）**：拿 prd-create 產出的 PRD.md → 拆 vertical slice → push ADO tasks。Chain：`prd-create` → `prd-breakdown` → ADO
 - **`spec` skill（同 repo）**：caller 自家開發 spec workflow（spec.md / plan.md / tasks.md / report.md）。`prd-create` 產出 PRD 作 input；`spec` 是「caller 自身 codebase 開發 spec」不是「產品需求 PRD」
-- **無人值守交接**：main 承接凍結 PRD 整理工單，再呼叫 review-gate；不重新訪談或補產品決策。§13 仍內化執行紀律，正典是 owl plugin（`owl:brief`／`owl:run`），沒裝 owl 時才用 grill 的 `references/unattended-dispatch.md` 最小底線；不用為讀一份 PRD 另安裝 grill 或 owl。這次只修引用，不為正式 PRD 加獨立審查關卡。
+- **無人值守交接**：main 承接凍結 PRD 整理工單，再問使用者要不要接 review-gate、審幾輪；不重新訪談或補產品決策。§13 仍內化執行紀律，正典是 owl plugin（`owl:brief`／`owl:run`），沒裝 owl 時才用 grill 的 `references/unattended-dispatch.md` 最小底線；不用為讀一份 PRD 另安裝 grill 或 owl。這次只修引用，不為正式 PRD 加獨立審查關卡。
 - 這些 skill 透過 markdown 文件對接，不互相 import
 
 ## Important rules
@@ -269,7 +269,7 @@ Caller 不確定怎麼寫某章節時，可貼 fixture 對應段給 Claude 對�
 9. **Industry term retain English** — JWT / OAuth / API / token / WinForm / ONNX / mp4 等不譯
 10. **Public repo discipline** — 此 skill repo 為 public；fixtures 用 placeholders（無真名 / 真客戶 / 真政治 context）
 11. **執行模式分形** — Phase 1 先鎖定「人跑 / agent 跑」，缺則 quiz 不預設；agent-run PRD 的 §13 要帶無人值守執行紀律（正典是 owl plugin；沒裝 owl 時對齊 `grill/references/unattended-dispatch.md` 的最小底線），human-run 不帶
-12. **凍結規格不重寫** — input 已是凍結 build spec、只差無人值守包裝 → 由 main 整理派工草稿並接 review-gate，本 skill 只在「spec 還需要被寫出來」時進場
+12. **凍結規格不重寫** — input 已是凍結 build spec、只差無人值守包裝 → 由 main 整理派工草稿，要不要接 review-gate 問使用者，本 skill 只在「spec 還需要被寫出來」時進場
 
 ## Acknowledgments
 

@@ -59,7 +59,7 @@
 | [prd-create](prd-create/) | 把一堆會議紀錄、散落的對話訊息、hand-waved 的需求，拼成一份照你 org guideline 的結構化 PRD — 缺的它 quiz 你、不亂編，stakeholder 衝突 surface 給你拍板、不擅自選邊，最後 sanitize + 發布到 ADO Wiki。純 prompt-driven、無 Python。prd-create → prd-breakdown → ADO 這條 chain 的前半 |
 | [prd-breakdown](prd-breakdown/) | 拿一份完成的 PRD，沿 vertical slice 拆成 Azure DevOps 工作項（HITL/AFK 標記 + blocked_by 依賴），再用 az CLI 推上去 — fingerprint 標記做 idempotent、重跑不會重複建項。prd-create → prd-breakdown → ADO 這條 chain 的後半 |
 | [spec](spec/) | Spec-driven 開發流程 — 從模糊想法到驗收結案。一個指令，自動判斷專案狀態，引導你走完：需求釐清 → 審查 → 實作 → 驗收 → 結案報告。因為「先寫再說」就是你之後要全部重寫的原因 |
-| [review-gate](review-gate/) | 派工前與實作後共用的雙 agent 審查：無對話脈絡的盲審先找問題，有脈絡的複核者逐條核對成立性、範圍與修法風險；main 負責修改驗證。保留原始意見與有據處置，不要求改到零建議。實驗版，不取代測試或 UI QA |
+| [review-gate](review-gate/) | 派工前與實作後共用的雙 agent 審查：無對話脈絡的盲審先找問題，有脈絡的複核者逐條核對成立性、範圍與修法風險；main 負責修改驗證。保留原始意見與有據處置，不要求改到零建議。要不要審、審幾輪由你決定，呼叫它的 skill 會附建議先問你。實驗版，不取代測試或 UI QA |
 
 > 不確定用哪顆時，先用 `workflow-router`。日常可走 `grill` →（有畫面的功能先過 UI spec 核可）→ main 寫工單 →（你決定要不要過、過幾輪）`review-gate` → 執行與驗收。要完整開發生命週期才用 `spec`；正式 PRD／ADO、重要決策、除錯、QA 與文件維護仍走各自入口。無人值守不再新增派工作者 skill；已核准工作沿原授權續跑。
 
@@ -125,7 +125,7 @@ cp -r kc_ai_skills/prep-repo ~/.claude/skills/
 cp -r kc_ai_skills/searxng ~/.openclaw/workspace/skills/
 ```
 
-> **完整開發交接：** 已定需求 → main 工單與 `review-gate` → 實作／AC 驗證 → 程式審查 → 適用的 `doc-qa:qa` → `align` → 收尾回報。執行端需有被呼叫的完整 skill；缺工具／未實跑保留缺口，單元測試不能取代 UI QA。`align` 也可獨立呼叫，不新增開票、結案或歸檔門檻。
+> **完整開發交接：** 已定需求 → main 工單與（你選要審時）`review-gate` → 實作／AC 驗證 →（你選要審時）程式審查 → 適用的 `doc-qa:qa` → `align` → 收尾回報。執行端需有被呼叫的完整 skill；缺工具／未實跑保留缺口，單元測試不能取代 UI QA。`align` 也可獨立呼叫，不新增開票、結案或歸檔門檻。
 
 > **QA 執行端：** 跨 Web／桌面 QA 建議 Codex。Web 用 Playwright MCP；原生桌面／跨 App 需實際具備 computer-use 工具的 Codex session。本流程需 doc-qa plugin 0.2.1+／QA skill 0.5.1+ 的適用性與出口規則。Claude Code bg session／agents 測 Web 仍走 Playwright；查證受測產品範圍確實無 UI 時才記 UI QA 不適用，保留原 AC／整合驗證證據，再 align 與收尾；有 UI 卻缺工具仍是未測，阻塞案例不能算通過。開跑先查能力，plugin 不內附 computer-use server，也不保證所有目標都可操作。
 
