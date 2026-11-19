@@ -7,7 +7,7 @@
 | Spec Self-Review | Spec Stage 產完 `spec.md` 後 |
 | 計畫位置與內容 | Spec Stage 產計畫時；續跑時確認既有計畫位置 |
 | Task 粒度 | Spec Stage 產 `tasks.md` 時 |
-| 完整需求與計畫審查 | spec、計畫、tasks 全部完成後交給 review-gate |
+| 完整需求與計畫審查 | spec、計畫、tasks 全部完成，user 決定要審時交給 review-gate |
 | AC 驗收 | Check Stage |
 | 完成狀態 | 每個階段結束回報時 |
 
@@ -65,7 +65,7 @@
 
 ## 完整需求與計畫審查
 
-呼叫 review-gate 時提供 spec、唯一計畫位置、tasks 與需求來源。使用上面的需求一致性／可驗收性、計畫與 task 判準，另外查三者是否對應、是否漏必要工作或互相矛盾。必要未決決策與 reviewer 新提案分開；不能只因沒有採用偏好架構就判不通過。實作後的專業判準採 review-gate 的程式碼段落，獨立於本頁的 AC 驗收。
+要不要審、審幾輪由 user 決定（見 `SKILL.md` Spec Stage 第 8 步）。呼叫 review-gate 時提供 spec、唯一計畫位置、tasks 與需求來源。使用上面的需求一致性／可驗收性、計畫與 task 判準，另外查三者是否對應、是否漏必要工作或互相矛盾。必要未決決策與 reviewer 新提案分開；不能只因沒有採用偏好架構就判不通過。實作後的專業判準採 review-gate 的程式碼段落，獨立於本頁的 AC 驗收。
 
 ---
 
