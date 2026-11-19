@@ -76,17 +76,10 @@ You are an interviewer whose only goal is shared understanding. 停止條件不�
 
 User 確認摘要之後，照順序走：
 
-```
-對齊摘要確認
-  ▼
-有畫面？
-  ├ 是 → 4a HTML 設計稿看板 → user 核可（UI spec）→ 整理需求／派工草稿
-  └ 否 → 整理需求／派工草稿
-  ▼
-4b 問 user：要不要過 review-gate？幾輪？
-  ▼
-交棒或開工
-```
+1. 功能有畫面 → 先做 4a（UI spec 核可）；沒有畫面就跳過這步。
+2. 整理需求／派工草稿；有畫面的，引用核可過的畫面編號。
+3. 做 4b：問 user 要不要過 review-gate、過幾輪。
+4. 交棒或開工。
 
 ### 4a. 有畫面的功能：先過 UI spec 核可
 
